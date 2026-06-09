@@ -1,0 +1,93 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: toxyspan_db
+    environment:
+      POSTGRES_DB: toxyspan
+      POSTGRES_USER: toxyspan_user
+      POSTGRES_PASSWORD: toxyspan_password
+    ports:
+      - "127.0.0.1:5732:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U toxyspan_user -d toxyspan"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: toxyspan_redis
+    ports:
+      - "127.0.0.1:6779:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toxyspan_web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - ./media:/app/media
+      - ./backups:/app/backups
+    ports:
+      - "127.0.0.1:6767:8000"
+    environment:
+      - DEBUG=${DEBUG:-False}
+      - DATABASE_URL=postgres://toxyspan_user:toxyspan_password@db:5432/toxyspan
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me-in-production}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
+      - SITE_URL=${SITE_URL:-}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toxyspan_celery_worker
+    command: celery -A annotahub worker -l info -c 4
+    volumes:
+      - .:/app
+      - ./backups:/app/backups
+    environment:
+      - DATABASE_URL=postgres://toxyspan_user:toxyspan_password@db:5432/toxyspan
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toxyspan_celery_beat
+    command: celery -A annotahub beat -l info
+    volumes:
+      - .:/app
+      - ./backups:/app/backups
+    environment:
+      - DATABASE_URL=postgres://toxyspan_user:toxyspan_password@db:5432/toxyspan
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

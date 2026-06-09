@@ -1,0 +1,352 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnnotaHub - {% trans "Verification Email Sent" %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient-start: #1a1a2e;
+            --primary-gradient-end: #16213e;
+            --accent-color: #0f3460;
+            --highlight-color: #e94560;
+            --text-light: rgba(255, 255, 255, 0.85);
+            --success-color: #28a745;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--primary-gradient-start) 0%, var(--primary-gradient-end) 50%, var(--accent-color) 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-animation .circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(233, 69, 96, 0.05);
+            animation: float 20s infinite;
+        }
+
+        .bg-animation .circle:nth-child(1) {
+            width: 300px;
+            height: 300px;
+            top: -150px;
+            left: -150px;
+            animation-delay: 0s;
+        }
+
+        .bg-animation .circle:nth-child(2) {
+            width: 200px;
+            height: 200px;
+            bottom: -100px;
+            right: -100px;
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+            50% { transform: translateY(-25px) rotate(180deg); opacity: 0.3; }
+        }
+
+        .verification-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .verification-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .verification-header {
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--accent-color));
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .verification-logo h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .verification-body {
+            padding: 2.5rem 2rem;
+            text-align: center;
+        }
+
+        .success-icon {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(135deg, var(--success-color), #20c997);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        .success-icon i {
+            font-size: 3rem;
+            color: white;
+        }
+
+        .verification-body h2 {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .verification-body p {
+            color: #6c757d;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .email-highlight {
+            background: #f0f4ff;
+            border: 1px solid #d0d9f0;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            font-weight: 600;
+            color: var(--accent-color);
+            font-size: 1.1rem;
+        }
+
+        .info-box {
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+
+        .info-box p {
+            margin: 0;
+            color: #856404;
+            font-size: 0.9rem;
+        }
+
+        .info-box i {
+            margin-right: 0.5rem;
+            color: #ffc107;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, var(--primary-gradient-start), var(--accent-color));
+            border: none;
+            border-radius: 12px;
+            padding: 0.85rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(15, 52, 96, 0.35);
+            color: white;
+        }
+
+        .btn-login i {
+            margin-right: 0.5rem;
+        }
+
+        .resend-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e8ecf1;
+        }
+
+        .resend-section p {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-resend {
+            background: transparent;
+            border: 2px solid var(--accent-color);
+            border-radius: 12px;
+            padding: 0.6rem 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--accent-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-resend:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .verification-footer {
+            text-align: center;
+            padding: 1.25rem;
+            background: #f8f9fa;
+            border-top: 1px solid #e8ecf1;
+        }
+
+        .verification-footer p {
+            color: #6c757d;
+            font-size: 0.875rem;
+            margin: 0;
+        }
+
+        .verification-footer a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .verification-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .alert-custom {
+            border-radius: 12px;
+            border: none;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        @media (max-width: 480px) {
+            .verification-body { padding: 2rem 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation">
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="verification-container">
+        <div class="verification-card">
+            <!-- Header -->
+            <div class="verification-header">
+                <div class="verification-logo">
+                    <h1>AnnotaHub</h1>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="verification-body">
+                <!-- Messages -->
+                {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-custom fade show" role="alert">
+                    <i class="bi bi-{% if message.tags == 'error' %}exclamation-triangle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}check-circle{% endif %}-fill"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+                {% endif %}
+
+                <!-- Success Icon -->
+                <div class="success-icon">
+                    <i class="bi bi-envelope-check-fill"></i>
+                </div>
+
+                <h2>{% trans "Registration Successful!" %}</h2>
+                <p>{% trans "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account." %}</p>
+
+                <!-- Email Highlight -->
+                <div class="email-highlight">
+                    <i class="bi bi-envelope-fill"></i> {{ email }}
+                </div>
+
+                <!-- Info Box -->
+                <div class="info-box">
+                    <p><i class="bi bi-info-circle-fill"></i> {% trans "The verification link will expire after 7 days. If you don't see the email, check your spam folder." %}</p>
+                </div>
+
+                <!-- Login Button -->
+                <a href="{% url 'comments:login' %}" class="btn btn-login">
+                    <i class="bi bi-box-arrow-in-right"></i> {% trans "Back to Login" %}
+                </a>
+
+                <!-- Resend Section -->
+                <div class="resend-section">
+                    <p>{% trans "Didn't receive the email?" %}</p>
+                    <form method="post" action="{% url 'comments:resend_verification' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="email" value="{{ email }}">
+                        <button type="submit" class="btn btn-resend">
+                            <i class="bi bi-arrow-repeat"></i> {% trans "Resend Verification Email" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="verification-footer">
+                <p>{% trans "Already verified?" %} <a href="{% url 'comments:login' %}">{% trans "Sign In" %}</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert-dismissible');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }, 8000);
+            });
+        });
+    </script>
+</body>
+</html>

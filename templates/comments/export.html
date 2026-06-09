@@ -1,0 +1,114 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Export" %} - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-download"></i> {% trans "Export Dataset" %} - {{ project.name }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="exportForm">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>{% trans "Export Format" %}</strong></label>
+                        <select name="format" class="form-select" required>
+                            <optgroup label="{% trans "JSON Format" %}">
+                                <option value="json_sentence">{% trans "JSON - Sentence Level (comment + label)" %}</option>
+                                <option value="json_token">{% trans "JSON - Token Level (comment + tokens + BIO labels)" %}</option>
+                                <option value="json_llm">{% trans "JSON - LLM Training (instruction/input/output format)" %}</option>
+                            </optgroup>
+                            <optgroup label="{% trans "XML Format" %}">
+                                <option value="xml_conll">{% trans "XML - CoNLL-like (token-level with tags)" %}</option>
+                            </optgroup>
+                            <optgroup label="{% trans "CSV Format" %}">
+                                <option value="csv_sentence">{% trans "CSV - Sentence Level" %}</option>
+                                <option value="csv_token">{% trans "CSV - Token Level" %}</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>{% trans "Filter by Toxicity" %}</strong></label>
+                        <select name="filter" class="form-select">
+                            <option value="all">{% trans "All Comments" %}</option>
+                            <option value="toxic">{% trans "Toxic Only" %}</option>
+                            <option value="non_toxic">{% trans "Non-Toxic Only" %}</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>{% trans "Scope" %}</strong></label>
+                        <div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="scope" id="scopeAll" value="all" checked>
+                                <label class="form-check-label" for="scopeAll">{% trans "Entire Project" %}</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="scope" id="scopeLink" value="link">
+                                <label class="form-check-label" for="scopeLink">{% trans "Specific Video" %}</label>
+                            </div>
+                        </div>
+                        <select name="link_id" id="linkSelect" class="form-select mt-2" style="display:none;">
+                            <option value="">-- {% trans "Select Video" %} --</option>
+                            {% for link in links %}
+                            <option value="{{ link.id }}">{{ link.title|default:link.video_id }} ({{ link.comment_count }} {% trans "comments" %})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-download"></i> {% trans "Download Dataset" %}
+                        </button>
+                        <a href="{% url 'comments:project_detail' project.id %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Format Info -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> {% trans "Format Descriptions" %}</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>{% trans "JSON - Sentence Level:" %}</strong>
+                    <pre class="bg-light p-2 small">{[{"id": "...", "text": "comment text", "label": "toxic/non_toxic", ...}]}</pre>
+                </div>
+                <div class="mb-3">
+                    <strong>{% trans "JSON - Token Level (BIO):" %}</strong>
+                    <pre class="bg-light p-2 small">{[{"id": "...", "text": "...", "label": "...", "tokens": [{"text": "word", "label": "B_TOXIC/O", ...}] }]}</pre>
+                </div>
+                <div class="mb-3">
+                    <strong>{% trans "JSON - LLM Training:" %}</strong>
+                    <pre class="bg-light p-2 small">{[{"instruction": "...", "input": "comment text", "output": "{\"is_toxic\": true, \"toxic_words\": [...]}"}]}</pre>
+                </div>
+                <div>
+                    <strong>{% trans "XML - CoNLL-like:" %}</strong>
+                    <pre class="bg-light p-2 small"><corpus>
+  <sentence id="..." label="toxic">
+    <tokens>
+      <token text="word" label="B_TOXIC" position="0"/>
+    </tokens>
+  </sentence>
+</corpus></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('input[name="scope"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        document.getElementById('linkSelect').style.display =
+            this.value === 'link' ? 'block' : 'none';
+    });
+});
+</script>
+{% endblock %}

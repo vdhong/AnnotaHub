@@ -1,0 +1,139 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Manage Members" %} - {{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{% url 'comments:project_detail' project.id %}" class="text-decoration-none">
+            <h2><i class="bi bi-arrow-left"></i> {% trans "Back" %}</h2>
+        </a>
+        <h4>{% trans "Manage Members" %} - {{ project.name }}</h4>
+        <p class="text-muted">{% trans "Participants can only label, they cannot add, delete, or edit project information." %}</p>
+    </div>
+</div>
+
+<!-- Add Participant Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-person-plus"></i> {% trans "Add Participant" %}</h5>
+        <form method="post" class="row g-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_participant">
+            <div class="col-md-8">
+                <input type="email" name="email" class="form-control" placeholder="{% trans "Enter participant email..." %}" required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-plus-circle"></i> {% trans "Add Participant" %}
+                </button>
+            </div>
+        </form>
+        <small class="text-muted d-block mt-2">
+            <i class="bi bi-info-circle"></i>
+            {% blocktrans %}If the email has an account, the user will be added immediately. If not, an invitation email will be sent to this address.{% endblocktrans %}
+        </small>
+    </div>
+</div>
+
+<!-- Participants List -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-people"></i> {% trans "Participants" %} ({{ participants.count }})</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if participants %}
+        {% for participant in participants %}
+        <div class="list-group-item list-group-item-action d-flex align-items-center p-3">
+            <div class="flex-grow-1">
+                <h6 class="mb-1">
+                    <i class="bi bi-person"></i> {{ participant.username }}
+                </h6>
+                <small class="text-muted">{% trans "Email" %}: {{ participant.email|default:"None" }}</small>
+                {% if participant.first_name or participant.last_name %}
+                <small class="text-muted"> | {{ participant.first_name }} {{ participant.last_name }}</small>
+                {% endif %}
+            </div>
+            <div>
+                <form method="post" class="d-inline" onsubmit="return confirm('{% blocktrans %}Remove {{ participant.username }} from the project?{% endblocktrans %}')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_participant">
+                    <input type="hidden" name="user_id" value="{{ participant.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-person-x"></i> {% trans "Remove" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-people" style="font-size: 2rem; color: #dee2e6;"></i>
+            <p class="text-muted mt-2">{% trans "No participants yet." %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pending Invitations List -->
+<div class="card">
+    <div class="card-header bg-warning bg-opacity-10">
+        <h5 class="mb-0"><i class="bi bi-envelope"></i> {% trans "Pending Invitations" %} ({{ pending_invitations.count }})</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if pending_invitations %}
+        {% for invitation in pending_invitations %}
+        <div class="list-group-item list-group-item-action d-flex align-items-center p-3">
+            <div class="flex-grow-1">
+                <h6 class="mb-1">
+                    <i class="bi bi-envelope-open"></i> {{ invitation.email }}
+                    {% if invitation.is_expired %}
+                    <span class="badge bg-danger">{% trans "Expired" %}</span>
+                    {% else %}
+                    <span class="badge bg-success">{% trans "Active" %}</span>
+                    {% endif %}
+                </h6>
+                <small class="text-muted">
+                    {% trans "Invited by" %}: {{ invitation.inviter.get_full_name|default:invitation.inviter.username }}
+                </small>
+                <small class="text-muted">
+                    | {% trans "Sent at" %}: {{ invitation.created_at|date:"d/m/Y H:i" }}
+                </small>
+                {% if not invitation.is_expired %}
+                <small class="text-muted">
+                    | {% trans "Expires at" %}: {{ invitation.expires_at|date:"d/m/Y H:i" }}
+                </small>
+                {% endif %}
+                {% if invitation.user %}
+                <small class="text-muted"> | {% trans "User" %}: {{ invitation.user.username }}</small>
+                {% endif %}
+            </div>
+            <div class="ms-2">
+                <form method="post" class="d-inline" onsubmit="return confirm('{% blocktrans %}Resend invitation email to {{ invitation.email }}?{% endblocktrans %}')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="resend_invitation">
+                    <input type="hidden" name="invitation_id" value="{{ invitation.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-primary me-1" title="{% trans "Resend invitation email" %}">
+                        <i class="bi bi-arrow-repeat"></i> {% trans "Resend" %}
+                    </button>
+                </form>
+                <form method="post" class="d-inline" onsubmit="return confirm('{% blocktrans %}Delete invitation for {{ invitation.email }}?{% endblocktrans %}')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_invitation">
+                    <input type="hidden" name="invitation_id" value="{{ invitation.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="{% trans "Delete invitation" %}">
+                        <i class="bi bi-trash"></i> {% trans "Delete" %}
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-envelope" style="font-size: 2rem; color: #dee2e6;"></i>
+            <p class="text-muted mt-2">{% trans "No pending invitations." %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

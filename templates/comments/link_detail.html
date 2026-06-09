@@ -1,0 +1,1004 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{{ link.title|default:link.video_id }} - {% trans "Comments" %}{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb & Actions -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'comments:project_list' %}">{% trans "Projects" %}</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'comments:project_detail' link.project.id %}">{{ link.project.name }}</a></li>
+        <li class="breadcrumb-item active">{{ link.title|default:"Video" }}</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4><i class="bi bi-youtube text-danger"></i> {{ link.title|default:link.video_id }}</h4>
+    <div>
+        <form method="post" action="{% url 'comments:delete_youtube_link' link.id %}" class="d-inline">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('{% trans "Delete this link and all data?" %}')">
+                <i class="bi bi-trash"></i> {% trans "Delete" %}
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Video Preview -->
+<div class="card video-shell mb-4">
+    <div class="card-body">
+        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 align-items-md-center">
+            <div>
+                <div class="text-uppercase small text-muted fw-semibold">{% trans "YouTube Source" %}</div>
+                <h6 class="mb-1">{{ link.title|default:link.video_id }}</h6>
+                <div class="small text-muted">{{ link.channel|default:"Unknown channel" }}</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary" id="videoToggleBtn" onclick="toggleVideoPlayer()">
+                    <i class="bi bi-play-btn"></i> <span id="videoToggleLabel">{% trans "Show video" %}</span>
+                </button>
+                <a class="btn btn-sm btn-outline-secondary" href="https://www.youtube.com/watch?v={{ link.video_id }}" target="_blank" rel="noopener noreferrer">
+                    <i class="bi bi-box-arrow-up-right"></i> {% trans "Open on YouTube" %}
+                </a>
+            </div>
+        </div>
+
+        <div id="videoPanel" class="video-panel mt-3 d-none">
+            <div class="video-embed-container">
+                <iframe
+                    id="youtubePlayer"
+                    data-video-id="{{ link.video_id }}"
+                    title="YouTube video player"
+                    loading="lazy"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen></iframe>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2 small text-muted">
+                <span>{% trans "If the embed is blocked, use the direct YouTube link." %}</span>
+                <span>{% trans "Embed loads only when requested." %}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Status Cards -->
+<div class="row g-3 mb-4" id="progressContainer">
+    <!-- Fetch Comments Card -->
+    <div class="col-md-6">
+        <div class="card stats-card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-cloud-download"></i> {% trans "Fetch Comments" %}</h6>
+                {% if latest_fetch_progress %}
+                <div class="d-flex justify-content-between small mb-1">
+                    <span id="fetchStatus">{{ latest_fetch_progress.get_status_display }}</span>
+                    <span id="fetchPercent">{{ latest_fetch_progress.progress_percent }}%</span>
+                </div>
+                <div class="progress progress-thin">
+                    <div class="progress-bar bg-info" id="fetchBar" style="width: {{ latest_fetch_progress.progress_percent }}%"></div>
+                </div>
+                <small class="text-muted d-block mt-1" id="fetchCount">
+                    {{ latest_fetch_progress.processed_items|default:0 }} / {{ latest_fetch_progress.total_items|default:0 }} {% trans "comments" %}
+                </small>
+                <small class="text-muted" id="fetchStep">{{ latest_fetch_progress.current_step }}</small>
+                {% else %}
+                <small class="text-muted">{% trans "No fetch task yet" %}</small>
+                {% endif %}
+                <div class="mt-2">
+                    <!-- Stop button (shown when fetch is running) -->
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="fetchStopBtn" onclick="stopFetchTask()" style="display: none;">
+                        <i class="bi bi-stop-circle"></i> {% trans "Stop" %}
+                    </button>
+                    <!-- Refetch button (shown when fetch is not running) -->
+                    <button type="button" class="btn btn-sm btn-outline-info" id="fetchRefetchBtn" onclick="retryFetchTask()" style="display: inline;">
+                        <i class="bi bi-arrow-clockwise"></i> {% trans "Refetch" %}
+                    </button>
+                    <!-- Clear and refetch button (shown when fetch is not running) -->
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="fetchClearRefetchBtn" onclick="clearAndRefetchTask()" style="display: inline;">
+                        <i class="bi bi-trash3"></i> {% trans "Clear and Refetch" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Annotation Card -->
+    <div class="col-md-6">
+        <div class="card stats-card">
+            <div class="card-body">
+                <h6 class="card-title"><i class="bi bi-robot"></i> {% trans "AI Annotation" %}</h6>
+                {% if latest_annotate_progress %}
+                <div class="d-flex justify-content-between small mb-1">
+                    <span id="annotateStatus">{{ latest_annotate_progress.get_status_display }}</span>
+                    <span id="annotatePercent">{{ latest_annotate_progress.progress_percent }}%</span>
+                </div>
+                <div class="progress progress-thin">
+                    <div class="progress-bar bg-success" id="annotateBar" style="width: {{ latest_annotate_progress.progress_percent }}%"></div>
+                </div>
+                <small class="text-muted d-block mt-1" id="annotateCount">
+                    {{ latest_annotate_progress.processed_items|default:0 }} / {{ latest_annotate_progress.total_items|default:0 }} {% trans "comments" %}
+                </small>
+                <small class="text-muted" id="annotateStep">{{ latest_annotate_progress.current_step }}</small>
+                {% else %}
+                <small class="text-muted">{% trans "No annotation task yet" %}</small>
+                {% endif %}
+                <div class="mt-2">
+                    <!-- Stop button (shown when annotation is running) -->
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="annotateStopBtn" onclick="stopAnnotationTask()" style="display: none;">
+                            <i class="bi bi-stop-circle"></i> {% trans "Stop" %}
+                        </button>
+                    <!-- Continue + Re-Annotate buttons (shown when annotation is not running) -->
+                    <div id="annotateActionsBtns" style="display: block;">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="continueAnnotationBtn" onclick="continueAnnotationTask()" style="display: {% if unannotated_count > 0 %}inline-flex{% else %}none{% endif %};">
+                            <i class="bi bi-play-circle"></i> {% trans "Continue Annotation" %}
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="reannotateAllTask()">
+                            <i class="bi bi-arrow-clockwise"></i> {% trans "Re-Annotate All" %}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4" id="statsContainer">
+    <!-- Total Comments -->
+    <div class="col-md-3">
+        <div class="card stats-card bg-primary text-white">
+            <div class="card-body text-center">
+                <h3 id="totalCommentsCount">{{ total_comments }}</h3>
+                <small>{% trans "Total Comments" %}</small>
+            </div>
+        </div>
+    </div>
+    <!-- Annotated -->
+    <div class="col-md-3">
+        <div class="card stats-card bg-success text-white">
+            <div class="card-body text-center">
+                <h3 id="annotatedCommentsCount">{{ annotated_comments }}</h3>
+                <small>{% trans "Annotated" %}</small>
+            </div>
+        </div>
+    </div>
+    <!-- Unannotated -->
+    <div class="col-md-3">
+        <div class="card stats-card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h3 id="unannotatedCommentsCount">{{ unannotated_count }}</h3>
+                <small>{% trans "Unannotated" %}</small>
+            </div>
+        </div>
+    </div>
+    <!-- Dynamic label stats rendered by JavaScript -->
+</div>
+
+<!-- Filter -->
+<div class="mb-3">
+    <div class="btn-group flex-wrap" role="group" id="filterContainer">
+        <a href="?filter=all" class="btn btn-sm btn-outline-secondary {% if filter_status == 'all' %}active{% endif %}">{% trans "All" %}</a>
+        <a href="?filter=annotated" class="btn btn-sm btn-outline-success {% if filter_status == 'annotated' %}active{% endif %}">{% trans "Annotated" %}</a>
+        <a href="?filter=unannotated" class="btn btn-sm btn-outline-warning {% if filter_status == 'unannotated' %}active{% endif %}">{% trans "Unannotated" %}</a>
+        <!-- Dynamic label filters will be inserted by JavaScript -->
+    </div>
+</div>
+
+<!-- Comments List -->
+<div id="commentsContainer">
+{% for comment in comments %}
+    <div class="card comment-card mb-3 {% if comment.toxicity_label == 'toxic' %}label-toxic{% elif comment.toxicity_label == 'non_toxic' %}label-non_toxic{% elif comment.is_skipped %}label-meaningless{% else %}unlabeled{% endif %}"
+         id="comment-{{ comment.id }}">
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                {% if comment.avatar_url %}
+                <img src="{{ comment.avatar_url }}" class="rounded-circle comment-avatar" width="40" height="40" alt="{{ comment.author|default:'{% trans "Anonymous" %}' }}">
+                {% else %}
+                <div class="comment-avatar-fallback">{{ comment.author|default:"A"|slice:":1" }}</div>
+                {% endif %}
+                <div class="flex-grow-1">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <strong class="comment-author">{{ comment.author|default:"Anonymous" }}</strong>
+                        {% if comment.toxicity_label %}
+                        <span id="commentLabel-{{ comment.id }}" class="badge {% if comment.toxicity_label == 'toxic' %}bg-danger{% else %}bg-success{% endif %}">
+                            {{ comment.get_toxicity_label_display }}
+                        </span>
+                        {% elif comment.is_skipped %}
+                        <span id="commentLabel-{{ comment.id }}" class="badge bg-secondary">{% trans "Not meaningful" %}</span>
+                        {% else %}
+                        <span id="commentLabel-{{ comment.id }}" class="badge bg-warning text-dark">{% trans "Not labeled" %}</span>
+                        {% endif %}
+                        {% if comment.was_translated %}
+                        <span class="badge bg-secondary" title="{% trans "Translated from original" %}">
+                            <i class="bi bi-translate"></i> {% trans "Translated" %}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="small text-muted">
+                        {{ comment.published_at|date:"M d, Y"|default:"Unknown date" }}
+                        <span class="mx-1">&middot;</span>
+                        <i class="bi bi-hand-thumbs-up"></i> {{ comment.like_count }} {% trans "likes" %}
+                    </div>
+                </div>
+            </div>
+
+            {% if comment.was_translated %}
+            <div class="comment-original small mb-2">
+                <span class="text-uppercase fw-semibold text-muted">{% trans "Original" %}</span>
+                <div class="mt-1">{{ comment.original_text }}</div>
+            </div>
+            {% endif %}
+
+            <div class="comment-text token-strip" id="commentText-{{ comment.id }}">
+                {% with display_tokens=comment.display_tokens %}
+                {% if display_tokens %}
+                {% for token in display_tokens %}
+                {% with ml=token.manual_label %}
+                {% with al=token.ai_label %}
+                <span class="token-word"
+                      data-comment-id="{{ comment.id }}"
+                      data-token-position="{{ token.position }}"
+                      data-manual-label-id="{{ ml.id|default:'' }}"
+                      data-manual-label-color="{{ ml.color|default:'' }}"
+                      data-ai-label-color="{{ al.color|default:'' }}"
+                      oncontextmenu="return false;">
+                    {{ token.text }}
+                </span>
+                {% endwith %}
+                {% endwith %}
+                {% endfor %}
+                {% else %}
+                <span class="text-muted small"><i>{{ comment.text }}</i></span>
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="comment-actions mt-3" id="commentActions-{{ comment.id }}">
+                <div class="d-flex flex-wrap gap-2" id="commentLabelButtons-{{ comment.id }}">
+                    <!-- Dynamic label buttons will be inserted by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <i class="bi bi-chat-square-text" style="font-size: 3rem; color: #dee2e6;"></i>
+        <p class="text-muted mt-3">{% trans "No comments match this filter" %}</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<nav aria-label="{% trans "Comment pagination" %}">
+    <ul class="pagination justify-content-center">
+        {% if page > 1 %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page|add:"-1" }}&filter={{ filter_status }}">{% trans "Previous" %}</a>
+        </li>
+        {% endif %}
+        {% for p in pages %}
+        <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link" href="?page={{ p }}&filter={{ filter_status }}">{{ p }}</a>
+        </li>
+        {% endfor %}
+        {% if page < total_pages %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page|add:"1" }}&filter={{ filter_status }}">{% trans "Next" %}</a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+<!-- CSRF Token for AJAX -->
+<input type="hidden" id="csrfToken" value="{{ csrf_token }}">
+
+<!-- Initial state for JS -->
+<input type="hidden" id="initialFetchRunning" value="{% if fetch_running %}1{% else %}0{% endif %}">
+<input type="hidden" id="initialAnnotateRunning" value="{% if annotate_running %}1{% else %}0{% endif %}">
+
+<script>
+// Translations for JavaScript strings
+var I18N = {
+    selectLabelForToken: '{% trans "Select label for token:" %}',
+    noneLabel: '{% trans "None" %}',
+    commentLabel: '{% trans "Comment label:" %}',
+    tokenLabeled: function(text, label) { return 'Token "' + text + '" \u2192 ' + label; },
+    commentLabeled: function(label) { return 'Comment \u2192 ' + label; },
+    errorSettingTokenLabel: '{% trans "Error setting token label." %}',
+    errorSettingCommentLabel: '{% trans "Error setting comment label." %}',
+    failedSetLabel: '{% trans "Failed to set label." %}',
+    clearRefetchConfirm: '{% trans "Clear all existing comments and fetch them again from YouTube? This will delete old comments and annotations." %}',
+    refetchConfirm: '{% trans "Refetch comments without deleting existing ones? Existing comments will be kept." %}',
+    reannotateConfirm: '{% trans "Reset all annotations and re-run AI from scratch?" %}',
+    showVideo: '{% trans "Show video" %}',
+    hideVideo: '{% trans "Hide video" %}',
+    comments: '{% trans "comments" %}',
+};
+
+const CSRF_VALUE = (document.getElementById('csrfToken') || {}).value || '';
+const LINK_ID = '{{ link.id }}';
+
+// Project labels for manual labeling
+const PROJECT_LABELS = {{ project_labels_data | safe }};
+
+// Comment manual labels for initializing comment label buttons
+const COMMENT_MANUAL_LABELS = {{ comment_manual_labels_json | safe }};
+
+// Label statistics from server (per-label comment counts)
+const LABEL_STATS = {{ label_stats | safe }};
+
+// Initial running state from server
+let fetchIsRunning = document.getElementById('initialFetchRunning').value === '1';
+let annotateIsRunning = document.getElementById('initialAnnotateRunning').value === '1';
+
+// ---- Bootstrap Popover for token labeling ----
+let activeTokenPopover = null;
+let activeTokenEl = null;
+
+function selectTokenLabel(labelId, labelName, labelColor) {
+    var tokenEl = activeTokenEl;
+    if (!tokenEl) return;
+    closeAllTokenPopovers(false);
+    applyTokenLabel(tokenEl, labelId, labelName, labelColor);
+}
+
+function getPopoverContent(tokenEl) {
+    const itemsHtml = PROJECT_LABELS.map(label => {
+        const safeColor = label.color || 'transparent';
+        return `
+            <div class="token-label-popover-item" style="border-left: 4px solid ${safeColor};">
+                <span class="label-color-dot" style="background-color: ${safeColor};"></span>
+                <span class="label-name" style="color: ${safeColor};">${label.name}</span>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="token-label-popover">
+            <div class="token-label-popover-header">${I18N.selectLabelForToken}</div>
+            ${itemsHtml}
+            <div class="token-label-popover-item token-label-popover-none">
+                <span class="label-color-dot label-color-none"></span>
+                <span class="label-name">${I18N.noneLabel} (O)</span>
+            </div>
+        </div>
+    `;
+}
+
+function initTokenPopover(tokenEl) {
+    closeAllTokenPopovers(false);
+    var myDefaultAllowList = bootstrap.Tooltip.Default.allowList;
+    myDefaultAllowList.div = ['class', 'style'];
+    myDefaultAllowList.span = ['class', 'style'];
+    activeTokenEl = tokenEl;
+
+    const popover = new bootstrap.Popover(tokenEl, {
+        content: getPopoverContent(tokenEl),
+        html: true,
+        placement: 'bottom',
+        trigger: 'manual',
+        offset: [0, 5],
+        boundary: 'viewport'
+    });
+
+    popover.show();
+    activeTokenPopover = popover;
+
+    requestAnimationFrame(function attachHandlers() {
+        var popoverBody = document.querySelector('.popover .token-label-popover');
+        if (!popoverBody) {
+            setTimeout(attachHandlers, 50);
+            return;
+        }
+
+        var items = popoverBody.querySelectorAll('.token-label-popover-item');
+        var labels = PROJECT_LABELS;
+
+        items.forEach(function(item, index) {
+            if (index < labels.length) {
+                var label = labels[index];
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    selectTokenLabel(label.id, label.name, label.color);
+                });
+            } else {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    selectTokenLabel(null, 'O', null);
+                });
+            }
+        });
+    });
+}
+
+function closeAllTokenPopovers(preserveTokenEl) {
+    document.querySelectorAll('.token-word').forEach(function(token) {
+        var popover = bootstrap.Popover.getInstance(token);
+        if (popover) {
+            popover.dispose();
+        }
+    });
+    if (activeTokenPopover) {
+        activeTokenPopover = null;
+    }
+    if (!preserveTokenEl) {
+        activeTokenEl = null;
+    }
+}
+
+document.addEventListener('click', function(e) {
+    if (activeTokenPopover) {
+        if (!e.target.closest('.token-word') && !e.target.closest('.popover')) {
+            closeAllTokenPopovers(false);
+        }
+    }
+});
+
+async function applyTokenLabel(tokenEl, labelId, labelName, labelColor) {
+    const commentId = tokenEl.dataset.commentId;
+    const tokenPosition = tokenEl.dataset.tokenPosition;
+
+    try {
+        const response = await fetch(`/api/comments/${commentId}/set-token-labels/${tokenPosition}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_VALUE,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ label_id: labelId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            tokenEl.dataset.manualLabelId = labelId || '';
+            tokenEl.dataset.manualLabelColor = labelColor || '';
+
+            if (labelColor) {
+                tokenEl.classList.add('token-labeled');
+                tokenEl.style.backgroundColor = labelColor + '33';
+                tokenEl.style.borderColor = labelColor;
+                tokenEl.style.color = labelColor;
+                tokenEl.style.fontWeight = '600';
+            } else {
+                tokenEl.classList.remove('token-labeled');
+                tokenEl.style.backgroundColor = '';
+                tokenEl.style.borderColor = '';
+                tokenEl.style.color = '';
+                tokenEl.style.fontWeight = '';
+            }
+
+            syncLinkStatus();
+            showToast(I18N.tokenLabeled(tokenEl.textContent, labelName), 'success');
+        } else {
+            showToast(data.error || I18N.failedSetLabel, 'error');
+        }
+    } catch (err) {
+        console.error('Error setting token label:', err);
+        showToast(I18N.errorSettingTokenLabel, 'error');
+    }
+}
+
+document.querySelectorAll('.token-word').forEach(function(token) {
+    token.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        initTokenPopover(token);
+    });
+});
+
+// ---- Dynamic comment label buttons ----
+function buildCommentLabelButtons(commentId, currentLabelId) {
+    const container = document.getElementById(`commentLabelButtons-${commentId}`);
+    if (!container) return;
+    container.innerHTML = '<span>' + I18N.commentLabel + '</span>';
+
+    PROJECT_LABELS.forEach(function(label) {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm comment-label-btn';
+        btn.style.borderColor = label.color;
+        btn.style.color = label.color;
+        if (currentLabelId === label.id) {
+            btn.style.backgroundColor = label.color + '33';
+            btn.classList.add('active-label-btn');
+        }
+        btn.innerHTML = `<span class="label-color-dot" style="background-color: ${label.color};"></span> ${label.name}`;
+        btn.addEventListener('click', function() {
+            applyCommentLabel(commentId, label.id, label.name, label.color);
+        });
+        container.appendChild(btn);
+    });
+
+    const noneBtn = document.createElement('button');
+    noneBtn.className = 'btn btn-sm btn-outline-secondary comment-label-btn';
+    if (!currentLabelId) {
+        noneBtn.style.backgroundColor = '#f8f9fa';
+        noneBtn.classList.add('active-label-btn');
+    }
+    noneBtn.innerHTML = `<i class="bi bi-dash-circle"></i> ${I18N.noneLabel}`;
+    noneBtn.addEventListener('click', function() {
+        applyCommentLabel(commentId, null, I18N.noneLabel, null);
+    });
+    container.appendChild(noneBtn);
+}
+
+async function applyCommentLabel(commentId, labelId, labelName, labelColor) {
+    try {
+        const response = await fetch(`/api/comments/${commentId}/set-comment-labels/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': CSRF_VALUE,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ label_id: labelId })
+        });
+        const data = await response.json();
+        if (data.success) {
+            const container = document.getElementById(`commentLabelButtons-${commentId}`);
+            if (container) {
+                container.querySelectorAll('.comment-label-btn').forEach(function(btn) {
+                    btn.classList.remove('active-label-btn');
+                    btn.style.backgroundColor = '';
+                });
+
+                if (labelId) {
+                    const buttons = container.querySelectorAll('.comment-label-btn');
+                    buttons.forEach(function(btn) {
+                        if (btn.textContent.trim().includes(labelName)) {
+                            btn.classList.add('active-label-btn');
+                            btn.style.backgroundColor = labelColor + '33';
+                        }
+                    });
+                    const badge = document.getElementById(`commentLabel-${commentId}`);
+                    if (badge) {
+                        badge.style.backgroundColor = labelColor;
+                        badge.style.color = '#fff';
+                        badge.textContent = labelName;
+                        badge.className = 'badge';
+                        badge.style.backgroundColor = labelColor;
+                    }
+                } else {
+                    const noneBtn = container.querySelector('.btn-outline-secondary');
+                    if (noneBtn) {
+                        noneBtn.classList.add('active-label-btn');
+                        noneBtn.style.backgroundColor = '#f8f9fa';
+                    }
+                    const badge = document.getElementById(`commentLabel-${commentId}`);
+                    if (badge) {
+                        badge.className = 'badge bg-warning text-dark';
+                        badge.textContent = I18N.noneLabel;
+                    }
+                }
+            }
+
+            syncLinkStatus();
+            showToast(I18N.commentLabeled(labelName), 'success');
+        } else {
+            showToast(data.error || I18N.failedSetLabel, 'error');
+        }
+    } catch (err) {
+        console.error('Error setting comment label:', err);
+        showToast(I18N.errorSettingCommentLabel, 'error');
+    }
+}
+
+// ---- Initialize token colors and comment buttons on page load ----
+(function initLabeling() {
+    document.querySelectorAll('.token-word').forEach(function(token) {
+        const manualColor = token.dataset.manualLabelColor;
+        if (manualColor) {
+            token.classList.add('token-labeled');
+            token.style.backgroundColor = manualColor + '33';
+            token.style.borderColor = manualColor;
+            token.style.color = manualColor;
+            token.style.fontWeight = '600';
+        }
+    });
+
+    document.querySelectorAll('[id^="commentLabelButtons-"]').forEach(function(container) {
+        const commentId = container.id.replace('commentLabelButtons-', '');
+        const commentLabel = COMMENT_MANUAL_LABELS[commentId];
+        const currentLabelId = commentLabel ? commentLabel.id : null;
+        buildCommentLabelButtons(commentId, currentLabelId);
+
+        if (commentLabel) {
+            const badge = document.getElementById(`commentLabel-${commentId}`);
+            if (badge) {
+                badge.className = 'badge';
+                badge.style.backgroundColor = commentLabel.color;
+                badge.style.color = '#fff';
+                badge.textContent = commentLabel.name;
+            }
+        }
+    });
+
+    updateFetchButtons(fetchIsRunning);
+    updateAnnotateButtons(annotateIsRunning);
+
+    // Render dynamic label filter buttons
+    renderLabelFilters();
+
+    // Render dynamic label stat cards
+    renderLabelStats();
+})();
+
+// ---- Render dynamic label filter buttons ----
+function renderLabelFilters() {
+    const container = document.getElementById('filterContainer');
+    if (!container) return;
+
+    LABEL_STATS.forEach(function(stat) {
+        const filterKey = 'label_' + stat.id;
+        const isActive = window.location.search.includes('filter=' + filterKey);
+        const btn = document.createElement('a');
+        btn.href = '?filter=' + filterKey;
+        btn.className = 'btn btn-sm ' + (isActive ? 'active' : '');
+        btn.style.borderColor = stat.color;
+        btn.style.color = stat.color;
+        if (isActive) {
+            btn.style.backgroundColor = stat.color + '33';
+        }
+        btn.innerHTML = `<span class="label-color-dot" style="background-color: ${stat.color};"></span> ${stat.name} (${stat.count})`;
+        container.appendChild(btn);
+    });
+}
+
+// ---- Render dynamic label stat cards ----
+function renderLabelStats() {
+    const container = document.getElementById('statsContainer');
+    if (!container) return;
+
+    LABEL_STATS.forEach(function(stat) {
+        const col = document.createElement('div');
+        col.className = 'col-md-3';
+
+        const card = document.createElement('div');
+        card.className = 'card stats-card';
+        card.style.borderLeft = '4px solid ' + stat.color;
+
+        const body = document.createElement('div');
+        body.className = 'card-body text-center';
+
+        const h3 = document.createElement('h3');
+        h3.id = 'labelStat_' + stat.id;
+        h3.textContent = stat.count;
+        h3.style.color = stat.color;
+
+        const small = document.createElement('small');
+        small.textContent = stat.name;
+
+        body.appendChild(h3);
+        body.appendChild(small);
+        card.appendChild(body);
+        col.appendChild(card);
+        container.appendChild(col);
+    });
+}
+
+function applyTaskSnapshot(task) {
+    if (!task || !task.type) return;
+    const prefix = task.type === 'fetching' ? 'fetch' : 'annotate';
+    updateProgressCard(prefix, {
+        status: task.status,
+        status_display: task.status_display || task.status,
+        progress: task.progress || 0,
+        step: task.step || '',
+        total: task.total || 0,
+        processed: task.processed || 0,
+    });
+
+    if (prefix === 'fetch') {
+        fetchIsRunning = task.status === 'running';
+        updateFetchButtons(fetchIsRunning);
+    } else {
+        annotateIsRunning = task.status === 'running';
+        updateAnnotateButtons(annotateIsRunning);
+    }
+}
+
+async function syncLinkStatus() {
+    try {
+        const response = await fetch(`/api/links/${LINK_ID}/status/`, {
+            cache: 'no-store',
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        updateStatsCards(data.stats || {});
+
+        if (data.status === 'fetching') {
+            fetchIsRunning = true;
+            setProgressCardState('fetch', 'running', 'Running', 0, 'Fetching comments from YouTube');
+            updateFetchButtons(true);
+        } else if (data.status === 'annotating') {
+            annotateIsRunning = true;
+            setProgressCardState('annotate', 'running', 'Running', 0, 'Annotating comments with Ollama');
+            updateAnnotateButtons(true);
+        } else if (data.status === 'annotated' || data.status === 'completed' || data.status === 'failed') {
+            fetchIsRunning = false;
+            updateFetchButtons(false);
+        }
+
+        if (Array.isArray(data.tasks)) {
+            data.tasks.forEach(applyTaskSnapshot);
+        }
+    } catch (err) {
+        console.error('Error syncing link status:', err);
+    }
+}
+
+syncLinkStatus();
+setInterval(syncLinkStatus, 3000);
+
+async function ajaxPost(url, body) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': CSRF_VALUE,
+            'Content-Type': 'application/json'
+        },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+    return response.json();
+}
+
+function showToast(message, type) {
+    type = type || 'info';
+    const toastEl = document.createElement('div');
+    const bgClass = type === 'error' ? 'bg-danger text-white' : type === 'success' ? 'bg-success text-white' : 'bg-info text-white';
+    toastEl.className = `toast align-items-center text-white ${bgClass} border-0 position-fixed bottom-0 end-0 m-3 show`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(toastEl);
+    setTimeout(() => toastEl.remove(), 4000);
+}
+
+function updateProgressCard(prefix, data) {
+    const bar = document.getElementById(`${prefix}Bar`);
+    const status = document.getElementById(`${prefix}Status`);
+    const percent = document.getElementById(`${prefix}Percent`);
+    const step = document.getElementById(`${prefix}Step`);
+    const count = document.getElementById(`${prefix}Count`);
+
+    if (bar) bar.style.width = `${data.progress}%`;
+    if (status) {
+        status.textContent = data.status_display || data.status;
+        status.className = '';
+        if (data.status === 'running') status.classList.add('text-info');
+        else if (data.status === 'completed') status.classList.add('text-success');
+        else if (data.status === 'failed') status.classList.add('text-danger');
+        else if (data.status === 'cancelled') status.classList.add('text-warning');
+    }
+    if (percent) percent.textContent = `${data.progress}%`;
+    if (step) step.textContent = data.step || '';
+    if (count) {
+        const unit = I18N.comments;
+        const processed = typeof data.processed === 'number' ? data.processed : 0;
+        const total = typeof data.total === 'number' ? data.total : 0;
+        count.textContent = `${processed} / ${total} ${unit}`;
+    }
+}
+
+function setProgressCardState(prefix, status, statusDisplay, progress, step) {
+    updateProgressCard(prefix, {
+        status: status,
+        status_display: statusDisplay,
+        progress: progress,
+        step: step,
+    });
+}
+
+async function stopFetchTask() {
+    try {
+        const data = await ajaxPost(`/api/links/${LINK_ID}/stop-fetch/`);
+        if (data.success) {
+            fetchIsRunning = false;
+            setProgressCardState('fetch', 'cancelled', 'Cancelled', 0, 'Task cancelled');
+            updateFetchButtons(false);
+            showToast('Fetch task stop requested.', 'info');
+        } else {
+            showToast(data.message || 'Failed to stop fetch task.', 'error');
+        }
+    } catch (err) {
+        console.error('Error stopping fetch:', err);
+        showToast('Error stopping fetch task.', 'error');
+    }
+}
+
+async function clearAndRefetchTask() {
+    if (!confirm(I18N.clearRefetchConfirm)) return;
+    try {
+        const data = await ajaxPost(`/api/links/${LINK_ID}/clear-refetch/`);
+        if (data.success) {
+            fetchIsRunning = true;
+            setProgressCardState('fetch', 'running', 'Running', 0, 'Cleared old comments, fetching from YouTube...');
+            updateFetchButtons(true);
+            showToast(data.message || 'Re-fetching comments...', 'success');
+        } else {
+            showToast(data.message || 'Failed to clear and refetch.', 'error');
+        }
+    } catch (err) {
+        console.error('Error clearing and refetching:', err);
+        showToast('Error starting clear and refetch.', 'error');
+    }
+}
+
+async function retryFetchTask() {
+    if (!confirm(I18N.refetchConfirm)) return;
+    try {
+        const data = await ajaxPost(`/api/links/${LINK_ID}/retry-fetch/`);
+        if (data.success) {
+            fetchIsRunning = true;
+            setProgressCardState('fetch', 'running', 'Running', 0, 'Refetching from YouTube...');
+            updateFetchButtons(true);
+            showToast(data.message || 'Refetching comments...', 'success');
+        } else {
+            showToast(data.message || 'Failed to refetch.', 'error');
+        }
+    } catch (err) {
+        console.error('Error refetching:', err);
+        showToast('Error starting refetch.', 'error');
+    }
+}
+
+async function stopAnnotationTask() {
+    try {
+        const data = await ajaxPost(`/api/links/${LINK_ID}/stop-annotate/`);
+        if (data.success) {
+            annotateIsRunning = false;
+            setProgressCardState('annotate', 'cancelled', 'Cancelled', 0, 'Task cancelled');
+            updateAnnotateButtons(false);
+            showToast('Annotation task stop requested.', 'info');
+        } else {
+            showToast(data.message || 'Failed to stop annotation task.', 'error');
+        }
+    } catch (err) {
+        console.error('Error stopping annotation:', err);
+        showToast('Error stopping annotation task.', 'error');
+    }
+}
+
+async function continueAnnotationTask() {
+    try {
+        const data = await ajaxPost(`/api/links/${LINK_ID}/continue-annotate/`);
+        if (data.success) {
+            if (data.task) {
+                applyTaskSnapshot({
+                    ...data.task,
+                    type: 'annotating',
+                });
+            } else {
+                annotateIsRunning = true;
+                setProgressCardState('annotate', 'running', 'Running', 0, 'Starting annotation...');
+                updateAnnotateButtons(true);
+            }
+            if (data.already_running) {
+                showToast(data.message || 'Annotation task is already running.', 'info');
+            } else {
+                showToast(data.message || 'Continuing annotation...', 'success');
+            }
+        } else {
+            showToast(data.message || 'Failed to continue annotation.', 'error');
+        }
+    } catch (err) {
+        console.error('Error continuing annotation:', err);
+        showToast('Error starting annotation.', 'error');
+    }
+}
+
+async function reannotateAllTask() {
+    if (!confirm(I18N.reannotateConfirm)) return;
+    try {
+        const data = await ajaxPost(`/api/links/${LINK_ID}/reannotate/`);
+        if (data.success) {
+            annotateIsRunning = true;
+            setProgressCardState('annotate', 'running', 'Running', 0, 'Re-annotating comments...');
+            updateAnnotateButtons(true);
+            showToast(data.message || 'Re-annotation started...', 'success');
+        } else {
+            showToast(data.message || 'Failed to start re-annotation.', 'error');
+        }
+    } catch (err) {
+        console.error('Error re-annotating:', err);
+        showToast('Error starting re-annotation.', 'error');
+    }
+}
+
+function updateFetchButtons(running) {
+    const stopBtn = document.getElementById('fetchStopBtn');
+    const refetchBtn = document.getElementById('fetchRefetchBtn');
+    const clearRefetchBtn = document.getElementById('fetchClearRefetchBtn');
+    if (stopBtn) stopBtn.style.display = running ? 'inline' : 'none';
+    if (refetchBtn) refetchBtn.style.display = running ? 'none' : 'inline';
+    if (clearRefetchBtn) clearRefetchBtn.style.display = running ? 'none' : 'inline';
+}
+
+function updateAnnotateButtons(running) {
+    const stopBtn = document.getElementById('annotateStopBtn');
+    const annotateActions = document.getElementById('annotateActionsBtns');
+    if (stopBtn) stopBtn.style.display = running ? 'inline' : 'none';
+    if (annotateActions) annotateActions.style.display = running ? 'none' : 'block';
+}
+
+function updateStatsCards(stats) {
+    const total = document.getElementById('totalCommentsCount');
+    const annotated = document.getElementById('annotatedCommentsCount');
+    const toxic = document.getElementById('toxicCommentsCount');
+    const unannotated = document.getElementById('unannotatedCommentsCount');
+    const continueBtn = document.getElementById('continueAnnotationBtn');
+    const unannotatedCount = Number(stats.unannotated_count || 0);
+
+    if (total) total.textContent = stats.total_comments ?? total.textContent;
+    if (annotated) annotated.textContent = stats.annotated_comments ?? annotated.textContent;
+    if (toxic) toxic.textContent = stats.toxic_comments ?? toxic.textContent;
+    if (unannotated) unannotated.textContent = unannotatedCount;
+    if (continueBtn) continueBtn.style.display = unannotatedCount > 0 ? 'inline-flex' : 'none';
+}
+
+function toggleVideoPlayer() {
+    const panel = document.getElementById('videoPanel');
+    const buttonLabel = document.getElementById('videoToggleLabel');
+    const iframe = document.getElementById('youtubePlayer');
+    if (!panel || !buttonLabel || !iframe) return;
+
+    const isHidden = panel.classList.contains('d-none');
+    if (isHidden && !iframe.dataset.loaded) {
+        const origin = window.location.origin;
+        const videoId = iframe.dataset.videoId || '';
+        iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&origin=${encodeURIComponent(origin)}`;
+        iframe.dataset.loaded = '1';
+    }
+    panel.classList.toggle('d-none');
+    buttonLabel.textContent = panel.classList.contains('d-none') ? I18N.showVideo : I18N.hideVideo;
+}
+
+// ---- SSE for real-time progress ----
+const eventSource = new EventSource(`/sse/progress/${LINK_ID}/`);
+
+eventSource.addEventListener('message', function(event) {
+    const data = JSON.parse(event.data);
+
+    if (data.type === 'fetch') {
+        updateProgressCard('fetch', data);
+        if (data.status === 'running') {
+            if (!fetchIsRunning) {
+                fetchIsRunning = true;
+                updateFetchButtons(true);
+            }
+        } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+            if (fetchIsRunning) {
+                fetchIsRunning = false;
+                updateFetchButtons(false);
+            }
+        }
+    }
+
+    if (data.type === 'annotate') {
+        updateProgressCard('annotate', data);
+        if (data.status === 'running') {
+            if (!annotateIsRunning) {
+                annotateIsRunning = true;
+                updateAnnotateButtons(true);
+            }
+        } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+            if (annotateIsRunning) {
+                annotateIsRunning = false;
+                updateAnnotateButtons(false);
+            }
+        }
+    }
+});
+
+eventSource.addEventListener('done', function(event) {
+    const data = JSON.parse(event.data);
+    console.log('All tasks done, status:', data.status);
+    eventSource.close();
+});
+
+eventSource.addEventListener('error', function(event) {
+    console.error('SSE error:', event);
+});
+</script>
+{% endblock %}

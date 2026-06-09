@@ -1,0 +1,134 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{{ project.name }} - AnnotaHub{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>
+            <i class="bi bi-folder-fill"></i> {{ project.name }}
+            {% if is_owner %}
+            <span class="badge bg-primary ms-2">{% trans "Owner" %}</span>
+            {% elif is_participant %}
+            <span class="badge bg-secondary ms-2">{% trans "Participant" %}</span>
+            {% endif %}
+        </h2>
+        <p class="text-muted mb-0">{{ project.description }}</p>
+        <small class="text-muted">{% trans "Owner" %}: {{ project.owner.username }}</small>
+    </div>
+    <div>
+        <a href="{% url 'comments:project_export' project.id %}" class="btn btn-outline-success">
+            <i class="bi bi-download"></i> {% trans "Export" %}
+        </a>
+        {% if is_owner %}
+        <a href="{% url 'comments:project_labels_settings' project.id %}" class="btn btn-outline-info">
+            <i class="bi bi-tags"></i> {% trans "Labels" %}
+        </a>
+        <a href="{% url 'comments:project_manage_participants' project.id %}" class="btn btn-outline-warning">
+            <i class="bi bi-people"></i> {% trans "Participants" %} ({{ participants.count }})
+        </a>
+        <a href="{% url 'comments:project_edit' project.id %}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> {% trans "Edit" %}
+        </a>
+        <button class="btn btn-outline-danger" onclick="confirmDelete()">
+            <i class="bi bi-trash"></i> {% trans "Delete" %}
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Link Form (Owner only) -->
+{% if is_owner %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-link"></i> {% trans "Add YouTube Link" %}</h5>
+        <form method="post" action="{% url 'comments:add_youtube_link' project.id %}" class="row g-2">
+            {% csrf_token %}
+            <div class="col-md-8">
+                <input type="url" name="url" class="form-control" placeholder="https://www.youtube.com/watch?v=..." required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-plus-circle"></i> {% trans "Add & Start Fetching" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Links List -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> {% blocktrans count links.count as count %}YouTube Link ({{ count }}){% plural %}YouTube Links ({{ count }}){% endblocktrans %}</h5>
+    </div>
+    <div class="card-body p-0">
+        {% if links %}
+        {% for link in links %}
+        <div class="list-group-item list-group-item-action d-flex align-items-center p-3">
+            {% if link.thumbnail %}
+            <img src="{{ link.thumbnail }}" class="rounded me-3" width="120" height="68" alt="thumbnail">
+            {% else %}
+            <div class="bg-secondary rounded me-3 d-flex align-items-center justify-content-center" style="width:120px;height:68px;">
+                <i class="bi bi-play-circle text-white"></i>
+            </div>
+            {% endif %}
+
+            <div class="flex-grow-1">
+                <h6 class="mb-1">
+                    <a href="{% url 'comments:link_detail' link.id %}" class="text-decoration-none">{{ link.title|default:"Video" }}</a>
+                </h6>
+                <div class="small text-muted">
+                    <span>{{ link.channel|default:"Unknown channel" }}</span> &middot;
+                    <span>{{ link.comment_count }} {% trans "comments" %}</span>
+                </div>
+                {% if link.latest_progress %}
+                <div class="mt-2">
+                    <small class="text-muted">{{ link.latest_progress.current_step }}</small>
+                    <div class="progress progress-thin mt-1">
+                        <div class="progress-bar bg-info" style="width: {{ link.latest_progress.progress_percent }}%"></div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="ms-3">
+                <span class="badge status-badge status-{{ link.status }}">{{ link.get_status_display }}</span>
+            </div>
+
+            <div class="ms-3">
+                <a href="{% url 'comments:link_detail' link.id %}" class="btn btn-sm btn-outline-info">{% trans "Details" %}</a>
+                {% if is_owner %}
+                <form method="post" action="{% url 'comments:delete_youtube_link' link.id %}" class="d-inline" onsubmit="return confirm('{% trans "Delete this link and all related data?" %}')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-4">
+            <i class="bi bi-link-45deg" style="font-size: 2rem; color: #dee2e6;"></i>
+            <p class="text-muted mt-2">{% trans "No YouTube links yet. Add a link above to get started." %}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if is_owner %}
+<form id="deleteForm" method="post" action="{% url 'comments:project_delete' project.id %}" style="display:none;">
+    {% csrf_token %}
+</form>
+
+<script>
+function confirmDelete() {
+    if (confirm('{% trans "Are you sure you want to delete this project and ALL data?" %}')) {
+        document.getElementById('deleteForm').submit();
+    }
+}
+</script>
+{% endif %}
+{% endblock %}

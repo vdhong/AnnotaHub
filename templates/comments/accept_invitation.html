@@ -1,0 +1,104 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Complete Registration" %} - AnnotaHub{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-envelope-open"></i> {% trans "Complete Registration" %}</h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    {% blocktrans %}Hello! <strong>{{ inviter_name }}</strong> has invited you to join the project <strong>{{ project_name }}</strong> on AnnotaHub.{% endblocktrans %}
+                    <br><small>{% trans "Please fill in the information below to complete registration and auto-login." %}</small>
+                </div>
+
+                <!-- {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    <i class="bi bi-exclamation-triangle"></i> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+                {% endif %} -->
+
+                <form method="post" id="invitationForm">
+                    {% csrf_token %}
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">{% trans "Username" %} <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="username" name="username"
+                               value="{{ user.username }}" required>
+                        <div class="form-text">{% trans "Username must be unique." %}</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">{% trans "Email" %}</label>
+                        <input type="email" class="form-control" id="email" value="{{ user.email }}" disabled>
+                        <div class="form-text">{% trans "Email cannot be changed." %}</div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="first_name" class="form-label">{% trans "First Name" %}</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name"
+                                   value="{{ user.first_name }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="last_name" class="form-label">{% trans "Last Name" %}</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name"
+                                   value="{{ user.last_name }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">{% trans "Password" %} <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                        <div class="form-text">{% trans "Password must be at least 8 characters." %}</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="password_confirm" class="form-label">{% trans "Confirm Password" %} <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-check-circle"></i> {% trans "Complete Registration" %}
+                        </button>
+                    </div>
+                </form>
+
+                <div class="alert alert-warning mt-3 mb-0">
+                    <i class="bi bi-shield-exclamation"></i>
+                    <small><strong>{% trans "Important" %}:</strong> {% trans "After completing registration, please refresh the page or navigate to another page to ensure successful login." %}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('invitationForm');
+    const password = document.getElementById('password');
+    const passwordConfirm = document.getElementById('password_confirm');
+
+    form.addEventListener('submit', function(e) {
+        if (password.value !== passwordConfirm.value) {
+            e.preventDefault();
+            alert('{% trans "Passwords do not match. Please check again." %}');
+            passwordConfirm.focus();
+        }
+        if (password.value.length < 8) {
+            e.preventDefault();
+            alert('{% trans "Password must be at least 8 characters." %}');
+            password.focus();
+        }
+    });
+});
+</script>
+{% endblock %}

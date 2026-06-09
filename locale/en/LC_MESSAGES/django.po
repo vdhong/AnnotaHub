@@ -1,0 +1,1005 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-04 05:17+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: templates/comments/login.html:7
+msgid "Login"
+msgstr "Login"
+
+#: templates/comments/login.html:466
+msgid "Enter your username"
+msgstr "Enter your username"
+
+#: templates/comments/login.html:481
+msgid "Enter your password"
+msgstr "Enter your password"
+
+#: templates/comments/login.html:484
+msgid "Toggle password visibility"
+msgstr "Toggle password visibility"
+
+#: templates/comments/login.html:495
+msgid "Remember me"
+msgstr "Remember me"
+
+#: templates/comments/login.html:502
+msgid "Sign In"
+msgstr "Sign In"
+
+#: templates/comments/login.html:507
+msgid "Secure Authentication"
+msgstr "Secure Authentication"
+
+#: templates/comments/login.html:550
+msgid "Signing in..."
+msgstr "Signing in..."
+
+#: templates/comments/accept_invitation.html:3
+#: templates/comments/accept_invitation.html:10
+#: templates/comments/accept_invitation.html:70
+msgid "Complete Registration"
+msgstr "Complete Registration"
+
+#: templates/comments/accept_invitation.html:15
+#, python-format
+msgid ""
+"Hello! <strong>%(inviter_name)s</strong> has invited you to join the project"
+" <strong>%(project_name)s</strong> on AnnotaHub."
+msgstr ""
+"Hello! <strong>%(inviter_name)s</strong> has invited you to join the project"
+" <strong>%(project_name)s</strong> on AnnotaHub."
+
+#: templates/comments/accept_invitation.html:16
+msgid ""
+"Please fill in the information below to complete registration and auto-"
+"login."
+msgstr ""
+"Please fill in the information below to complete registration and auto-"
+"login."
+
+#: templates/comments/accept_invitation.html:32
+msgid "Username"
+msgstr "Username"
+
+#: templates/comments/accept_invitation.html:35
+msgid "Username must be unique."
+msgstr "Username must be unique."
+
+#: templates/comments/accept_invitation.html:39
+#: templates/comments/project_participants.html:52
+msgid "Email"
+msgstr "Email"
+
+#: templates/comments/accept_invitation.html:41
+msgid "Email cannot be changed."
+msgstr "Email cannot be changed."
+
+#: templates/comments/accept_invitation.html:46
+msgid "First Name"
+msgstr "First Name"
+
+#: templates/comments/accept_invitation.html:51
+msgid "Last Name"
+msgstr "Last Name"
+
+#: templates/comments/accept_invitation.html:58
+msgid "Password"
+msgstr "Password"
+
+#: templates/comments/accept_invitation.html:60
+#: templates/comments/accept_invitation.html:98
+msgid "Password must be at least 8 characters."
+msgstr "Password must be at least 8 characters."
+
+#: templates/comments/accept_invitation.html:64
+msgid "Confirm Password"
+msgstr "Confirm Password"
+
+#: templates/comments/accept_invitation.html:77
+msgid "Important"
+msgstr "Important"
+
+#: templates/comments/accept_invitation.html:77
+msgid ""
+"After completing registration, please refresh the page or navigate to "
+"another page to ensure successful login."
+msgstr ""
+"After completing registration, please refresh the page or navigate to "
+"another page to ensure successful login."
+
+#: templates/comments/accept_invitation.html:93
+msgid "Passwords do not match. Please check again."
+msgstr "Passwords do not match. Please check again."
+
+#: templates/comments/base.html:109
+msgid "Vietnamese Comment Annotation Hub"
+msgstr "Vietnamese Comment Annotation Hub"
+
+#: templates/comments/base.html:114 templates/comments/link_detail.html:9
+#: templates/comments/project_list.html:3
+msgid "Projects"
+msgstr "Projects"
+
+#: templates/comments/base.html:117 templates/comments/project_list.html:9
+msgid "New Project"
+msgstr "New Project"
+
+#: templates/comments/base.html:121 templates/comments/project_detail.html:25
+msgid "Labels"
+msgstr "Labels"
+
+#: templates/comments/base.html:124
+msgid "Settings"
+msgstr "Settings"
+
+#: templates/comments/base.html:128
+msgid "Admin"
+msgstr "Admin"
+
+#: templates/comments/dashboard.html:3 templates/comments/dashboard.html:6
+msgid "Dashboard"
+msgstr "Dashboard"
+
+#: templates/comments/dashboard.html:18
+msgid "Links"
+msgstr "Links"
+
+#: templates/comments/dashboard.html:22 templates/comments/link_detail.html:3
+msgid "Comments"
+msgstr "Comments"
+
+#: templates/comments/dashboard.html:26
+#: templates/comments/link_detail.html:159
+#: templates/comments/link_detail.html:185
+msgid "Annotated"
+msgstr "Annotated"
+
+#: templates/comments/dashboard.html:30
+#: templates/comments/project_list.html:32
+msgid "Created"
+msgstr "Created"
+
+#: templates/comments/dashboard.html:37
+msgid "No projects yet"
+msgstr "No projects yet"
+
+#: templates/comments/dashboard.html:38
+msgid "Create Project"
+msgstr "Create Project"
+
+#: templates/comments/export.html:3 templates/comments/project_detail.html:21
+msgid "Export"
+msgstr "Export"
+
+#: templates/comments/export.html:10
+msgid "Export Dataset"
+msgstr "Export Dataset"
+
+#: templates/comments/export.html:17
+msgid "Export Format"
+msgstr "Export Format"
+
+#: templates/comments/export.html:19
+msgid "JSON Format"
+msgstr "JSON Format"
+
+#: templates/comments/export.html:20
+msgid "JSON - Sentence Level (comment + label)"
+msgstr "JSON - Sentence Level (comment + label)"
+
+#: templates/comments/export.html:21
+msgid "JSON - Token Level (comment + tokens + BIO labels)"
+msgstr "JSON - Token Level (comment + tokens + BIO labels)"
+
+#: templates/comments/export.html:22
+msgid "JSON - LLM Training (instruction/input/output format)"
+msgstr "JSON - LLM Training (instruction/input/output format)"
+
+#: templates/comments/export.html:24
+msgid "XML Format"
+msgstr "XML Format"
+
+#: templates/comments/export.html:25
+msgid "XML - CoNLL-like (token-level with tags)"
+msgstr "XML - CoNLL-like (token-level with tags)"
+
+#: templates/comments/export.html:27
+msgid "CSV Format"
+msgstr "CSV Format"
+
+#: templates/comments/export.html:28
+msgid "CSV - Sentence Level"
+msgstr "CSV - Sentence Level"
+
+#: templates/comments/export.html:29
+msgid "CSV - Token Level"
+msgstr "CSV - Token Level"
+
+#: templates/comments/export.html:35
+msgid "Filter by Toxicity"
+msgstr "Filter by Toxicity"
+
+#: templates/comments/export.html:37
+msgid "All Comments"
+msgstr "All Comments"
+
+#: templates/comments/export.html:38
+msgid "Toxic Only"
+msgstr "Toxic Only"
+
+#: templates/comments/export.html:39
+msgid "Non-Toxic Only"
+msgstr "Non-Toxic Only"
+
+#: templates/comments/export.html:44
+msgid "Scope"
+msgstr "Scope"
+
+#: templates/comments/export.html:48
+msgid "Entire Project"
+msgstr "Entire Project"
+
+#: templates/comments/export.html:52
+msgid "Specific Video"
+msgstr "Specific Video"
+
+#: templates/comments/export.html:56
+msgid "Select Video"
+msgstr "Select Video"
+
+#: templates/comments/export.html:58 templates/comments/link_detail.html:81
+#: templates/comments/link_detail.html:119
+#: templates/comments/link_detail.html:322
+#: templates/comments/project_detail.html:83
+#: templates/comments/project_list.html:29
+#: templates/comments/project_list.html:61
+msgid "comments"
+msgstr "comments"
+
+#: templates/comments/export.html:65
+msgid "Download Dataset"
+msgstr "Download Dataset"
+
+#: templates/comments/export.html:67 templates/comments/label_form.html:58
+#: templates/comments/project_form.html:25
+msgid "Cancel"
+msgstr "Cancel"
+
+#: templates/comments/export.html:76
+msgid "Format Descriptions"
+msgstr "Format Descriptions"
+
+#: templates/comments/export.html:80
+msgid "JSON - Sentence Level:"
+msgstr "JSON - Sentence Level:"
+
+#: templates/comments/export.html:84
+msgid "JSON - Token Level (BIO):"
+msgstr "JSON - Token Level (BIO):"
+
+#: templates/comments/export.html:88
+msgid "JSON - LLM Training:"
+msgstr "JSON - LLM Training:"
+
+#: templates/comments/export.html:92
+msgid "XML - CoNLL-like:"
+msgstr "XML - CoNLL-like:"
+
+#: templates/comments/label_form.html:3 templates/comments/label_form.html:14
+msgid "Label"
+msgstr "Label"
+
+#: templates/comments/label_form.html:8
+msgid "Back to list"
+msgstr "Back to list"
+
+#: templates/comments/label_form.html:21 templates/comments/label_list.html:31
+msgid "Label Name"
+msgstr "Label Name"
+
+#: templates/comments/label_form.html:24
+msgid "e.g. toxic, spam, hate_speech"
+msgstr "e.g. toxic, spam, hate_speech"
+
+#: templates/comments/label_form.html:28 templates/comments/label_list.html:32
+#: templates/comments/project_form.html:20
+msgid "Description"
+msgstr "Description"
+
+#: templates/comments/label_form.html:30
+msgid "Describe when to use this label..."
+msgstr "Describe when to use this label..."
+
+#: templates/comments/label_form.html:34 templates/comments/label_list.html:30
+msgid "Color"
+msgstr "Color"
+
+#: templates/comments/label_form.html:42
+msgid "Choose a color to display when labeling."
+msgstr "Choose a color to display when labeling."
+
+#: templates/comments/label_form.html:49
+msgid "Active (allow assigning to new projects)"
+msgstr "Active (allow assigning to new projects)"
+
+#: templates/comments/label_form.html:55
+msgid "Save"
+msgstr "Save"
+
+#: templates/comments/label_list.html:3 templates/comments/label_list.html:7
+msgid "Your Labels"
+msgstr "Your Labels"
+
+#: templates/comments/label_list.html:9
+msgid "Add New Label"
+msgstr "Add New Label"
+
+#: templates/comments/label_list.html:33
+msgid "Usage Count"
+msgstr "Usage Count"
+
+#: templates/comments/label_list.html:34
+#: templates/comments/user_settings.html:131
+msgid "Status"
+msgstr "Status"
+
+#: templates/comments/label_list.html:35
+msgid "Actions"
+msgstr "Actions"
+
+#: templates/comments/label_list.html:49
+msgid "in use"
+msgstr "in use"
+
+#: templates/comments/label_list.html:54
+#: templates/comments/project_participants.html:93
+msgid "Active"
+msgstr "Active"
+
+#: templates/comments/label_list.html:56
+msgid "Inactive"
+msgstr "Inactive"
+
+#: templates/comments/label_list.html:61
+#: templates/comments/project_detail.html:31
+msgid "Edit"
+msgstr "Edit"
+
+#: templates/comments/label_list.html:65
+msgid "Are you sure you want to delete this label?"
+msgstr "Are you sure you want to delete this label?"
+
+#: templates/comments/label_list.html:68 templates/comments/label_list.html:73
+#: templates/comments/link_detail.html:21
+#: templates/comments/project_detail.html:34
+#: templates/comments/project_participants.html:125
+msgid "Delete"
+msgstr "Delete"
+
+#: templates/comments/label_list.html:72
+msgid "Label is in use, cannot be deleted"
+msgstr "Label is in use, cannot be deleted"
+
+#: templates/comments/label_list.html:82
+msgid "You don't have any labels yet. Add your first label!"
+msgstr "You don't have any labels yet. Add your first label!"
+
+#: templates/comments/label_list.html:94
+#: templates/comments/project_labels_settings.html:141
+msgid "Note"
+msgstr "Note"
+
+#: templates/comments/label_list.html:94
+msgid ""
+"You can only edit and delete labels you created. Labels in use in comments "
+"or tokens cannot be deleted."
+msgstr ""
+"You can only edit and delete labels you created. Labels in use in comments "
+"or tokens cannot be deleted."
+
+#: templates/comments/link_detail.html:20
+msgid "Delete this link and all data?"
+msgstr "Delete this link and all data?"
+
+#: templates/comments/link_detail.html:32
+msgid "YouTube Source"
+msgstr "YouTube Source"
+
+#: templates/comments/link_detail.html:38
+#: templates/comments/link_detail.html:320
+msgid "Show video"
+msgstr "Show video"
+
+#: templates/comments/link_detail.html:41
+msgid "Open on YouTube"
+msgstr "Open on YouTube"
+
+#: templates/comments/link_detail.html:58
+msgid "If the embed is blocked, use the direct YouTube link."
+msgstr "If the embed is blocked, use the direct YouTube link."
+
+#: templates/comments/link_detail.html:59
+msgid "Embed loads only when requested."
+msgstr "Embed loads only when requested."
+
+#: templates/comments/link_detail.html:71
+msgid "Fetch Comments"
+msgstr "Fetch Comments"
+
+#: templates/comments/link_detail.html:85
+msgid "No fetch task yet"
+msgstr "No fetch task yet"
+
+#: templates/comments/link_detail.html:90
+#: templates/comments/link_detail.html:128
+msgid "Stop"
+msgstr "Stop"
+
+#: templates/comments/link_detail.html:94
+msgid "Refetch"
+msgstr "Refetch"
+
+#: templates/comments/link_detail.html:98
+msgid "Clear and Refetch"
+msgstr "Clear and Refetch"
+
+#: templates/comments/link_detail.html:109
+msgid "AI Annotation"
+msgstr "AI Annotation"
+
+#: templates/comments/link_detail.html:123
+msgid "No annotation task yet"
+msgstr "No annotation task yet"
+
+#: templates/comments/link_detail.html:133
+msgid "Continue Annotation"
+msgstr "Continue Annotation"
+
+#: templates/comments/link_detail.html:136
+msgid "Re-Annotate All"
+msgstr "Re-Annotate All"
+
+#: templates/comments/link_detail.html:151
+msgid "Total Comments"
+msgstr "Total Comments"
+
+#: templates/comments/link_detail.html:167
+#: templates/comments/link_detail.html:187
+msgid "Toxic"
+msgstr "Toxic"
+
+#: templates/comments/link_detail.html:175
+#: templates/comments/link_detail.html:186
+msgid "Unannotated"
+msgstr "Unannotated"
+
+#: templates/comments/link_detail.html:184
+msgid "All"
+msgstr "All"
+
+#: templates/comments/link_detail.html:188
+msgid "Non-Toxic"
+msgstr "Non-Toxic"
+
+#: templates/comments/link_detail.html:212
+msgid "Not meaningful"
+msgstr "Not meaningful"
+
+#: templates/comments/link_detail.html:214
+msgid "Not labeled"
+msgstr "Not labeled"
+
+#: templates/comments/link_detail.html:217
+msgid "Translated from original"
+msgstr "Translated from original"
+
+#: templates/comments/link_detail.html:218
+msgid "Translated"
+msgstr "Translated"
+
+#: templates/comments/link_detail.html:225
+msgid "likes"
+msgstr "likes"
+
+#: templates/comments/link_detail.html:232
+msgid "Original"
+msgstr "Original"
+
+#: templates/comments/link_detail.html:271
+msgid "No comments match this filter"
+msgstr "No comments match this filter"
+
+#: templates/comments/link_detail.html:278
+msgid "Comment pagination"
+msgstr "Comment pagination"
+
+#: templates/comments/link_detail.html:282
+msgid "Previous"
+msgstr "Previous"
+
+#: templates/comments/link_detail.html:292
+msgid "Next"
+msgstr "Next"
+
+#: templates/comments/link_detail.html:309
+msgid "Select label for token:"
+msgstr "Select label for token:"
+
+#: templates/comments/link_detail.html:310
+msgid "None"
+msgstr "None"
+
+#: templates/comments/link_detail.html:311
+msgid "Comment label:"
+msgstr "Comment label:"
+
+#: templates/comments/link_detail.html:314
+msgid "Error setting token label."
+msgstr "Error setting token label."
+
+#: templates/comments/link_detail.html:315
+msgid "Error setting comment label."
+msgstr "Error setting comment label."
+
+#: templates/comments/link_detail.html:316
+msgid "Failed to set label."
+msgstr "Failed to set label."
+
+#: templates/comments/link_detail.html:317
+msgid ""
+"Clear all existing comments and fetch them again from YouTube? This will "
+"delete old comments and annotations."
+msgstr ""
+"Clear all existing comments and fetch them again from YouTube? This will "
+"delete old comments and annotations."
+
+#: templates/comments/link_detail.html:318
+msgid ""
+"Refetch comments without deleting existing ones? Existing comments will be "
+"kept."
+msgstr ""
+"Refetch comments without deleting existing ones? Existing comments will be "
+"kept."
+
+#: templates/comments/link_detail.html:319
+msgid "Reset all annotations and re-run AI from scratch?"
+msgstr "Reset all annotations and re-run AI from scratch?"
+
+#: templates/comments/link_detail.html:321
+msgid "Hide video"
+msgstr "Hide video"
+
+#: templates/comments/project_detail.html:11
+#: templates/comments/project_detail.html:17
+#: templates/comments/project_list.html:24
+#: templates/comments/project_list.html:64
+msgid "Owner"
+msgstr "Owner"
+
+#: templates/comments/project_detail.html:13
+#: templates/comments/project_list.html:56
+msgid "Participant"
+msgstr "Participant"
+
+#: templates/comments/project_detail.html:28
+#: templates/comments/project_participants.html:42
+msgid "Participants"
+msgstr "Participants"
+
+#: templates/comments/project_detail.html:44
+msgid "Add YouTube Link"
+msgstr "Add YouTube Link"
+
+#: templates/comments/project_detail.html:52
+msgid "Add & Start Fetching"
+msgstr "Add & Start Fetching"
+
+#: templates/comments/project_detail.html:63
+#, python-format
+msgid "YouTube Link (%(count)s)"
+msgid_plural "YouTube Links (%(count)s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_detail.html:100
+msgid "Details"
+msgstr "Details"
+
+#: templates/comments/project_detail.html:102
+msgid "Delete this link and all related data?"
+msgstr "Delete this link and all related data?"
+
+#: templates/comments/project_detail.html:115
+msgid "No YouTube links yet. Add a link above to get started."
+msgstr "No YouTube links yet. Add a link above to get started."
+
+#: templates/comments/project_detail.html:128
+msgid "Are you sure you want to delete this project and ALL data?"
+msgstr "Are you sure you want to delete this project and ALL data?"
+
+#: templates/comments/project_form.html:3
+#: templates/comments/project_form.html:10
+msgid "Project"
+msgstr "Project"
+
+#: templates/comments/project_form.html:16
+msgid "Project Name"
+msgstr "Project Name"
+
+#: templates/comments/project_labels_settings.html:3
+msgid "Label Settings"
+msgstr "Label Settings"
+
+#: templates/comments/project_labels_settings.html:8
+msgid "Back to Project"
+msgstr "Back to Project"
+
+#: templates/comments/project_labels_settings.html:12
+#, python-format
+msgid "Label Settings for"
+msgstr "Label Settings for"
+
+#: templates/comments/project_labels_settings.html:13
+msgid ""
+"Manage labels from your label list (project owner) to use in this project."
+msgstr ""
+"Manage labels from your label list (project owner) to use in this project."
+
+#: templates/comments/project_labels_settings.html:31
+#, python-format
+msgid "Active Label in Project (%(count)s)"
+msgid_plural "Active Labels in Project (%(count)s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:42
+msgid "created by"
+msgstr "created by"
+
+#: templates/comments/project_labels_settings.html:49
+msgid "Remove label from this project?"
+msgstr "Remove label from this project?"
+
+#: templates/comments/project_labels_settings.html:50
+msgid "Remove from Project"
+msgstr "Remove from Project"
+
+#: templates/comments/project_labels_settings.html:59
+#, python-format
+msgid "Used in %(token_count)s token"
+msgid_plural "Used in %(token_count)s tokens"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:60
+#, python-format
+msgid "%(comment_count)s comment"
+msgid_plural "%(comment_count)s comments"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:67
+msgid "No labels added to this project yet."
+msgstr "No labels added to this project yet."
+
+#: templates/comments/project_labels_settings.html:77
+#, python-format
+msgid "Your Available Label (%(count)s)"
+msgid_plural "Your Available Labels (%(count)s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:94
+msgid "Add"
+msgstr "Add"
+
+#: templates/comments/project_labels_settings.html:102
+msgid "All labels added or no labels available."
+msgstr "All labels added or no labels available."
+
+#: templates/comments/project_labels_settings.html:103
+msgid "Create new label"
+msgstr "Create new label"
+
+#: templates/comments/project_labels_settings.html:112
+msgid "Add New Label & Attach to Project"
+msgstr "Add New Label & Attach to Project"
+
+#: templates/comments/project_labels_settings.html:120
+msgid "Label name..."
+msgstr "Label name..."
+
+#: templates/comments/project_labels_settings.html:124
+msgid "Description..."
+msgstr "Description..."
+
+#: templates/comments/project_labels_settings.html:131
+msgid "Create label and add to project"
+msgstr "Create label and add to project"
+
+#: templates/comments/project_labels_settings.html:141
+msgid ""
+"Only labels created by the project owner are shown. When project labels "
+"change, AI auto-annotation will use the new label list."
+msgstr ""
+"Only labels created by the project owner are shown. When project labels "
+"change, AI auto-annotation will use the new label list."
+
+#: templates/comments/project_list.html:7
+msgid "My Projects"
+msgstr "My Projects"
+
+#: templates/comments/project_list.html:15
+msgid "Owned Projects"
+msgstr "Owned Projects"
+
+#: templates/comments/project_list.html:28
+#: templates/comments/project_list.html:60
+msgid "links"
+msgstr "links"
+
+#: templates/comments/project_list.html:40
+msgid "You don't have any projects yet. Click \"New Project\" to get started."
+msgstr "You don't have any projects yet. Click \"New Project\" to get started."
+
+#: templates/comments/project_list.html:47
+msgid "Participated Projects"
+msgstr "Participated Projects"
+
+#: templates/comments/project_list.html:72
+msgid "You are not participating in any projects."
+msgstr "You are not participating in any projects."
+
+#: templates/comments/project_participants.html:3
+#: templates/comments/project_participants.html:11
+msgid "Manage Members"
+msgstr "Manage Members"
+
+#: templates/comments/project_participants.html:9
+#: templates/comments/user_settings.html:188
+msgid "Back"
+msgstr "Back"
+
+#: templates/comments/project_participants.html:12
+msgid ""
+"Participants can only label, they cannot add, delete, or edit project "
+"information."
+msgstr ""
+"Participants can only label, they cannot add, delete, or edit project "
+"information."
+
+#: templates/comments/project_participants.html:19
+#: templates/comments/project_participants.html:28
+msgid "Add Participant"
+msgstr "Add Participant"
+
+#: templates/comments/project_participants.html:24
+msgid "Enter participant email..."
+msgstr "Enter participant email..."
+
+#: templates/comments/project_participants.html:34
+msgid ""
+"If the email has an account, the user will be added immediately. If not, an "
+"invitation email will be sent to this address."
+msgstr ""
+"If the email has an account, the user will be added immediately. If not, an "
+"invitation email will be sent to this address."
+
+#: templates/comments/project_participants.html:58
+#, python-format
+msgid "Remove %(participant.username)s from the project?"
+msgstr "Remove %(participant.username)s from the project?"
+
+#: templates/comments/project_participants.html:63
+msgid "Remove"
+msgstr "Remove"
+
+#: templates/comments/project_participants.html:72
+msgid "No participants yet."
+msgstr "No participants yet."
+
+#: templates/comments/project_participants.html:81
+msgid "Pending Invitations"
+msgstr "Pending Invitations"
+
+#: templates/comments/project_participants.html:91
+msgid "Expired"
+msgstr "Expired"
+
+#: templates/comments/project_participants.html:97
+msgid "Invited by"
+msgstr "Invited by"
+
+#: templates/comments/project_participants.html:100
+msgid "Sent at"
+msgstr "Sent at"
+
+#: templates/comments/project_participants.html:104
+msgid "Expires at"
+msgstr "Expires at"
+
+#: templates/comments/project_participants.html:108
+msgid "User"
+msgstr "User"
+
+#: templates/comments/project_participants.html:112
+#, python-format
+msgid "Resend invitation email to %(invitation.email)s?"
+msgstr "Resend invitation email to %(invitation.email)s?"
+
+#: templates/comments/project_participants.html:116
+msgid "Resend invitation email"
+msgstr "Resend invitation email"
+
+#: templates/comments/project_participants.html:117
+msgid "Resend"
+msgstr "Resend"
+
+#: templates/comments/project_participants.html:120
+#, python-format
+msgid "Delete invitation for %(invitation.email)s?"
+msgstr "Delete invitation for %(invitation.email)s?"
+
+#: templates/comments/project_participants.html:124
+msgid "Delete invitation"
+msgstr "Delete invitation"
+
+#: templates/comments/project_participants.html:134
+msgid "No pending invitations."
+msgstr "No pending invitations."
+
+#: templates/comments/user_settings.html:4
+#: templates/comments/user_settings.html:13
+msgid "Account Settings"
+msgstr "Account Settings"
+
+#: templates/comments/user_settings.html:19
+msgid "API Settings"
+msgstr "API Settings"
+
+#: templates/comments/user_settings.html:19
+msgid ""
+"The settings below will be used when you create new projects and use AI for "
+"labeling or fetching comments from YouTube. If left blank, the system will "
+"use the server's default settings."
+msgstr ""
+"The settings below will be used when you create new projects and use AI for "
+"labeling or fetching comments from YouTube. If left blank, the system will "
+"use the server's default settings."
+
+#: templates/comments/user_settings.html:33
+#: templates/comments/user_settings.html:64
+#: templates/comments/user_settings.html:84
+#: templates/comments/user_settings.html:105
+msgid "Optional"
+msgstr "Optional"
+
+#: templates/comments/user_settings.html:37
+msgid "Enter your YouTube API Key (optional)"
+msgstr "Enter your YouTube API Key (optional)"
+
+#: templates/comments/user_settings.html:40
+#: templates/comments/user_settings.html:91
+msgid "API Key configured"
+msgstr "API Key configured"
+
+#: templates/comments/user_settings.html:42
+#: templates/comments/user_settings.html:93
+msgid "Using server default API Key"
+msgstr "Using server default API Key"
+
+#: templates/comments/user_settings.html:44
+#: templates/comments/user_settings.html:95
+msgid "No API Key"
+msgstr "No API Key"
+
+#: templates/comments/user_settings.html:47
+msgid ""
+"This API Key will be used to fetch comments from YouTube for your projects."
+msgstr ""
+"This API Key will be used to fetch comments from YouTube for your projects."
+
+#: templates/comments/user_settings.html:49
+msgid "Create API Key at Google Cloud Console"
+msgstr "Create API Key at Google Cloud Console"
+
+#: templates/comments/user_settings.html:58
+msgid "Configuration"
+msgstr "Configuration"
+
+#: templates/comments/user_settings.html:72
+msgid "Using custom URL"
+msgstr "Using custom URL"
+
+#: templates/comments/user_settings.html:74
+msgid "Using default URL"
+msgstr "Using default URL"
+
+#: templates/comments/user_settings.html:77
+msgid "URL of the Ollama server for AI comment labeling."
+msgstr "URL of the Ollama server for AI comment labeling."
+
+#: templates/comments/user_settings.html:88
+msgid "Enter your Ollama API Key (optional)"
+msgstr "Enter your Ollama API Key (optional)"
+
+#: templates/comments/user_settings.html:98
+msgid "API Key to authenticate with the Ollama server."
+msgstr "API Key to authenticate with the Ollama server."
+
+#: templates/comments/user_settings.html:112
+msgid "Using model"
+msgstr "Using model"
+
+#: templates/comments/user_settings.html:114
+msgid "Using default model"
+msgstr "Using default model"
+
+#: templates/comments/user_settings.html:117
+msgid "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)"
+msgstr "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)"
+
+#: templates/comments/user_settings.html:125
+msgid "Current Configuration Summary"
+msgstr "Current Configuration Summary"
+
+#: templates/comments/user_settings.html:130
+msgid "Component"
+msgstr "Component"
+
+#: templates/comments/user_settings.html:132
+msgid "Source"
+msgstr "Source"
+
+#: templates/comments/user_settings.html:140
+#: templates/comments/user_settings.html:161
+msgid "Configured"
+msgstr "Configured"
+
+#: templates/comments/user_settings.html:142
+#: templates/comments/user_settings.html:163
+msgid "Using default"
+msgstr "Using default"
+
+#: templates/comments/user_settings.html:144
+#: templates/comments/user_settings.html:165
+msgid "Not configured"
+msgstr "Not configured"
+
+#: templates/comments/user_settings.html:149
+msgid "Your account"
+msgstr "Your account"
+
+#: templates/comments/user_settings.html:151
+msgid "Server default"
+msgstr "Server default"
+
+#: templates/comments/user_settings.html:170
+#, python-format
+msgid "Your account (%(user_settings.ollama_model)s)"
+msgstr "Your account (%(user_settings.ollama_model)s)"
+
+#: templates/comments/user_settings.html:172
+#, python-format
+msgid "Server default (%(global_ollama_model)s)"
+msgstr "Server default (%(global_ollama_model)s)"
+
+#: templates/comments/user_settings.html:185
+msgid "Save Settings"
+msgstr "Save Settings"

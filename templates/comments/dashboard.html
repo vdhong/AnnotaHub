@@ -1,0 +1,43 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Dashboard" %} - AnnotaHub{% endblock %}
+
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-speedometer"></i> {% trans "Dashboard" %}</h2>
+
+<div class="row g-4">
+    {% for project in projects %}
+    <div class="col-md-4">
+        <div class="card card-project h-100" onclick="window.location.href='{% url 'comments:project_detail' project.id %}'">
+            <div class="card-body">
+                <h5 class="card-title">{{ project.name }}</h5>
+                <p class="card-text text-muted">{{ project.description|default:"No description"|truncatewords:20 }}</p>
+                <div class="row text-center">
+                    <div class="col-4">
+                        <h6 class="mb-0">{{ project.link_count }}</h6>
+                        <small class="text-muted">{% trans "Links" %}</small>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="mb-0">{{ project.comment_count }}</h6>
+                        <small class="text-muted">{% trans "Comments" %}</small>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="mb-0">{{ project.annotated_count }}</h6>
+                        <small class="text-muted">{% trans "Annotated" %}</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-muted small">{% trans "Created" %}: {{ project.created_at|date:"M d, Y" }}</div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="bi bi-folder2-open" style="font-size: 4rem; color: #dee2e6;"></i>
+            <h5 class="text-muted mt-3">{% trans "No projects yet" %}</h5>
+            <a href="{% url 'comments:project_create' %}" class="btn btn-primary mt-2">{% trans "Create Project" %}</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

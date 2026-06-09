@@ -1,0 +1,1126 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-04 05:17+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#: templates/comments/login.html:7
+msgid "Login"
+msgstr "Đăng nhập"
+
+#: templates/comments/login.html:466
+msgid "Enter your username"
+msgstr "Nhập tên đăng nhập của bạn"
+
+#: templates/comments/login.html:481
+msgid "Enter your password"
+msgstr "Nhập mật khẩu của bạn"
+
+#: templates/comments/login.html:484
+msgid "Toggle password visibility"
+msgstr "Hiện/ẩn mật khẩu"
+
+#: templates/comments/login.html:495
+msgid "Remember me"
+msgstr "Ghi nhớ tôi"
+
+#: templates/comments/login.html:502
+msgid "Sign In"
+msgstr "Đăng nhập"
+
+#: templates/comments/login.html:507
+msgid "Secure Authentication"
+msgstr "Xác thực bảo mật"
+
+#: templates/comments/login.html:550
+msgid "Signing in..."
+msgstr "Đang đăng nhập..."
+
+#: comments/views.py:602
+msgid "Project name is required."
+msgstr "Tên dự án là bắt buộc."
+
+#: comments/views.py:607 comments/views.py:667
+#, python-format
+msgid "A project with the name \"%(name)s\" already exists. Please choose a different name."
+msgstr "Đã tồn tại dự án có tên \"%(name)s\". Vui lòng chọn tên khác."
+
+#: comments/views.py:614
+#, python-format
+msgid "Project \"%(name)s\" created successfully."
+msgstr "Dự án \"%(name)s\" đã được tạo thành công."
+
+#: comments/views.py:670
+#, python-format
+msgid "Project \"%(name)s\" updated successfully."
+msgstr "Dự án \"%(name)s\" đã được cập nhật thành công."
+
+#: templates/comments/accept_invitation.html:3
+#: templates/comments/accept_invitation.html:10
+#: templates/comments/accept_invitation.html:70
+msgid "Complete Registration"
+msgstr "Hoàn tất đăng ký"
+
+#: templates/comments/accept_invitation.html:15
+#, python-format
+msgid ""
+"Hello! <strong>%(inviter_name)s</strong> has invited you to join the project"
+" <strong>%(project_name)s</strong> on AnnotaHub."
+msgstr ""
+"Hello! <strong>%(inviter_name)s</strong> has invited you to join the project"
+" <strong>%(project_name)s</strong> on AnnotaHub."
+
+#: templates/comments/accept_invitation.html:16
+msgid ""
+"Please fill in the information below to complete registration and auto-"
+"login."
+msgstr ""
+"Please fill in the information below to complete registration and auto-"
+"login."
+
+#: templates/comments/accept_invitation.html:32
+msgid "Username"
+msgstr "Tên đăng nhập"
+
+#: templates/comments/accept_invitation.html:35
+msgid "Username must be unique."
+msgstr "Tên đăng nhập phải là duy nhất."
+
+#: templates/comments/accept_invitation.html:39
+#: templates/comments/project_participants.html:52
+msgid "Email"
+msgstr "Email"
+
+#: templates/comments/accept_invitation.html:41
+msgid "Email cannot be changed."
+msgstr "Email không thể thay đổi."
+
+#: templates/comments/accept_invitation.html:46
+msgid "First Name"
+msgstr "Tên"
+
+#: templates/comments/accept_invitation.html:51
+msgid "Last Name"
+msgstr "Họ"
+
+#: templates/comments/accept_invitation.html:58
+msgid "Password"
+msgstr "Mật khẩu"
+
+#: templates/comments/accept_invitation.html:60
+#: templates/comments/accept_invitation.html:98
+msgid "Password must be at least 8 characters."
+msgstr "Mật khẩu phải có ít nhất 8 ký tự."
+
+#: templates/comments/accept_invitation.html:64
+msgid "Confirm Password"
+msgstr "Xác nhận mật khẩu"
+
+#: templates/comments/accept_invitation.html:77
+msgid "Important"
+msgstr "Quan trọng"
+
+#: templates/comments/accept_invitation.html:77
+msgid ""
+"After completing registration, please refresh the page or navigate to "
+"another page to ensure successful login."
+msgstr ""
+"After completing registration, please refresh the page or navigate to "
+"another page to ensure successful login."
+
+#: templates/comments/accept_invitation.html:93
+msgid "Passwords do not match. Please check again."
+msgstr "Hai mật khẩu không khớp. Vui lòng kiểm tra lại."
+
+#: templates/comments/base.html:109
+msgid "Vietnamese Comment Annotation Hub"
+msgstr "Công cụ gán nhãn comment tiếng Việt"
+
+#: templates/comments/base.html:114 templates/comments/link_detail.html:9
+#: templates/comments/project_list.html:3
+msgid "Projects"
+msgstr "Dự án"
+
+#: templates/comments/base.html:117 templates/comments/project_list.html:9
+msgid "New Project"
+msgstr "Tạo dự án mới"
+
+#: templates/comments/base.html:121 templates/comments/project_detail.html:25
+msgid "Labels"
+msgstr "Nhãn"
+
+#: templates/comments/base.html:124
+msgid "Settings"
+msgstr "Cài đặt"
+
+#: templates/comments/base.html:128
+msgid "Admin"
+msgstr "Quản trị"
+
+#: templates/comments/dashboard.html:3 templates/comments/dashboard.html:6
+msgid "Dashboard"
+msgstr "Bảng điều khiển"
+
+#: templates/comments/dashboard.html:18
+msgid "Links"
+msgstr "Liên kết"
+
+#: templates/comments/dashboard.html:22 templates/comments/link_detail.html:3
+msgid "Comments"
+msgstr "Bình luận"
+
+#: templates/comments/dashboard.html:26
+#: templates/comments/link_detail.html:159
+#: templates/comments/link_detail.html:185
+msgid "Annotated"
+msgstr "Đã gán nhãn"
+
+#: templates/comments/dashboard.html:30
+#: templates/comments/project_list.html:32
+msgid "Created"
+msgstr "Đã tạo"
+
+#: templates/comments/dashboard.html:37
+msgid "No projects yet"
+msgstr "Chưa có dự án nào"
+
+#: templates/comments/dashboard.html:38
+msgid "Create Project"
+msgstr "Tạo dự án"
+
+#: templates/comments/export.html:3 templates/comments/project_detail.html:21
+msgid "Export"
+msgstr "Xuất"
+
+#: templates/comments/export.html:10
+msgid "Export Dataset"
+msgstr "Xuất tập dữ liệu"
+
+#: templates/comments/export.html:17
+msgid "Export Format"
+msgstr "Định dạng xuất"
+
+#: templates/comments/export.html:19
+msgid "JSON Format"
+msgstr "Định dạng JSON"
+
+#: templates/comments/export.html:20
+msgid "JSON - Sentence Level (comment + label)"
+msgstr "JSON - Cấp câu (bình luận + nhãn)"
+
+#: templates/comments/export.html:21
+msgid "JSON - Token Level (comment + tokens + BIO labels)"
+msgstr "JSON - Cấp token (bình luận + token + nhãn BIO)"
+
+#: templates/comments/export.html:22
+msgid "JSON - LLM Training (instruction/input/output format)"
+msgstr "JSON - Huấn luyện LLM (định dạng hướng dẫn/đầu vào/đầu ra)"
+
+#: templates/comments/export.html:24
+msgid "XML Format"
+msgstr "Định dạng XML"
+
+#: templates/comments/export.html:25
+msgid "XML - CoNLL-like (token-level with tags)"
+msgstr "XML - Kiểu CoNLL (cấp token với thẻ)"
+
+#: templates/comments/export.html:27
+msgid "CSV Format"
+msgstr "Định dạng CSV"
+
+#: templates/comments/export.html:28
+msgid "CSV - Sentence Level"
+msgstr "CSV - Cấp câu"
+
+#: templates/comments/export.html:29
+msgid "CSV - Token Level"
+msgstr "CSV - Cấp token"
+
+#: templates/comments/export.html:35
+msgid "Filter by Toxicity"
+msgstr "Lọc theo độ độc hại"
+
+#: templates/comments/export.html:37
+msgid "All Comments"
+msgstr "Tất cả bình luận"
+
+#: templates/comments/export.html:38
+msgid "Toxic Only"
+msgstr "Chỉ độc hại"
+
+#: templates/comments/export.html:39
+msgid "Non-Toxic Only"
+msgstr "Chỉ không độc hại"
+
+#: templates/comments/export.html:44
+msgid "Scope"
+msgstr "Phạm vi"
+
+#: templates/comments/export.html:48
+msgid "Entire Project"
+msgstr "Toàn bộ dự án"
+
+#: templates/comments/export.html:52
+msgid "Specific Video"
+msgstr "Video cụ thể"
+
+#: templates/comments/export.html:56
+msgid "Select Video"
+msgstr "Chọn video"
+
+#: templates/comments/export.html:58 templates/comments/link_detail.html:81
+#: templates/comments/link_detail.html:119
+#: templates/comments/link_detail.html:322
+#: templates/comments/project_detail.html:83
+#: templates/comments/project_list.html:29
+#: templates/comments/project_list.html:61
+msgid "comments"
+msgstr "bình luận"
+
+#: templates/comments/export.html:65
+msgid "Download Dataset"
+msgstr "Tải tập dữ liệu"
+
+#: templates/comments/export.html:67 templates/comments/label_form.html:58
+#: templates/comments/project_form.html:25
+msgid "Cancel"
+msgstr "Hủy"
+
+#: templates/comments/export.html:76
+msgid "Format Descriptions"
+msgstr "Format Descriptions"
+
+#: templates/comments/export.html:80
+msgid "JSON - Sentence Level:"
+msgstr "JSON - Sentence Level:"
+
+#: templates/comments/export.html:84
+msgid "JSON - Token Level (BIO):"
+msgstr "JSON - Token Level (BIO):"
+
+#: templates/comments/export.html:88
+msgid "JSON - LLM Training:"
+msgstr "JSON - LLM Training:"
+
+#: templates/comments/export.html:92
+msgid "XML - CoNLL-like:"
+msgstr "XML - CoNLL-like:"
+
+#: templates/comments/label_form.html:3 templates/comments/label_form.html:14
+msgid "Label"
+msgstr "Nhãn"
+
+#: templates/comments/label_form.html:8
+msgid "Back to list"
+msgstr "Quay lại danh sách"
+
+#: templates/comments/label_form.html:21 templates/comments/label_list.html:31
+msgid "Label Name"
+msgstr "Tên Nhãn"
+
+#: templates/comments/label_form.html:24
+msgid "e.g. toxic, spam, hate_speech"
+msgstr "Ví dụ: toxic, spam, hate_speech"
+
+#: templates/comments/label_form.html:28 templates/comments/label_list.html:32
+#: templates/comments/project_form.html:20
+msgid "Description"
+msgstr "Mô tả"
+
+#: templates/comments/label_form.html:30
+msgid "Describe when to use this label..."
+msgstr "Mô tả khi nào nên sử dụng nhãn này..."
+
+#: templates/comments/label_form.html:34 templates/comments/label_list.html:30
+msgid "Color"
+msgstr "Màu"
+
+#: templates/comments/label_form.html:42
+msgid "Choose a color to display when labeling."
+msgstr "Chọn màu để hiển thị khi gán nhãn."
+
+#: templates/comments/label_form.html:49
+msgid "Active (allow assigning to new projects)"
+msgstr "Hoạt động (cho phép gán cho project mới)"
+
+#: templates/comments/label_form.html:55
+msgid "Save"
+msgstr "Lưu"
+
+#: templates/comments/label_list.html:3 templates/comments/label_list.html:7
+msgid "Your Labels"
+msgstr "Nhãn của bạn"
+
+#: templates/comments/label_list.html:9
+msgid "Add New Label"
+msgstr "Thêm Nhãn Mới"
+
+#: templates/comments/label_list.html:33
+msgid "Usage Count"
+msgstr "Số lần dùng"
+
+#: templates/comments/label_list.html:34
+#: templates/comments/user_settings.html:131
+msgid "Status"
+msgstr "Trạng thái"
+
+#: templates/comments/label_list.html:35
+msgid "Actions"
+msgstr "Hành động"
+
+#: templates/comments/label_list.html:49
+msgid "in use"
+msgstr "đang dùng"
+
+#: templates/comments/label_list.html:54
+#: templates/comments/project_participants.html:93
+msgid "Active"
+msgstr "Hoạt động"
+
+#: templates/comments/label_list.html:56
+msgid "Inactive"
+msgstr "Vô hiệu"
+
+#: templates/comments/label_list.html:61
+#: templates/comments/project_detail.html:31
+msgid "Edit"
+msgstr "Sửa"
+
+#: templates/comments/label_list.html:65
+msgid "Are you sure you want to delete this label?"
+msgstr "Bạn có chắc muốn xóa nhãn này?"
+
+#: templates/comments/label_list.html:68 templates/comments/label_list.html:73
+#: templates/comments/link_detail.html:21
+#: templates/comments/project_detail.html:34
+#: templates/comments/project_participants.html:125
+msgid "Delete"
+msgstr "Xóa"
+
+#: templates/comments/label_list.html:72
+msgid "Label is in use, cannot be deleted"
+msgstr "Nhãn đang được sử dụng, không thể xóa"
+
+#: templates/comments/label_list.html:82
+msgid "You don't have any labels yet. Add your first label!"
+msgstr "Bạn chưa có nhãn nào. Hãy thêm nhãn đầu tiên!"
+
+#: templates/comments/label_list.html:94
+#: templates/comments/project_labels_settings.html:141
+msgid "Note"
+msgstr "Lưu ý"
+
+#: templates/comments/label_list.html:94
+msgid ""
+"You can only edit and delete labels you created. Labels in use in comments "
+"or tokens cannot be deleted."
+msgstr ""
+"Bạn chỉ có thể xoá, sửa nhãn của mình tạo. Nhãn đã được dùng trong comments "
+"hoặc tokens không thể xoá."
+
+#: templates/comments/link_detail.html:20
+msgid "Delete this link and all data?"
+msgstr "Xoá link này và tất cả dữ liệu gán nhãn (nếu có) của nó?"
+
+#: templates/comments/link_detail.html:32
+msgid "YouTube Source"
+msgstr "Nguồn YouTube"
+
+#: templates/comments/link_detail.html:38
+#: templates/comments/link_detail.html:320
+msgid "Show video"
+msgstr "Hiển thị video"
+
+#: templates/comments/link_detail.html:41
+msgid "Open on YouTube"
+msgstr "Mở trên YouTube"
+
+#: templates/comments/link_detail.html:58
+msgid "If the embed is blocked, use the direct YouTube link."
+msgstr "Nếu nhúng bị chặn, hãy dùng liên kết YouTube trực tiếp."
+
+#: templates/comments/link_detail.html:59
+msgid "Embed loads only when requested."
+msgstr "Nhúng chỉ tải khi yêu cầu."
+
+#: templates/comments/link_detail.html:71
+msgid "Fetch Comments"
+msgstr "Lấy bình luận"
+
+#: templates/comments/link_detail.html:85
+msgid "No fetch task yet"
+msgstr "Chưa có tác vụ lấy bình luận"
+
+#: templates/comments/link_detail.html:90
+#: templates/comments/link_detail.html:128
+msgid "Stop"
+msgstr "Dừng"
+
+#: templates/comments/link_detail.html:94
+msgid "Refetch"
+msgstr "Lấy lại"
+
+#: templates/comments/link_detail.html:98
+msgid "Clear and Refetch"
+msgstr "Xóa và Lấy lại"
+
+#: templates/comments/link_detail.html:109
+msgid "AI Annotation"
+msgstr "Gán nhãn AI"
+
+#: templates/comments/link_detail.html:123
+msgid "No annotation task yet"
+msgstr "Chưa có tác vụ gán nhãn"
+
+#: templates/comments/link_detail.html:133
+msgid "Continue Annotation"
+msgstr "Tiếp tục gán nhãn"
+
+#: templates/comments/link_detail.html:136
+msgid "Re-Annotate All"
+msgstr "Gán nhãn lại tất cả"
+
+#: templates/comments/link_detail.html:151
+msgid "Total Comments"
+msgstr "Tổng bình luận"
+
+#: templates/comments/link_detail.html:167
+#: templates/comments/link_detail.html:187
+msgid "Toxic"
+msgstr "Độc hại"
+
+#: templates/comments/link_detail.html:175
+#: templates/comments/link_detail.html:186
+msgid "Unannotated"
+msgstr "Chưa gán nhãn"
+
+#: templates/comments/link_detail.html:184
+msgid "All"
+msgstr "Tất cả"
+
+#: templates/comments/link_detail.html:188
+msgid "Non-Toxic"
+msgstr "Không độc hại"
+
+#: templates/comments/link_detail.html:212
+msgid "Not meaningful"
+msgstr "Không có nghĩa"
+
+#: templates/comments/link_detail.html:214
+msgid "Not labeled"
+msgstr "Chưa gắn nhãn"
+
+#: templates/comments/link_detail.html:217
+msgid "Translated from original"
+msgstr "Được dịch từ bản gốc"
+
+#: templates/comments/link_detail.html:218
+msgid "Translated"
+msgstr "Đã dịch"
+
+#: templates/comments/link_detail.html:225
+msgid "likes"
+msgstr "thích"
+
+#: templates/comments/link_detail.html:232
+msgid "Original"
+msgstr "Bản gốc"
+
+#: templates/comments/link_detail.html:271
+msgid "No comments match this filter"
+msgstr "Không có bình luận nào khớp bộ lọc này"
+
+#: templates/comments/link_detail.html:278
+msgid "Comment pagination"
+msgstr "Phân trang bình luận"
+
+#: templates/comments/link_detail.html:282
+msgid "Previous"
+msgstr "Trước"
+
+#: templates/comments/link_detail.html:292
+msgid "Next"
+msgstr "Tiếp"
+
+#: templates/comments/link_detail.html:309
+msgid "Select label for token:"
+msgstr "Chọn nhãn cho token:"
+
+#: templates/comments/link_detail.html:310
+msgid "None"
+msgstr "Không"
+
+#: templates/comments/link_detail.html:311
+msgid "Comment label:"
+msgstr "Nhãn bình luận:"
+
+#: templates/comments/link_detail.html:314
+msgid "Error setting token label."
+msgstr "Lỗi khi đặt nhãn cho token."
+
+#: templates/comments/link_detail.html:315
+msgid "Error setting comment label."
+msgstr "Lỗi khi đặt nhãn cho bình luận."
+
+#: templates/comments/link_detail.html:316
+msgid "Failed to set label."
+msgstr "Không thể đặt nhãn."
+
+#: templates/comments/link_detail.html:317
+msgid ""
+"Clear all existing comments and fetch them again from YouTube? This will "
+"delete old comments and annotations."
+msgstr ""
+"Xoá tất cả comments đang có và tải lại từ YouTube? Hành động này sẽ "
+"xoá các comments và nhãn đã gán."
+
+#: templates/comments/link_detail.html:318
+msgid ""
+"Refetch comments without deleting existing ones? Existing comments will be "
+"kept."
+msgstr ""
+"Tải comments KHÔNG xoá comment đã có? Các comment đã có, các nhãn đã gán "
+"không ảnh hưởng."
+
+#: templates/comments/link_detail.html:319
+msgid "Reset all annotations and re-run AI from scratch?"
+msgstr "Xoá tất cả các nhãn đã gán và chạy lại gán nhãn bằng AI từ đầu?"
+
+#: templates/comments/link_detail.html:321
+msgid "Hide video"
+msgstr "Ẩn video"
+
+#: templates/comments/project_detail.html:11
+#: templates/comments/project_detail.html:17
+#: templates/comments/project_list.html:24
+#: templates/comments/project_list.html:64
+msgid "Owner"
+msgstr "Người sở hữu"
+
+#: templates/comments/project_detail.html:13
+#: templates/comments/project_list.html:56
+msgid "Participant"
+msgstr "Người tham gia"
+
+#: templates/comments/project_detail.html:28
+#: templates/comments/project_participants.html:42
+msgid "Participants"
+msgstr "Tham gia"
+
+#: templates/comments/project_detail.html:44
+msgid "Add YouTube Link"
+msgstr "Thêm liên kết YouTube"
+
+#: templates/comments/project_detail.html:52
+msgid "Add & Start Fetching"
+msgstr "Thêm & Bắt đầu lấy"
+
+#: templates/comments/project_detail.html:63
+#, python-format
+msgid "YouTube Link (%(count)s)"
+msgid_plural "YouTube Links (%(count)s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_detail.html:100
+msgid "Details"
+msgstr "Chi tiết"
+
+#: templates/comments/project_detail.html:102
+msgid "Delete this link and all related data?"
+msgstr "Xóa liên kết này và tất cả dữ liệu liên quan?"
+
+#: templates/comments/project_detail.html:115
+msgid "No YouTube links yet. Add a link above to get started."
+msgstr "Chưa có liên kết YouTube nào. Thêm liên kết ở trên để bắt đầu."
+
+#: templates/comments/project_detail.html:128
+msgid "Are you sure you want to delete this project and ALL data?"
+msgstr "Bạn có chắc muốn xóa dự án này và TẤT CẢ dữ liệu?"
+
+#: templates/comments/project_form.html:3
+#: templates/comments/project_form.html:10
+msgid "Project"
+msgstr "Dự án"
+
+#: templates/comments/project_form.html:16
+msgid "Project Name"
+msgstr "Tên dự án"
+
+#: templates/comments/project_labels_settings.html:3
+msgid "Label Settings"
+msgstr "Thiết lập Nhãn"
+
+#: templates/comments/project_labels_settings.html:8
+msgid "Back to Project"
+msgstr "Quay lại Project"
+
+#: templates/comments/project_labels_settings.html:12
+#, python-format
+msgid "Label Settings for"
+msgstr "Thiết lập nhãn cho"
+
+#: templates/comments/project_labels_settings.html:13
+msgid ""
+"Manage labels from your label list (project owner) to use in this project."
+msgstr ""
+"Manage labels from your label list (project owner) to use in this project."
+
+#: templates/comments/project_labels_settings.html:31
+#, python-format
+msgid "Active Label in Project (%(count)s)"
+msgid_plural "Active Labels in Project (%(count)s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:42
+msgid "created by"
+msgstr "tạo bởi"
+
+#: templates/comments/project_labels_settings.html:49
+msgid "Remove label from this project?"
+msgstr "Bỏ nhãn khỏi project này?"
+
+#: templates/comments/project_labels_settings.html:50
+msgid "Remove from Project"
+msgstr "Bỏ khỏi project"
+
+#: templates/comments/project_labels_settings.html:59
+#, python-format
+msgid "Used in %(token_count)s token"
+msgid_plural "Used in %(token_count)s tokens"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:60
+#, python-format
+msgid "%(comment_count)s comment"
+msgid_plural "%(comment_count)s comments"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:67
+msgid "No labels added to this project yet."
+msgstr "Chưa có nhãn nào được thêm vào project."
+
+#: templates/comments/project_labels_settings.html:77
+#, python-format
+msgid "Your Available Label (%(count)s)"
+msgid_plural "Your Available Labels (%(count)s)"
+msgstr[0] ""
+msgstr[1] ""
+
+#: templates/comments/project_labels_settings.html:94
+msgid "Add"
+msgstr "Thêm"
+
+#: templates/comments/project_labels_settings.html:102
+msgid "All labels added or no labels available."
+msgstr "All labels added or no labels available."
+
+#: templates/comments/project_labels_settings.html:103
+msgid "Create new label"
+msgstr "Tạo nhãn mới"
+
+#: templates/comments/project_labels_settings.html:112
+msgid "Add New Label & Attach to Project"
+msgstr "Thêm Nhãn Mới & Gắn vào Project"
+
+#: templates/comments/project_labels_settings.html:120
+msgid "Label name..."
+msgstr "Tên nhãn..."
+
+#: templates/comments/project_labels_settings.html:124
+msgid "Description..."
+msgstr "Description..."
+
+#: templates/comments/project_labels_settings.html:131
+msgid "Create label and add to project"
+msgstr "Tạo nhãn và thêm vào project"
+
+#: templates/comments/project_labels_settings.html:141
+msgid ""
+"Only labels created by the project owner are shown. When project labels "
+"change, AI auto-annotation will use the new label list."
+msgstr ""
+"Only labels created by the project owner are shown. When project labels "
+"change, AI auto-annotation will use the new label list."
+
+#: templates/comments/project_list.html:7
+msgid "My Projects"
+msgstr "Dự án của tôi"
+
+#: templates/comments/project_list.html:15
+msgid "Owned Projects"
+msgstr "Dự án sở hữu"
+
+#: templates/comments/project_list.html:28
+#: templates/comments/project_list.html:60
+msgid "links"
+msgstr "liên kết"
+
+#: templates/comments/project_list.html:40
+msgid "You don't have any projects yet. Click \"New Project\" to get started."
+msgstr "You don't have any projects yet. Click \"New Project\" to get started."
+
+#: templates/comments/project_list.html:47
+msgid "Participated Projects"
+msgstr "Dự án tham gia"
+
+#: templates/comments/project_list.html:72
+msgid "You are not participating in any projects."
+msgstr "Bạn không đang tham gia dự án nào."
+
+#: templates/comments/project_participants.html:3
+#: templates/comments/project_participants.html:11
+msgid "Manage Members"
+msgstr "Quản lý thành viên"
+
+#: templates/comments/project_participants.html:9
+#: templates/comments/user_settings.html:188
+msgid "Back"
+msgstr "Quay lại"
+
+#: templates/comments/project_participants.html:12
+msgid ""
+"Participants can only label, they cannot add, delete, or edit project "
+"information."
+msgstr ""
+"Participants can only label, they cannot add, delete, or edit project "
+"information."
+
+#: templates/comments/project_participants.html:19
+#: templates/comments/project_participants.html:28
+msgid "Add Participant"
+msgstr "Thêm thành viên"
+
+#: templates/comments/project_participants.html:24
+msgid "Enter participant email..."
+msgstr "Nhập email của thành viên..."
+
+#: templates/comments/project_participants.html:34
+msgid ""
+"If the email has an account, the user will be added immediately. If not, an "
+"invitation email will be sent to this address."
+msgstr ""
+"If the email has an account, the user will be added immediately. If not, an "
+"invitation email will be sent to this address."
+
+#: templates/comments/project_participants.html:58
+#, python-format
+msgid "Remove %(participant.username)s from the project?"
+msgstr "Remove %(participant.username)s from the project?"
+
+#: templates/comments/project_participants.html:63
+msgid "Remove"
+msgstr "Xóa"
+
+#: templates/comments/project_participants.html:72
+msgid "No participants yet."
+msgstr "Chưa có thành viên tham gia nào."
+
+#: templates/comments/project_participants.html:81
+msgid "Pending Invitations"
+msgstr "Lời mời đang chờ"
+
+#: templates/comments/project_participants.html:91
+msgid "Expired"
+msgstr "Đã hết hạn"
+
+#: templates/comments/project_participants.html:97
+msgid "Invited by"
+msgstr "Người mời"
+
+#: templates/comments/project_participants.html:100
+msgid "Sent at"
+msgstr "Gửi lúc"
+
+#: templates/comments/project_participants.html:104
+msgid "Expires at"
+msgstr "Hết hạn"
+
+#: templates/comments/project_participants.html:108
+msgid "User"
+msgstr "Người dùng"
+
+#: templates/comments/project_participants.html:112
+#, python-format
+msgid "Resend invitation email to %(invitation.email)s?"
+msgstr "Resend invitation email to %(invitation.email)s?"
+
+#: templates/comments/project_participants.html:116
+msgid "Resend invitation email"
+msgstr "Gửi lại email mời"
+
+#: templates/comments/project_participants.html:117
+msgid "Resend"
+msgstr "Gửi lại"
+
+#: templates/comments/project_participants.html:120
+#, python-format
+msgid "Delete invitation for %(invitation.email)s?"
+msgstr "Delete invitation for %(invitation.email)s?"
+
+#: templates/comments/project_participants.html:124
+msgid "Delete invitation"
+msgstr "Xóa lời mời"
+
+#: templates/comments/project_participants.html:134
+msgid "No pending invitations."
+msgstr "Không có lời mời đang chờ nào."
+
+#: templates/comments/user_settings.html:4
+#: templates/comments/user_settings.html:13
+msgid "Account Settings"
+msgstr "Cài đặt tài khoản"
+
+#: templates/comments/user_settings.html:19
+msgid "API Settings"
+msgstr "Cài đặt API"
+
+#: templates/comments/user_settings.html:19
+msgid ""
+"The settings below will be used when you create new projects and use AI for "
+"labeling or fetching comments from YouTube. If left blank, the system will "
+"use the server's default settings."
+msgstr ""
+"The settings below will be used when you create new projects and use AI for "
+"labeling or fetching comments from YouTube. If left blank, the system will "
+"use the server's default settings."
+
+#: templates/comments/user_settings.html:33
+#: templates/comments/user_settings.html:64
+#: templates/comments/user_settings.html:84
+#: templates/comments/user_settings.html:105
+msgid "Optional"
+msgstr "Tùy chọn"
+
+#: templates/comments/user_settings.html:37
+msgid "Enter your YouTube API Key (optional)"
+msgstr "Điền YouTube API Key của bạn (tùy chọn)"
+
+#: templates/comments/user_settings.html:40
+#: templates/comments/user_settings.html:91
+msgid "API Key configured"
+msgstr "Đã cấu hình API Key"
+
+#: templates/comments/user_settings.html:42
+#: templates/comments/user_settings.html:93
+msgid "Using server default API Key"
+msgstr "Sử dụng API Key mặc định của server"
+
+#: templates/comments/user_settings.html:44
+#: templates/comments/user_settings.html:95
+msgid "No API Key"
+msgstr "Chưa có API Key"
+
+#: templates/comments/user_settings.html:47
+msgid ""
+"This API Key will be used to fetch comments from YouTube for your projects."
+msgstr ""
+"This API Key will be used to fetch comments from YouTube for your projects."
+
+#: templates/comments/user_settings.html:49
+msgid "Create API Key at Google Cloud Console"
+msgstr "Tạo API Key tại Google Cloud Console"
+
+#: templates/comments/user_settings.html:58
+msgid "Configuration"
+msgstr "Cấu hình"
+
+#: templates/comments/user_settings.html:72
+msgid "Using custom URL"
+msgstr "Đang sử dụng URL riêng"
+
+#: templates/comments/user_settings.html:74
+msgid "Using default URL"
+msgstr "Sử dụng URL mặc định"
+
+#: templates/comments/user_settings.html:77
+msgid "URL of the Ollama server for AI comment labeling."
+msgstr "URL of the Ollama server for AI comment labeling."
+
+#: templates/comments/user_settings.html:88
+msgid "Enter your Ollama API Key (optional)"
+msgstr "Điền Ollama API Key của bạn (tùy chọn)"
+
+#: templates/comments/user_settings.html:98
+msgid "API Key to authenticate with the Ollama server."
+msgstr "API Key to authenticate with the Ollama server."
+
+#: templates/comments/user_settings.html:112
+msgid "Using model"
+msgstr "Đang sử dụng model"
+
+#: templates/comments/user_settings.html:114
+msgid "Using default model"
+msgstr "Sử dụng model mặc định"
+
+#: templates/comments/user_settings.html:117
+msgid "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)"
+msgstr "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)"
+
+#: templates/comments/user_settings.html:125
+msgid "Current Configuration Summary"
+msgstr "Tóm tắt cấu hình hiện tại"
+
+#: templates/comments/user_settings.html:130
+msgid "Component"
+msgstr "Thành phần"
+
+#: templates/comments/user_settings.html:132
+msgid "Source"
+msgstr "Nguồn"
+
+#: templates/comments/user_settings.html:140
+#: templates/comments/user_settings.html:161
+msgid "Configured"
+msgstr "Đã cấu hình"
+
+#: templates/comments/user_settings.html:142
+#: templates/comments/user_settings.html:163
+msgid "Using default"
+msgstr "Sử dụng mặc định"
+
+#: templates/comments/user_settings.html:144
+#: templates/comments/user_settings.html:165
+msgid "Not configured"
+msgstr "Chưa cấu hình"
+
+#: templates/comments/user_settings.html:149
+msgid "Your account"
+msgstr "Tài khoản của bạn"
+
+#: templates/comments/user_settings.html:151
+msgid "Server default"
+msgstr "Server mặc định"
+
+#: templates/comments/user_settings.html:170
+#, python-format
+msgid "Your account (%(user_settings.ollama_model)s)"
+msgstr "Your account (%(user_settings.ollama_model)s)"
+
+#: templates/comments/user_settings.html:172
+#, python-format
+msgid "Server default (%(global_ollama_model)s)"
+msgstr "Server default (%(global_ollama_model)s)"
+
+#: templates/comments/user_settings.html:185
+msgid "Save Settings"
+msgstr "Lưu cài đặt"
+
+#: templates/comments/register.html:3
+#: templates/comments/register.html:10
+msgid "Register"
+msgstr "Đăng ký"
+
+#: templates/comments/register.html:72
+msgid "Create Your Account"
+msgstr "Tạo tài khoản của bạn"
+
+#: templates/comments/register.html:84
+msgid "3-150 characters"
+msgstr "3-150 ký tự"
+
+#: templates/comments/register.html:93
+msgid "First name"
+msgstr "Tên"
+
+#: templates/comments/register.html:107
+msgid "Last name"
+msgstr "Họ"
+
+#: templates/comments/register.html:123
+msgid "A verification link will be sent to this email"
+msgstr "Một liên kết xác thực sẽ được gửi đến email này"
+
+#: templates/comments/register.html:141
+msgid "At least 8 characters"
+msgstr "Ít nhất 8 ký tự"
+
+#: templates/comments/register.html:157
+msgid "Confirm your password"
+msgstr "Xác nhận mật khẩu"
+
+#: templates/comments/register.html:171
+msgid "Create Account"
+msgstr "Tạo tài khoản"
+
+#: templates/comments/register.html:175
+msgid "Secure Registration"
+msgstr "Đăng ký bảo mật"
+
+#: templates/comments/register.html:180
+msgid "Already have an account?"
+msgstr "Đã có tài khoản?"
+
+#: templates/comments/register.html:213
+msgid "Weak password"
+msgstr "Mật khẩu yếu"
+
+#: templates/comments/register.html:217
+msgid "Medium password"
+msgstr "Mật khẩu trung bình"
+
+#: templates/comments/register.html:221
+msgid "Strong password"
+msgstr "Mật khẩu mạnh"
+
+#: templates/comments/register.html:237
+msgid "Creating account..."
+msgstr "Đang tạo tài khoản..."
+
+#: templates/comments/register.html:245
+msgid "Passwords do not match"
+msgstr "Mật khẩu không khớp"
+
+#: templates/comments/verification_sent.html:3
+#: templates/comments/verification_sent.html:10
+msgid "Verification Email Sent"
+msgstr "Email xác thực đã được gửi"
+
+#: templates/comments/verification_sent.html:98
+msgid "Registration Successful!"
+msgstr "Đăng ký thành công!"
+
+#: templates/comments/verification_sent.html:100
+msgid "We've sent a verification link to your email address. Please check your inbox and click the link to verify your account."
+msgstr "Chúng tôi đã gửi liên kết xác thực đến email của bạn. Vui lòng kiểm tra hộp thư và nhấp vào liên kết để xác thực tài khoản."
+
+#: templates/comments/verification_sent.html:108
+msgid "The verification link will expire after 7 days. If you don't see the email, check your spam folder."
+msgstr "Liên kết xác thực sẽ hết hạn sau 7 ngày. Nếu không thấy email, vui lòng kiểm tra thư mục spam."
+
+#: templates/comments/verification_sent.html:113
+msgid "Back to Login"
+msgstr "Quay lại đăng nhập"
+
+#: templates/comments/verification_sent.html:117
+msgid "Didn't receive the email?"
+msgstr "Chưa nhận được email?"
+
+#: templates/comments/verification_sent.html:122
+msgid "Resend Verification Email"
+msgstr "Gửi lại email xác thực"
+
+#: templates/comments/verification_sent.html:129
+msgid "Already verified?"
+msgstr "Đã xác thực?"
+
+#: templates/comments/login.html:550
+msgid "Don't have an account?"
+msgstr "Chưa có tài khoản?"

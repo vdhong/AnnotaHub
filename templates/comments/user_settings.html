@@ -1,0 +1,197 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Account Settings" %} - AnnotaHub{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog"></i> {% trans "Account Settings" %} - {{ user.username }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>{% trans "API Settings" %}:</strong> {% blocktrans %}The settings below will be used when you create new projects and use AI for labeling or fetching comments from YouTube. If left blank, the system will use the server's default settings.{% endblocktrans %}
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <!-- YouTube API Section -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fab fa-youtube text-danger"></i> YouTube Data API v3
+                            </h6>
+                            <div class="mb-3">
+                                <label for="youtube_api_key" class="form-label">
+                                    YouTube API Key
+                                    <span class="text-muted">({% trans "Optional" %})</span>
+                                </label>
+                                <input type="text" class="form-control" id="youtube_api_key" name="youtube_api_key"
+                                       value="{{ user_settings.youtube_api_key }}"
+                                       placeholder="{% trans "Enter your YouTube API Key (optional)" %}">
+                                <div class="form-text">
+                                    {% if user_settings.has_youtube_api_key %}
+                                        <span class="text-success"><i class="fas fa-check"></i> {% trans "API Key configured" %}</span>
+                                    {% elif global_youtube_api_key %}
+                                        <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> {% trans "Using server default API Key" %}</span>
+                                    {% else %}
+                                        <span class="text-danger"><i class="fas fa-times"></i> {% trans "No API Key" %}</span>
+                                    {% endif %}
+                                    <br>
+                                    {% trans "This API Key will be used to fetch comments from YouTube for your projects." %}
+                                    <a href="https://console.cloud.google.com/apis/credentials" target="_blank">
+                                        {% trans "Create API Key at Google Cloud Console" %}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ollama API Section -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-robot text-primary"></i> Ollama AI {% trans "Configuration" %}
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="ollama_base_url" class="form-label">
+                                    Ollama Base URL
+                                    <span class="text-muted">({% trans "Optional" %})</span>
+                                </label>
+                                <input type="text" class="form-control" id="ollama_base_url" name="ollama_base_url"
+                                       value="{{ user_settings.ollama_base_url }}"
+                                       placeholder="{{ global_ollama_base_url }}"
+                                       pattern="https?://.*">
+                                <div class="form-text">
+                                    {% if user_settings.ollama_base_url %}
+                                        <span class="text-success"><i class="fas fa-check"></i> {% trans "Using custom URL" %}</span>
+                                    {% else %}
+                                        <span class="text-muted"><i class="fas fa-circle-info"></i> {% trans "Using default URL" %}: {{ global_ollama_base_url }}</span>
+                                    {% endif %}
+                                    <br>
+                                    {% trans "URL of the Ollama server for AI comment labeling." %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="ollama_api_key" class="form-label">
+                                    Ollama API Key
+                                    <span class="text-muted">({% trans "Optional" %})</span>
+                                </label>
+                                <input type="password" class="form-control" id="ollama_api_key" name="ollama_api_key"
+                                       value="{{ user_settings.ollama_api_key }}"
+                                       placeholder="{% trans "Enter your Ollama API Key (optional)" %}">
+                                <div class="form-text">
+                                    {% if user_settings.ollama_api_key %}
+                                        <span class="text-success"><i class="fas fa-check"></i> {% trans "API Key configured" %}</span>
+                                    {% elif global_has_ollama_api_key %}
+                                        <span class="text-warning"><i class="fas fa-exclamation-triangle"></i> {% trans "Using server default API Key" %}</span>
+                                    {% else %}
+                                        <span class="text-danger"><i class="fas fa-times"></i> {% trans "No API Key" %}</span>
+                                    {% endif %}
+                                    <br>
+                                    {% trans "API Key to authenticate with the Ollama server." %}
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="ollama_model" class="form-label">
+                                    Ollama Model
+                                    <span class="text-muted">({% trans "Optional" %})</span>
+                                </label>
+                                <input type="text" class="form-control" id="ollama_model" name="ollama_model"
+                                       value="{{ user_settings.ollama_model }}"
+                                       placeholder="{{ global_ollama_model }}">
+                                <div class="form-text">
+                                    {% if user_settings.ollama_model %}
+                                        <span class="text-success"><i class="fas fa-check"></i> {% trans "Using model" %}: {{ user_settings.ollama_model }}</span>
+                                    {% else %}
+                                        <span class="text-muted"><i class="fas fa-circle-info"></i> {% trans "Using default model" %}: {{ global_ollama_model }}</span>
+                                    {% endif %}
+                                    <br>
+                                    {% trans "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)" %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Section -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2">
+                                <i class="fas fa-clipboard-list"></i> {% trans "Current Configuration Summary" %}
+                            </h6>
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>{% trans "Component" %}</th>
+                                        <th>{% trans "Status" %}</th>
+                                        <th>{% trans "Source" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>YouTube API</td>
+                                        <td>
+                                            {% if user_settings.has_youtube_api_key %}
+                                                <span class="badge bg-success">{% trans "Configured" %}</span>
+                                            {% elif global_youtube_api_key %}
+                                                <span class="badge bg-warning text-dark">{% trans "Using default" %}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{% trans "Not configured" %}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user_settings.has_youtube_api_key %}
+                                                {% trans "Your account" %}
+                                            {% elif global_youtube_api_key %}
+                                                {% trans "Server default" %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ollama AI</td>
+                                        <td>
+                                            {% if user_settings.has_ollama_config %}
+                                                <span class="badge bg-success">{% trans "Configured" %}</span>
+                                            {% elif global_has_ollama_api_key %}
+                                                <span class="badge bg-warning text-dark">{% trans "Using default" %}</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">{% trans "Not configured" %}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if user_settings.has_ollama_config %}
+                                                {% blocktrans %}Your account ({{ user_settings.ollama_model }}){% endblocktrans %}
+                                            {% elif global_has_ollama_api_key %}
+                                                {% blocktrans %}Server default ({{ global_ollama_model }}){% endblocktrans %}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Buttons -->
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {% trans "Save Settings" %}
+                            </button>
+                            <a href="{% url 'comments:project_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> {% trans "Back" %}
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

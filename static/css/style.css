@@ -1,0 +1,310 @@
+/* AnnotaHub Custom Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Ensure comment text preserves spacing */
+.comment-text {
+    white-space: pre-wrap;
+    line-height: 1.7;
+    font-size: 0.98rem;
+}
+
+/* Add space between token words */
+.token-word::after {
+    content: "";
+}
+
+/* Token word hover effect */
+.token-word:hover {
+    outline: 2px solid rgba(13, 110, 253, 0.15);
+}
+
+/* Status badges */
+.badge {
+    font-weight: 500;
+}
+
+/* Card hover shadow */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Sidebar link hover */
+.sidebar .nav-link i {
+    margin-right: 0.5rem;
+}
+
+/* Progress bar animation */
+.progress-bar {
+    transition: width 0.6s ease;
+}
+
+/* Responsive video embed */
+.video-embed-container {
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 0.75rem;
+    background: #000;
+}
+
+.video-embed-container iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.video-shell {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+}
+
+.video-panel {
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    padding-top: 1rem;
+}
+
+.comment-card {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 1rem;
+    overflow: hidden;
+}
+
+.comment-card .card-body {
+    padding: 1rem 1.1rem;
+}
+
+.comment-avatar {
+    object-fit: cover;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.comment-avatar-fallback {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2ff;
+    color: #4338ca;
+    font-weight: 700;
+    flex: 0 0 auto;
+}
+
+.comment-author {
+    font-size: 0.98rem;
+}
+
+.comment-original {
+    background: #f8f9fa;
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 0.75rem;
+    padding: 0.75rem 0.9rem;
+}
+
+.token-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+    align-items: center;
+}
+
+.token-word {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.12rem 0.38rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    font-size: 0.88rem;
+    line-height: 1.15;
+}
+
+.token-word.toxic {
+    background: #f8d7da;
+    border-color: rgba(220, 53, 69, 0.45);
+    color: #842029;
+    font-weight: 600;
+}
+
+.comment-card.label-meaningless {
+    background: #f8f9fa;
+    border-color: rgba(108, 117, 125, 0.2);
+}
+
+.comment-side-panel {
+    height: 100%;
+    border-left: 1px solid rgba(0, 0, 0, 0.08);
+    padding-left: 1rem;
+}
+
+.comment-actions {
+    display: block;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.85rem;
+    background: #f8f9fa;
+    border: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 991.98px) {
+    .comment-side-panel {
+        border-left: 0;
+        padding-left: 0;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        padding-top: 1rem;
+    }
+}
+
+/* Alert auto-dismiss */
+.alert {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Pagination */
+.pagination .page-link {
+    color: #0d6efd;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* ============================================
+   Bootstrap Popover - Token Label Menu
+   ============================================ */
+
+/* Ensure Bootstrap popover is properly positioned */
+.popover {
+    z-index: 10000;
+    border-radius: 0.65rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.18);
+}
+
+.popover .popover-body {
+    padding: 0.4rem 0;
+}
+
+.token-label-popover {
+    min-width: 180px;
+    max-width: 280px;
+}
+
+.token-label-popover-header {
+    padding: 0.25rem 0.85rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6c757d;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    margin-bottom: 0.3rem;
+}
+
+.token-label-popover-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.35rem 0.85rem;
+    cursor: pointer !important;
+    font-size: 0.88rem;
+    transition: background-color 0.12s ease, border-left-color 0.12s ease;
+    border-radius: 0;
+    border-left: 4px solid transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.token-label-popover-item:hover {
+    background-color: #f1f5f9;
+}
+
+.token-label-popover-item:active {
+    background-color: #e2e8f0;
+}
+
+.token-label-popover-item .label-color-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid rgba(0, 0, 0, 0.12);
+}
+
+.token-label-popover-item .label-color-none {
+    background-color: #e9ecef !important;
+    border: 2px dashed #adb5bd !important;
+}
+
+.token-label-popover-item .label-name {
+    font-weight: 500;
+}
+
+.token-label-popover-none {
+    color: #6c757d;
+    font-style: italic;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    margin-top: 0.2rem;
+    padding-top: 0.35rem 0.5rem;
+    border-left: 4px solid transparent !important;
+}
+
+.token-label-popover-none:hover {
+    background-color: #f8f9fa;
+}
+
+/* ============================================
+   Token with applied manual label
+   ============================================ */
+.token-word.token-labeled {
+    box-shadow: 0 0 0 1px var(--token-label-color, transparent);
+}
+
+/* ============================================
+   Comment label buttons
+   ============================================ */
+.comment-label-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    border-width: 1px;
+    border-style: solid;
+    transition: all 0.15s ease;
+}
+
+.comment-label-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.comment-label-btn.active-label-btn {
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.08);
+    font-weight: 600;
+}
+
+.comment-label-btn .label-color-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}

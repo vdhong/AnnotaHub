@@ -1,0 +1,76 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{{ action }} {% trans "Label" %} - AnnotaHub{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-4">
+    <a href="{% url 'comments:label_list' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>{% trans "Back to list" %}
+    </a>
+  </div>
+
+  <div class="card" style="max-width:600px;">
+    <div class="card-header">
+      <h5 class="mb-0"><i class="fas fa-tag me-2"></i>{{ action }} {% trans "Label" %}</h5>
+    </div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label for="name" class="form-label">{% trans "Label Name" %} <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="name" name="name"
+                 value="{% if label %}{{ label.name }}{% endif %}" required maxlength="100"
+                 placeholder="{% trans "e.g. toxic, spam, hate_speech" %}">
+        </div>
+
+        <div class="mb-3">
+          <label for="description" class="form-label">{% trans "Description" %}</label>
+          <textarea class="form-control" id="description" name="description" rows="3"
+                    placeholder="{% trans "Describe when to use this label..." %}">{% if label %}{{ label.description }}{% endif %}</textarea>
+        </div>
+
+        <div class="mb-3">
+          <label for="color" class="form-label">{% trans "Color" %}</label>
+          <div class="d-flex align-items-center gap-2">
+            <input type="color" class="form-control form-control-color" id="color" name="color"
+                   value="{% if label %}{{ label.color }}{% else %}#FF0000{% endif %}">
+            <input type="text" class="form-control" id="color_text"
+                   value="{% if label %}{{ label.color }}{% else %}#FF0000{% endif %}"
+                   maxlength="7" placeholder="#FF0000" style="max-width:120px;">
+          </div>
+          <small class="form-text text-muted">{% trans "Choose a color to display when labeling." %}</small>
+        </div>
+
+        {% if label %}
+        <div class="mb-3 form-check form-switch">
+          <input type="checkbox" class="form-check-input" id="is_active" name="is_active"
+                 {% if label.is_active %}checked{% endif %}>
+          <label class="form-check-label" for="is_active">{% trans "Active (allow assigning to new projects)" %}</label>
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>{% trans "Save" %}
+          </button>
+          <a href="{% url 'comments:label_list' %}" class="btn btn-secondary">
+            <i class="fas fa-times me-1"></i>{% trans "Cancel" %}
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('color').addEventListener('input', function() {
+  document.getElementById('color_text').value = this.value;
+});
+document.getElementById('color_text').addEventListener('input', function() {
+  if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) {
+    document.getElementById('color').value = this.value;
+  }
+});
+</script>
+{% endblock %}

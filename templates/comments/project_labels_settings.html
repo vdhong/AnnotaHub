@@ -1,0 +1,144 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Label Settings" %} - {{ project.name }} - AnnotaHub{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="mb-4">
+    <a href="{% url 'comments:project_detail' project.id %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>{% trans "Back to Project" %}
+    </a>
+  </div>
+
+  <h2><i class="fas fa-cog me-2"></i>{% blocktrans %}Label Settings for{% endblocktrans %} "{{ project.name }}"</h2>
+  <p class="text-muted">{% trans "Manage labels from your label list (project owner) to use in this project." %}</p>
+
+  <!-- {% if messages %}
+  <div class="mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %} -->
+
+  <div class="row">
+    <!-- Left: Currently active project labels -->
+    <div class="col-lg-7">
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h6 class="mb-0">{% blocktrans count count=project_labels|length %}Active Label in Project ({{ count }}){% plural %}Active Labels in Project ({{ count }}){% endblocktrans %}</h6>
+        </div>
+        <div class="card-body">
+          {% if project_labels %}
+          <div class="list-group">
+            {% for pl in project_labels %}
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <span class="badge me-2" style="background-color: {{ pl.display_color }};">&nbsp;</span>
+                  <strong>{{ pl.display_name }}</strong>
+                  <small class="text-muted ms-2">{% trans "created by" %} {{ pl.label.owner.username }}</small>
+                </div>
+                <form method="POST" action="{% url 'comments:project_labels_settings' project.id %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="remove_label">
+                  <input type="hidden" name="project_label_id" value="{{ pl.id }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                          onclick="return confirm('{% trans "Remove label from this project?" %}')">
+                    <i class="fas fa-times"></i> {% trans "Remove from Project" %}
+                  </button>
+                </form>
+              </div>
+              {% if pl.display_description %}
+              <small class="text-muted">{{ pl.display_description }}</small>
+              {% endif %}
+              <div class="mt-1">
+                <small class="text-muted">
+                  {% blocktrans count token_count=pl.token_usage %}Used in {{ token_count }} token{% plural %}Used in {{ token_count }} tokens{% endblocktrans %},
+                  {% blocktrans count comment_count=pl.comment_usage %}{{ comment_count }} comment{% plural %}{{ comment_count }} comments{% endblocktrans %}
+                </small>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted text-center py-3">{% trans "No labels added to this project yet." %}</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Available labels owned by project owner to add -->
+    <div class="col-lg-5">
+      <div class="card mb-4">
+        <div class="card-header">
+          <h6 class="mb-0">{% blocktrans count count=available_labels|length %}Your Available Label ({{ count }}){% plural %}Your Available Labels ({{ count }}){% endblocktrans %}</h6>
+        </div>
+        <div class="card-body">
+          {% if available_labels %}
+          <div class="list-group">
+            {% for label in available_labels %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <span class="badge me-2" style="background-color: {{ label.color }};">&nbsp;</span>
+                <strong>{{ label.name }}</strong>
+                <br><small class="text-muted">{{ label.description|default:"—" }}</small>
+              </div>
+              <form method="POST" action="{% url 'comments:project_labels_settings' project.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_label">
+                <input type="hidden" name="label_id" value="{{ label.id }}">
+                <button type="submit" class="btn btn-sm btn-outline-success">
+                  <i class="fas fa-plus"></i> {% trans "Add" %}
+                </button>
+              </form>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-muted text-center py-3">
+            {% trans "All labels added or no labels available." %}
+            <br><a href="{% url 'comments:label_create' %}">{% trans "Create new label" %}</a>
+          </p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Custom label form -->
+      <div class="card">
+        <div class="card-header">
+          <h6 class="mb-0">{% trans "Add New Label & Attach to Project" %}</h6>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{% url 'comments:project_labels_settings' project.id %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_custom_label">
+            <div class="mb-2">
+              <input type="text" class="form-control" name="custom_name"
+                     placeholder="{% trans "Label name..." %}" required maxlength="100">
+            </div>
+            <div class="mb-2">
+              <input type="text" class="form-control" name="custom_description"
+                     placeholder="{% trans "Description..." %}" maxlength="500">
+            </div>
+            <div class="mb-2">
+              <input type="color" class="form-control form-control-color" name="custom_color"
+                     value="#FF0000" id="customColor">
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary w-100">
+              <i class="fas fa-plus me-1"></i>{% trans "Create label and add to project" %}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="alert alert-info mt-3">
+    <i class="fas fa-info-circle me-2"></i>
+    <strong>{% trans "Note" %}:</strong> {% blocktrans %}Only labels created by the project owner are shown. When project labels change, AI auto-annotation will use the new label list.{% endblocktrans %}
+  </div>
+</div>
+{% endblock %}
