@@ -4,7 +4,7 @@ set -e
 
 # Wait for database to be ready
 echo "Waiting for database to be ready..."
-while ! pg_isready -h db -U toxyspan_user -d toxyspan 2>/dev/null; do
+while ! pg_isready -h db -U annotahub_user -d annotahub 2>/dev/null; do
   sleep 1
 done
 echo "Database is ready!"

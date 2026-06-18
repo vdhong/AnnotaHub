@@ -86,9 +86,9 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'toxyspan'),
-            'USER': os.environ.get('POSTGRES_USER', 'toxyspan_user'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'toxyspan_password'),
+            'NAME': os.environ.get('POSTGRES_DB', 'annotahub'),
+            'USER': os.environ.get('POSTGRES_USER', 'annotahub_user'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'annotahub_password'),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
         }

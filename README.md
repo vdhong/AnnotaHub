@@ -1,6 +1,10 @@
 # AnnotaHub: Vietnamese YouTube Comment Annotation Platform
 
-An open-source platform for automatically collecting Vietnamese YouTube comments and annotating toxic text spans at both sentence-level and token-level.
+An open-source platform for automatically collecting Vietnamese YouTube comments and annotating label text spans at both sentence-level and token-level. 
+
+##Online demo
+
+Click here to try [online demo here](https://annotahub.duthu.net/).
 
 ## 🎯 Objectives
 
@@ -66,8 +70,8 @@ An open-source platform for automatically collecting Vietnamese YouTube comments
 ### 1. Clone the repository
 
 ```bash
-git clone https://gitlab.com/vdhong2008/toxicspan.git
-cd ToxiSpan
+git clone https://github.com/vdhong/AnnotaHub.git
+cd AnnotaHub
 ```
 
 ### 2. Copy and configure environment variables
@@ -330,7 +334,7 @@ Backup files are stored in the `backups/` directory.
 ## 📁 Project Structure
 
 ```
-ToxiSpan/
+AnnotaHub/
 ├── docker-compose.yml              # Docker services configuration
 ├── Dockerfile                      # Python application image
 ├── entrypoint.sh                   # Container entrypoint script
@@ -508,8 +512,8 @@ MIT License
 
 ## 👥 Contributing
 
-Contributions are welcome! Please open an issue or pull request on [GitLab](https://gitlab.com/vdhong2008/toxicspan).
+Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/vdhong/AnnotaHub.git).
 
 ## 📧 Contact
 
-For questions, please open an issue on [GitLab](https://gitlab.com/vdhong2008/toxicspan).
+For questions, please open an issue on [GitHub](https://github.com/vdhong/AnnotaHub.git).

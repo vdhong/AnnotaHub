@@ -443,10 +443,24 @@ def annotate_comments_task(self, youtube_link_id: str):
 
         # Gather labels_info from project's ProjectLabel entries
         labels_info = _gather_labels_info(youtube_link)
-
+        if not labels_info:
+            task_progress.status = 'failed'
+            task_progress.error_message = "Chưa thiết lập nhãn cho dự án hiện tại."
+            task_progress.completed_at = timezone.now()
+            task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
+            youtube_link.status = 'pending'
+            youtube_link.save(update_fields=['status', 'updated_at'])
+            return {'status': 'success', 'annotated': 0}
         # Get owner's Ollama config (falls back to global settings if not set)
         owner_ollama_base_url, owner_ollama_api_key, owner_ollama_model = _get_owner_ollama_config(youtube_link.project)
-
+        if not owner_ollama_base_url or not owner_ollama_api_key or not owner_ollama_model:
+            task_progress.status = 'failed'
+            task_progress.error_message = "Chưa thiết lập API KEY, OLLAMA URL và OLLAMA MODEL."
+            task_progress.completed_at = timezone.now()
+            task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
+            youtube_link.status = 'pending'
+            youtube_link.save(update_fields=['status', 'updated_at'])
+            return {'status': 'success', 'annotated': 0}
         annotated_count = 0
         processed_count = 0
 
@@ -614,74 +628,3 @@ def reannotate_all_comments(youtube_link_id: str):
     enqueue_annotation_task(youtube_link, 'Re-annotating all comments')
     logger.info(f"Re-annotation started for link {youtube_link_id}")
     return {'status': 'started', 'youtube_link_id': youtube_link_id}
-
-
-@shared_task
-def reannotate_comment(comment_id: str):
-    """Re-annotate a single comment (used for manual corrections)."""
-    try:
-        comment = Comment.objects.get(id=comment_id)
-    except Comment.DoesNotExist:
-        return {'status': 'error', 'message': 'Comment not found'}
-
-    # Delete existing tokens
-    comment.tokens.all().delete()
-
-    # Re-process with language detection and translation
-    original = comment.text
-    result = process_comment(original)
-
-    if result and result.get('annotation'):
-        annotation = result['annotation']
-        comment.annotation_source = 'auto'
-        comment.model_response = annotation
-        comment.annotated_at = timezone.now()
-        comment.is_meaningful = annotation.get('is_meaningful', True)
-        source_is_vietnamese = annotation.get('source_is_vietnamese', True)
-
-        original_source_text = comment.text
-        vietnamese_text = result.get('vietnamese_text', original)
-        original_text = result.get('original_text', '')
-        comment.text = vietnamese_text
-
-        if source_is_vietnamese is False:
-            comment.original_text = original_text or original_source_text
-        else:
-            comment.original_text = ''
-
-        if comment.is_meaningful is False:
-            comment.toxicity_label = None
-            comment.toxicity_confidence = None
-            comment.save(update_fields=[
-                'toxicity_label', 'toxicity_confidence',
-                'annotation_source', 'model_response', 'annotated_at',
-                'is_meaningful', 'text', 'original_text'
-            ])
-        else:
-            comment.toxicity_label = annotation.get('comment_label', 'non_toxic')
-            comment.toxicity_confidence = annotation.get('confidence', 0.5)
-            comment.save(update_fields=[
-                'toxicity_label', 'toxicity_confidence',
-                'annotation_source', 'model_response', 'annotated_at',
-                'is_meaningful', 'text', 'original_text'
-            ])
-
-            # Create tokens with ai_label
-            project = comment.youtube_link.project
-            token_annotations = create_token_annotations(vietnamese_text, annotation)
-            for token_data in token_annotations:
-                assigned_label_name = token_data.get('assigned_label')
-                token_ai_label = _find_project_label(project, assigned_label_name)
-                Token.objects.create(
-                    comment=comment,
-                    text=token_data['text'],
-                    position=token_data['position'],
-                    start_offset=token_data['start_offset'],
-                    end_offset=token_data['end_offset'],
-                    ai_label=token_ai_label,
-                    toxicity_score=token_data.get('toxicity_score'),
-                    annotated_at=timezone.now(),
-                    annotation_source='auto'
-                )
-
-    return {'status': 'success', 'comment_id': comment_id}

@@ -43,11 +43,9 @@ def _get_comments(project, youtube_link, filter_toxicity):
             'manual_label__label',
         )
 
-    if filter_toxicity == 'toxic':
-        comments = comments.filter(toxicity_label='toxic')
-    elif filter_toxicity == 'non_toxic':
-        comments = comments.filter(toxicity_label='non_toxic')
-
+    if filter_toxicity:
+        comments = comments.filter(toxicity_label=filter_toxicity)
+    
     return comments
 
 

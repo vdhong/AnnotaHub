@@ -237,117 +237,104 @@ def _build_annotation_prompt(labels_info=None):
         # Legacy toxic/non-toxic mode
         return ANNOTATION_SYSTEM_PROMPT1
 
-# System prompt for translation to Vietnamese
-TRANSLATION_SYSTEM_PROMPT = """Bạn là một dịch giả chuyên nghiệp. Nhiệm vụ của bạn là dịch văn bản từ ngôn ngữ khác sang tiếng Việt.
-Giữ nguyên ý nghĩa và sắc thái của câu gốc. Chỉ trả lại câu đã dịch, không thêm giải thích.
-"""
-
-# System prompt for language detection
-LANGUAGE_DETECTION_PROMPT = """Phân tích ngôn ngữ của câu sau. Trả về CHỈ một trong các giá trị: "vietnamese" hoặc "other".
-Không trả bất kỳ văn bản nào khác.
-
-Câu: "{text}"
-"""
-
-
-def _make_request(prompt: str, system: str = None, max_retries: int = 3, timeout: int = 120,
-                  base_url: str = None, api_key: str = None, model: str = None) -> Optional[str]:
-    """Make a request to the Ollama API with retry logic."""
-    resolved_url, resolved_key, resolved_model = _resolve_ollama_config(base_url, api_key, model)
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {resolved_key}',
-    }
-
-    payload = {
-        'model': resolved_model,
-        'prompt': prompt,
-        'stream': False,
-        'options': {
-            'temperature': 0.7,
-            'num_predict': 2048,
-        }
-    }
-
-    if system:
-        payload['system'] = system
-
-    url = f"{resolved_url.rstrip('/')}/api/generate"
-
-    for attempt in range(max_retries):
-        try:
-            with httpx.Client(timeout=timeout) as client:
-                response = client.post(url, json=payload, headers=headers)
-                response.raise_for_status()
-                result = response.json()
-                return result.get('response', '')
-        except httpx.TimeoutException:
-            logger.warning(f"Request timeout (attempt {attempt + 1}/{max_retries})")
-            time.sleep(2 ** attempt)
-        except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error (attempt {attempt + 1}/{max_retries}): {e}")
-            if e.response.status_code >= 500:
-                time.sleep(2 ** attempt)
-            else:
-                return None
-        except Exception as e:
-            logger.error(f"Request error (attempt {attempt + 1}/{max_retries}): {e}")
-            time.sleep(2 ** attempt)
-
-    return None
-
 def _make_chat_request(prompt: str, system: str, max_retries: int = 3, timeout: int = 120,
                        base_url: str = None, api_key: str = None, model: str = None) -> Optional[str]:
-    """Make a request to the Ollama API with retry logic."""
+    """
+    Thực thi API gọi LLM.
+    - Bổ sung: Nếu 429 là do hết quota (insufficient_quota) -> Thoát ngay.
+    - Nếu 429 do rate limit tốc độ -> Chờ và lặp vô hạn.
+    - Lỗi 5xx/Timeout -> Thử lại theo max_retries.
+    """
     resolved_url, resolved_key, resolved_model = _resolve_ollama_config(base_url, api_key, model)
+    
     headers = {
         'Content-Type': 'application/json',
-        'Authorization': f'Bearer {resolved_key}',
+        'Authorization': f'Bearer {resolved_key}' if resolved_key else 'Bearer ollama',
     }
 
-    messages = [{
-        'role': 'system',
-        'content': system
-    },{
-        'role': 'user',
-        'content': prompt
-    }, 
-    {"role": "assistant", "content": "<think>\n\n</think>\n\n"}]
     payload = {
         'model': resolved_model,
-        'messages': messages,
+        'messages': [
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': prompt}, 
+            {"role": "assistant", "content": "<think>\n\n</think>\n\n"}
+        ],
         'stream': False,
-        'options': {
-            'temperature': 0.7,
-            'num_predict': 2048,
-        }
+        'temperature': 0.7,
+        'max_tokens': 2048, 
     }
+    
+    base = resolved_url.rstrip('/')
+    url = base if base.endswith('/v1/chat/completions') else (
+        f"{base}/chat/completions" if base.endswith('/v1') else f"{base}/v1/chat/completions"
+    )
 
-    url = f"{resolved_url.rstrip('/')}/api/chat"
+    attempt_for_network_errors = 0
 
-    for attempt in range(max_retries):
+    while True:
         try:
             with httpx.Client(timeout=timeout) as client:
                 response = client.post(url, json=payload, headers=headers)
+                
+                # 1. XỬ LÝ LỖI 429 (Rate Limit hoặc Quota)
+                if response.status_code == 429:
+                    error_content = response.text
+                    
+                    # Kiểm tra chuỗi insufficient_quota để chặn vòng lặp vô hạn
+                    if "insufficient_quota" in error_content:
+                        raise Exception(f"Tài khoản hết quota/credits. Dừng tiến trình! Chi tiết: {error_content}")
+                        
+                    # Nếu không phải hết quota, xử lý như Rate Limit bình thường
+                    retry_after = response.headers.get('Retry-After')
+                    wait_time = int(retry_after) + 1 if retry_after and retry_after.isdigit() else 5
+                    
+                    logger.warning(f"Bị Rate Limit tốc độ. Tạm dừng {wait_time}s... Chi tiết: {error_content}")
+                    time.sleep(wait_time)
+                    continue 
+
+                # 2. XỬ LÝ CÁC LUỒNG CÒN LẠI
                 response.raise_for_status()
                 result = response.json()
-                message_obj = result.get('message', {})
-                ai_text = message_obj.get('content', '')
-                return ai_text
+                
+                choices = result.get('choices', [])
+                if choices and len(choices) > 0:
+                    return choices[0].get('message', {}).get('content', '')
+                else:
+                    logger.error(f"Cấu trúc response từ API bị sai: {result}")
+                    raise Exception("Cấu trúc response từ API bị sai")
+                    
         except httpx.TimeoutException:
-            logger.warning(f"Request timeout (attempt {attempt + 1}/{max_retries})")
-            time.sleep(2 ** attempt)
+            attempt_for_network_errors += 1
+            if attempt_for_network_errors > max_retries:
+                raise Exception(f"Hết thời gian chờ mạng sau {max_retries} lần thử.")
+                
+            logger.warning(f"Mạng bị Timeout. Đang thử lại ({attempt_for_network_errors}/{max_retries})...")
+            time.sleep(2 ** attempt_for_network_errors)
+            
         except httpx.HTTPStatusError as e:
-            logger.error(f"HTTP error (attempt {attempt + 1}/{max_retries}): {e}")
-            if e.response.status_code >= 500:
-                time.sleep(2 ** attempt)
+            status = e.response.status_code
+            error_content = e.response.text
+            
+            # Một số nhà cung cấp API dùng mã 400, 402 hoặc 403 thay vì 429 cho việc hết quota
+            if "insufficient_quota" in error_content:
+                 raise Exception(f"Tài khoản hết quota (Mã HTTP {status}). Dừng tiến trình! Chi tiết: {error_content}")
+            
+            logger.error(f"Lỗi HTTP {status}: {error_content}")
+            
+            if status >= 500: 
+                attempt_for_network_errors += 1
+                if attempt_for_network_errors > max_retries:
+                    raise Exception(error_content)
+                time.sleep(2 ** attempt_for_network_errors)
             else:
-                return None
+                raise Exception(error_content)
+                
         except Exception as e:
-            logger.error(f"Request error (attempt {attempt + 1}/{max_retries}): {e}")
-            time.sleep(2 ** attempt)
-
-    return None
+            attempt_for_network_errors += 1
+            if attempt_for_network_errors > max_retries:
+                raise e
+            logger.error(f"Lỗi hệ thống bất ngờ: {e}")
+            time.sleep(2 ** attempt_for_network_errors)
 
 def _parse_json_response(response_text: str) -> Optional[Dict]:
     """Parse the JSON response from Ollama."""
@@ -381,7 +368,6 @@ def _parse_json_response(response_text: str) -> Optional[Dict]:
     logger.error(f"Failed to parse response: {response_text[:200]}")
     return None
 
-
 def _coerce_bool(value, default=False) -> bool:
     if isinstance(value, bool):
         return value
@@ -396,38 +382,6 @@ def _coerce_bool(value, default=False) -> bool:
         if normalized in ('false', '0', 'no', 'n', 'off'):
             return False
     return default
-
-
-def detect_language(text: str) -> str:
-    """
-    Detect if text is Vietnamese or another language.
-    Returns 'vietnamese' or 'other'.
-    """
-    if not text or not text.strip():
-        return 'vietnamese'
-
-    # Quick heuristic check for Vietnamese characters
-    vietnamese_chars = set('àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíỊịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ')
-    text_chars = set(text.lower())
-    vietnamese_match = text_chars.intersection(vietnamese_chars)
-
-    # If significant Vietnamese characters present, likely Vietnamese
-    if len(vietnamese_match) > 2:
-        return 'vietnamese'
-
-    # If no Vietnamese chars but has latin, likely not Vietnamese
-    if not vietnamese_match and re.match(r'^[a-zA-Z\s\W]+$', text):
-        return 'other'
-
-    # Use AI for uncertain cases
-    prompt = LANGUAGE_DETECTION_PROMPT.format(text=text[:500])
-    response = _make_request(prompt)
-    if response:
-        result = response.strip().lower()
-        if 'vietnamese' in result:
-            return 'vietnamese'
-    return 'other'
-
 
 def annotate_comment(text: str, labels_info=None, ollama_base_url=None, ollama_api_key=None, ollama_model=None) -> Optional[Dict]:
     """
@@ -570,70 +524,6 @@ def process_comment(comment_text: str, labels_info=None,
         'was_translated': not source_is_vietnamese,
         'is_meaningful': is_meaningful,
     }
-
-
-def annotate_batch(comments: List[Dict], batch_size: int = 5,
-                   on_progress: callable = None, labels_info=None) -> List[Dict]:
-    """
-    Annotate a batch of comments.
-
-    Args:
-        comments: List of dicts with 'id', 'text' keys
-        batch_size: Number of comments to process together
-        on_progress: Callback(progress_percent, current_step, total, processed)
-        labels_info: Optional list of label dicts for custom label mode
-
-    Returns:
-        List of annotation results
-    """
-    results = []
-    total = len(comments)
-    processed = 0
-
-    for i, comment in enumerate(comments):
-        text = comment.get('text', '')
-        comment_id = comment.get('id', i)
-
-        result = process_comment(text, labels_info=labels_info)
-
-        if result and result.get('annotation'):
-            results.append({
-                'comment_id': comment_id,
-                'annotation': result['annotation'],
-                'vietnamese_text': result.get('vietnamese_text', text),
-                'original_text': result.get('original_text', ''),
-                'was_translated': result.get('was_translated', False)
-            })
-        else:
-            # Fallback: mark as non-toxic if annotation fails
-            results.append({
-                'comment_id': comment_id,
-                'annotation': {
-                    'comment_label': 'non_toxic',
-                    'confidence': 0.0,
-                    'token_labels': []
-                },
-                'vietnamese_text': text,
-                'original_text': '',
-                'was_translated': False
-            })
-
-        processed += 1
-
-        if on_progress:
-            progress = int((processed / total) * 100)
-            on_progress(
-                progress,
-                f"Annotating comment {processed}/{total}",
-                total,
-                processed
-            )
-
-        # Small delay to respect API rate limits
-        time.sleep(0.5)
-
-    return results
-
 
 def tokenize_text(text: str) -> List[Dict]:
     """
