@@ -15,7 +15,7 @@ if [ -f "$BACKUP_FILE" ]; then
     python manage.py db_command restore "$BACKUP_FILE"
     python manage.py migrate --noinput || true
     exit 0
-if
+fi
 # Run Django migrations (ignore errors if tables already exist)
 echo "Running Django migrations..."
 python manage.py migrate --noinput || true
