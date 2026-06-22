@@ -13,6 +13,7 @@ if [ -f "$BACKUP_FILE" ]; then
     echo "Found backup file: $BACKUP_FILE"
     echo "Restoring from backup..."
     python manage.py db_command restore "$BACKUP_FILE"
+    python manage.py migrate --noinput || true
     exit 0
 if
 # Run Django migrations (ignore errors if tables already exist)
