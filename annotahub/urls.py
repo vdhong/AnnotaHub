@@ -19,4 +19,9 @@ urlpatterns = [
     path('', comment_views.dashboard, name='dashboard'),
     # Web views for comments app
     path('', include('comments.urls')),
-) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+) 
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    for dirlink in settings.STATICFILES_DIRS:
+        print(settings.STATIC_URL, 'add dir', dirlink)
+        urlpatterns += static(settings.STATIC_URL, document_root=dirlink)

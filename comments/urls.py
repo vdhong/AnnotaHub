@@ -48,18 +48,6 @@ web_urls = [
     path('links/<uuid:link_id>/stop-annotate/', views.stop_annotation_task, name='stop_annotation_task'),
     path('links/<uuid:link_id>/continue-annotate/', views.continue_annotation, name='continue_annotation'),
 
-    # Comment views (legacy)
-    path('comments/<uuid:comment_id>/toggle-token/<int:token_position>/',
-         views.toggle_token_toxicity, name='toggle_token_toxicity'),
-    path('comments/<uuid:comment_id>/manual-label/',
-         views.manual_label_comment, name='manual_label_comment'),
-
-    # Multi-label token/comment actions
-    path('comments/<uuid:comment_id>/set-token-labels/<int:token_position>/',
-         views.set_token_labels, name='set_token_labels'),
-    path('comments/<uuid:comment_id>/set-comment-labels/',
-         views.set_comment_labels, name='set_comment_labels'),
-
     # SSE for real-time progress
     path('sse/progress/<uuid:link_id>/', views.progress_event_stream, name='progress_event_stream'),
 ]

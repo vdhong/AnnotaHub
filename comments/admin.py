@@ -93,9 +93,9 @@ class TokenInline(admin.TabularInline):
 
 
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('author', 'text_preview', 'toxicity_label', 'annotation_source',
+    list_display = ('author', 'text_preview', 'annotation_source',
                     'effective_label_display', 'ai_label_display', 'manual_label_display', 'fetched_at')
-    list_filter = ('toxicity_label', 'annotation_source')
+    list_filter = ('annotation_source', 'ai_label')
     search_fields = ('text', 'author')
     readonly_fields = ('youtube_comment_id', 'text', 'author', 'fetched_at',
                        'effective_label_display', 'ai_label_display', 'manual_label_display')

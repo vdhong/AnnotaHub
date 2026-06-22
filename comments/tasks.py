@@ -213,7 +213,7 @@ def _derive_link_status(youtube_link: YouTubeLink) -> str:
     """Compute a stable link status from the data currently stored."""
     if not youtube_link.comments.exists():
         return 'pending'
-    if youtube_link.comments.filter(toxicity_label__isnull=True).exclude(is_meaningful=False).exists():
+    if youtube_link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).exists():
         return 'completed'
     return 'annotated'
 
@@ -406,7 +406,7 @@ def annotate_comments_task(self, youtube_link_id: str):
     logger.info(f"Starting annotation for video {youtube_link.video_id}")
 
     # Get unannotated comments
-    comments = youtube_link.comments.filter(toxicity_label__isnull=True).exclude(is_meaningful=False)
+    comments = youtube_link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False)
     total_comments = comments.count()
 
     if total_comments == 0:

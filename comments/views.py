@@ -31,7 +31,7 @@ from .services.email_verification_service import send_verification_email
 from django.contrib.auth import login as auth_login, logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
 from .export_service import generate_export
-
+from .api_views import count_label
 logger = logging.getLogger(__name__)
 
 
@@ -712,7 +712,7 @@ def set_comment_labels(request, comment_id):
     comment.annotated_at = timezone.now()
     comment.is_meaningful = True
     comment.save(update_fields=[
-        'manual_label', 'toxicity_label', 'annotation_source', 'annotated_at', 'is_meaningful'
+        'manual_label', 'annotation_source', 'annotated_at', 'is_meaningful'
     ])
 
     return JsonResponse({
@@ -762,7 +762,7 @@ def dashboard(request):
     projects = Project.objects.all().annotate(
         link_count=Count('youtubelinks', distinct=True),
         comment_count=Count('youtubelinks__comments', distinct=True),
-        annotated_count=Count('youtubelinks__comments', filter=Q(youtubelinks__comments__toxicity_label__isnull=False), distinct=True),
+        annotated_count=Count('youtubelinks__comments', filter=Q(youtubelinks__comments__ai_label__isnull=False), distinct=True),
     )
     return render(request, 'comments/dashboard.html', {'projects': projects})
 
@@ -1171,9 +1171,9 @@ def link_detail(request, link_id):
 
     # Dynamic filtering: support both legacy filters and project label filters
     if filter_status == 'annotated':
-        comments_query = comments_query.filter(toxicity_label__isnull=False)
+        comments_query = comments_query.filter(Q(ai_label__isnull=False)|Q(manual_label__isnull=False))
     elif filter_status == 'unannotated':
-        comments_query = comments_query.filter(toxicity_label__isnull=True).exclude(is_meaningful=False)
+        comments_query = comments_query.filter(Q(ai_label__isnull=True)&Q(manual_label__isnull=True)).exclude(is_meaningful=False)
     elif filter_status.startswith('label_'):
         # Filter by project label ID (effective label: manual_label > ai_label)
         label_id = filter_status.replace('label_', '', 1)
@@ -1200,25 +1200,24 @@ def link_detail(request, link_id):
     ).exists()
 
     # Count unannotated comments (for "Continue annotation" button)
-    unannotated_count = link.comments.filter(toxicity_label__isnull=True).exclude(is_meaningful=False).count()
+    unannotated_count = link.comments.filter(Q(ai_label__isnull=True)&Q(manual_label__isnull=True)).exclude(is_meaningful=False).count()
 
     # Statistics - dynamic counts per project label
     total_comments = link.comments.count()
-    annotated_comments = link.comments.filter(toxicity_label__isnull=False).count()
-    toxic_comments = link.comments.filter(toxicity_label='toxic').count()
-
+    annotated_comments = link.comments.filter(Q(ai_label__isnull=False)|Q(manual_label__isnull=False)).count()
+    
     # Compute per-label statistics (count comments whose effective label matches)
-    label_stats = []
-    for pl in project_labels:
-        labeled_count = link.comments.filter(
-            Q(manual_label_id=pl.id) | Q(ai_label_id=pl.id)
-        ).distinct().count()
-        label_stats.append({
-            'id': str(pl.id),
-            'name': pl.display_name,
-            'color': pl.display_color,
-            'count': labeled_count,
-        })
+    label_stats = count_label(project_labels, link)
+    # for pl in project_labels:
+    #     labeled_count = link.comments.filter(
+    #         Q(manual_label_id=pl.id) | Q(ai_label_id=pl.id)
+    #     ).distinct().count()
+    #     label_stats.append({
+    #         'id': str(pl.id),
+    #         'name': pl.display_name,
+    #         'color': pl.display_color,
+    #         'count': labeled_count,
+    #     })
 
     # Project labels data for JavaScript
     project_labels_data = [{
@@ -1245,7 +1244,6 @@ def link_detail(request, link_id):
         'pages': range(1, ((total + per_page - 1) // per_page) + 1),
         'total_comments': total_comments,
         'annotated_comments': annotated_comments,
-        'toxic_comments': toxic_comments,
         'filter_status': filter_status,
         'latest_fetch_progress': latest_fetch,
         'latest_annotate_progress': latest_annotate,
@@ -1294,7 +1292,7 @@ def reannotate_link(request, link_id):
     cancel_tasks_for_link_now(str(link.id))
 
     link.comments.update(
-        toxicity_label=None,
+        #toxicity_label=None,
         toxicity_confidence=None,
         annotation_source=None,
         model_response=None,
@@ -1380,7 +1378,7 @@ def continue_annotation(request, link_id):
     link = get_object_or_404(YouTubeLink, id=link_id)
 
     # Check if there are unannotated comments
-    unannotated = link.comments.filter(toxicity_label__isnull=True).exclude(is_meaningful=False).count()
+    unannotated = link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).count()
     if unannotated == 0:
         messages.info(request, 'No unannotated comments found.')
         return redirect('comments:link_detail', link_id=link.id)
@@ -1395,86 +1393,6 @@ def continue_annotation(request, link_id):
     enqueue_annotation_task(link, 'Continuing annotation')
     messages.success(request, f'Continuing annotation for {unannotated} unannotated comments.')
     return redirect('comments:link_detail', link_id=link.id)
-
-
-@login_required
-@require_POST
-def toggle_token_toxicity(request, comment_id, token_position):
-    """
-    Toggle token label between toxic-like and O (neutral).
-    Sets manual_label on the token (overrides ai_label for display).
-    """
-    comment = get_object_or_404(Comment, id=comment_id)
-    token = comment.get_or_create_token_for_position(token_position)
-    if token is None:
-        return JsonResponse({'success': False, 'error': 'Token not found'}, status=404)
-
-    project = comment.youtube_link.project
-
-    # Determine current effective state
-    currently_toxic = token.is_toxic
-
-    if currently_toxic:
-        # Toggle OFF: set manual_label to 'O' / neutral label
-        o_label = None
-        for pl in ProjectLabel.objects.filter(project=project).select_related('label'):
-            if pl.label.name.upper() == 'O' or pl.label.name.lower() == 'non_toxic':
-                o_label = pl
-                break
-        token.manual_label = o_label  # Could be None if no O label exists
-    else:
-        # Toggle ON: set manual_label to toxic-like label
-        toxic_label = None
-        for pl in ProjectLabel.objects.filter(project=project).select_related('label'):
-            if pl.label.name.lower() in ('toxic', 'offensive', 'abusive', 'hate'):
-                toxic_label = pl
-                break
-        token.manual_label = toxic_label
-
-    token.annotation_source = 'manual'
-    token.save(update_fields=['manual_label', 'annotation_source'])
-
-    # Update comment
-    comment.update_comment_label()
-    comment.is_meaningful = True
-    comment.annotated_at = timezone.now()
-    if comment.annotation_source == 'auto':
-        comment.annotation_source = 'mixed'
-    elif comment.annotation_source is None:
-        comment.annotation_source = 'manual'
-    comment.save(update_fields=['annotation_source', 'annotated_at', 'is_meaningful'])
-
-    return JsonResponse({
-        'success': True,
-        'token_text': token.text,
-        'is_toxic': token.is_toxic,
-        'comment_label': comment.toxicity_label,
-        'effective_label': token.effective_label_data,
-        'ai_label': token.ai_label_data,
-        'manual_label': token.manual_label_data,
-    })
-
-
-@login_required
-@require_POST
-def manual_label_comment(request, comment_id):
-    """Manually set the toxicity label for a comment."""
-    comment = get_object_or_404(Comment, id=comment_id)
-    label = request.POST.get('label', '')
-
-    if label in ('toxic', 'non_toxic'):
-        comment.toxicity_label = label
-        comment.annotation_source = 'manual'
-        comment.annotated_at = timezone.now()
-        comment.is_meaningful = True
-        comment.save(update_fields=['toxicity_label', 'annotation_source', 'annotated_at', 'is_meaningful'])
-
-        return JsonResponse({
-            'success': True,
-            'label': comment.toxicity_label,
-        })
-
-    return JsonResponse({'success': False, 'error': 'Invalid label'}, status=400)
 
 
 def progress_event_stream(request, link_id):

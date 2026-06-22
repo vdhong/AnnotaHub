@@ -530,7 +530,7 @@ def tokenize_text(text: str) -> List[Dict]:
     Simple text tokenizer that preserves character positions.
     Returns list of {text, start, end} for each token.
     """
-    tokens = []
+    raw_tokens = []
     # Match URLs, words, numbers, punctuation and emoji/symbols as separate tokens.
     pattern = (
         r'https?://\S+|www\.\S+'
@@ -539,11 +539,26 @@ def tokenize_text(text: str) -> List[Dict]:
         r'|[^\w\s]'
     )
     for match in re.finditer(pattern, text):
-        tokens.append({
+        raw_tokens.append({
             'text': match.group(0),
             'start': match.start(),
             'end': match.end()
         })
+
+    tokens = []
+    for token in raw_tokens:
+        if tokens:
+            previous = tokens[-1]
+            consecutive = previous['end'] == token['start']
+            previous_is_symbol = bool(re.fullmatch(r'[^\w\s]+', previous['text'], flags=re.UNICODE))
+            current_is_symbol = bool(re.fullmatch(r'[^\w\s]+', token['text'], flags=re.UNICODE))
+            if consecutive and previous_is_symbol and current_is_symbol:
+                previous['text'] += token['text']
+                previous['end'] = token['end']
+                continue
+
+        tokens.append(token)
+
     return tokens
 
 

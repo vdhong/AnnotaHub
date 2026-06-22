@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: annotahub_db
     environment:
       POSTGRES_DB: annotahub
@@ -32,7 +32,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: annotahub_web
-    command: python manage.py runserver 0.0.0.0:8000
+    command: >
+      bash -c "
+      apt-get update && apt-get install -y --no-install-recommends postgresql-client &&
+      python manage.py runserver 0.0.0.0:8000
+      "
     volumes:
       - .:/app
       - ./media:/app/media

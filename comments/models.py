@@ -473,16 +473,6 @@ class Comment(models.Model):
         help_text='Label assigned by user (overrides AI label for display)'
     )
 
-    # Legacy fields (kept for backward compatibility during migration)
-    toxicity_label = models.CharField(
-        max_length=20,
-        choices=(
-            ('toxic', 'Toxic'),
-            ('non_toxic', 'Non-Toxic'),
-        ),
-        null=True, blank=True,
-        help_text='Overall comment toxicity label (legacy)'
-    )
     toxicity_confidence = models.FloatField(
         null=True, blank=True,
         help_text='Confidence score from the model (0.0 - 1.0)'
@@ -509,7 +499,7 @@ class Comment(models.Model):
     class Meta:
         ordering = ['-fetched_at']
         indexes = [
-            models.Index(fields=['youtube_link', 'toxicity_label']),
+            models.Index(fields=['youtube_link', 'ai_label']),
             models.Index(fields=['youtube_link', 'youtube_comment_id']),
         ]
         unique_together = ('youtube_link', 'youtube_comment_id')
@@ -525,7 +515,15 @@ class Comment(models.Model):
         Priority: manual_label > ai_label
         """
         return self.manual_label or self.ai_label
-
+    @property
+    def labeled(self):
+        if self.effective_label:
+            return self.effective_label
+    @property
+    def toxicity_label(self):
+        if self.effective_label:
+            return self.effective_label.display_name
+        return 'O'
     @property
     def is_annotated(self):
         return self.effective_label is not None
@@ -534,17 +532,15 @@ class Comment(models.Model):
     def is_toxic(self):
         """Backward compat: check if effective label name contains 'toxic'."""
         if self.effective_label:
-            return self.effective_label.label.name.lower() in ('toxic', 'offensive', 'abusive', 'hate')
+            return self.effective_label.display_name
         return False
 
     @property
     def is_non_toxic(self):
         """Backward compat: check if effective label is neutral/O."""
         eff = self.effective_label
-        if eff:
-            return eff.label.name.upper() == 'O' or eff.label.name.lower() == 'non_toxic'
-        return False
-
+        return not eff or eff.label.name.upper() == 'O'
+        
     @property
     def was_translated(self):
         """True if the comment was likely translated from Vietnamese."""
@@ -685,14 +681,14 @@ class Comment(models.Model):
 
     def update_comment_label(self):
         """Update legacy toxicity_label based on token annotations (backward compat)."""
-        eff = self.effective_label
-        if eff and eff.label.name.upper() != 'O':
-            self.toxicity_label = 'toxic'
-        elif self.tokens.exists():
-            self.toxicity_label = 'non_toxic'
-        if self.tokens.exists():
-            self.is_meaningful = True
-        self.save(update_fields=['toxicity_label', 'is_meaningful', 'updated_at'])
+        # eff = self.effective_label
+        # if eff and eff.label.name.upper() != 'O':
+        #     self.toxicity_label = 'toxic'
+        # elif self.tokens.exists():
+        #     self.toxicity_label = 'non_toxic'
+        # if self.tokens.exists():
+        #     self.is_meaningful = True
+        # self.save(update_fields=['toxicity_label', 'is_meaningful', 'updated_at'])
 
 
 class Token(models.Model):
@@ -759,6 +755,16 @@ class Token(models.Model):
         return self.manual_label or self.ai_label
 
     @property
+    def labeled(self):
+        if self.effective_label:
+            return self.effective_label
+    @property
+    def toxicity_label(self):
+        if self.effective_label:
+            return self.effective_label.display_name
+        return 'O'
+
+    @property
     def effective_label_data(self):
         """Return dict with label info for the effective (display) label."""
         pl = self.effective_label
@@ -796,7 +802,7 @@ class Token(models.Model):
     def is_toxic(self):
         """Backward compat: check if effective label is toxic-like."""
         if self.effective_label:
-            return self.effective_label.label.name.lower() in ('toxic', 'offensive', 'abusive', 'hate')
+            return self.effective_label is not None
         return False
 
     @is_toxic.setter
@@ -807,7 +813,7 @@ class Token(models.Model):
 
     def _get_is_toxic(self):
         if self.effective_label:
-            return self.effective_label.label.name.lower() in ('toxic', 'offensive', 'abusive', 'hate')
+            return self.effective_label is not None
         return False
 
 

@@ -169,18 +169,50 @@ class LinkManageView(View):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
+def count_label(project_labels, link):
+    from collections import Counter
+    project_label_ids = [pl.id for pl in project_labels]
+    manual_rows = (
+        link.comments
+        .filter(manual_label_id__in=project_label_ids)
+        .values_list("id", "manual_label_id")
+    )
+    ai_rows = (
+        link.comments
+        .filter(ai_label_id__in=project_label_ids)
+        .values_list("id", "ai_label_id")
+    )
+    # UNION mặc định loại duplicate:
+    # (comment_id, label_id) trùng ở manual và ai chỉ còn 1 row.
+    rows = manual_rows.union(ai_rows)
+    counts = Counter(label_id for _, label_id in rows)
+    return [
+        {
+            "id": str(pl.id),
+            "name": pl.display_name,
+            "color": pl.display_color,
+            "count": counts.get(pl.id, 0),
+        }
+        for pl in project_labels
+    ]
+
 
 @method_decorator([require_http_methods(["GET"])], name='dispatch')
 class LinkStatusView(View):
     """Get status and progress for a YouTube link."""
     def get(self, request, link_id):
+        from django.db.models import Q
         link = get_object_or_404(YouTubeLink, id=link_id)
+        project = link.project
+        # Get project labels
+        project_labels = ProjectLabel.objects.filter(project=project).select_related('label')
         total_comments = link.comments.count()
-        annotated_comments = link.comments.filter(toxicity_label__isnull=False).count()
-        toxic_comments = link.comments.filter(toxicity_label='toxic').count()
-        unannotated_count = link.comments.filter(toxicity_label__isnull=True).exclude(is_meaningful=False).count()
+        unannotated_count = link.comments.filter(Q(ai_label__isnull=True)&Q(manual_label__isnull=True)).exclude(is_meaningful=False).count()
+        annotated_comments = link.comments.filter(Q(ai_label__isnull=False)|Q(manual_label__isnull=False)).count()
+        # Compute per-label statistics (count comments whose effective label matches)
+        label_stats = count_label(project_labels, link)
         skipped_count = link.comments.filter(is_meaningful=False).count()
-
+        #TODO: đếm theo label của project
         tasks_data = []
         for task in (
             get_effective_task_progress(str(link.id), 'fetching'),
@@ -206,8 +238,7 @@ class LinkStatusView(View):
             'comment_count': total_comments,
             'stats': {
                 'total_comments': total_comments,
-                'annotated_comments': annotated_comments,
-                'toxic_comments': toxic_comments,
+                'label_stats': label_stats,
                 'unannotated_count': unannotated_count,
                 'skipped_count': skipped_count,
             },
@@ -230,11 +261,11 @@ class LinkCommentsView(View):
             'ai_label', 'ai_label__label', 'manual_label', 'manual_label__label'
         )
         if filter_status == 'annotated':
-            comments_query = comments_query.filter(toxicity_label__isnull=False)
+            comments_query = comments_query.filter(ai_label__isnull=False)
         elif filter_status == 'unannotated':
-            comments_query = comments_query.filter(toxicity_label__isnull=True).exclude(is_meaningful=False)
-        elif filter_status == 'toxic':
-            comments_query = comments_query.filter(toxicity_label='toxic')
+            comments_query = comments_query.filter(ai_label__isnull=True).exclude(is_meaningful=False)
+        elif filter_status:
+            comments_query = comments_query.filter(ai_label__label__name=comments_query)
 
         total = comments_query.count()
         start = (page - 1) * per_page
@@ -433,7 +464,7 @@ class ContinueAnnotationView(View):
     """Continue annotation for unannotated comments (API)."""
     def post(self, request, link_id):
         link = get_object_or_404(YouTubeLink, id=link_id)
-        unannotated = link.comments.filter(toxicity_label__isnull=True).exclude(is_meaningful=False).count()
+        unannotated = link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).count()
         if unannotated == 0:
             return JsonResponse({
                 'success': False,

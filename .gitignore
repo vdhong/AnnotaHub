@@ -10,3 +10,5 @@ celerybeat-schedule
 *.pdf
 .ipynb_checkpoints/
 .DS_Store
+backups/*
+token_normalizer.py

@@ -145,7 +145,7 @@
 <!-- Stats -->
 <div class="row g-3 mb-4" id="statsContainer">
     <!-- Total Comments -->
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card stats-card bg-primary text-white">
             <div class="card-body text-center">
                 <h3 id="totalCommentsCount">{{ total_comments }}</h3>
@@ -154,7 +154,7 @@
         </div>
     </div>
     <!-- Annotated -->
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card stats-card bg-success text-white">
             <div class="card-body text-center">
                 <h3 id="annotatedCommentsCount">{{ annotated_comments }}</h3>
@@ -163,7 +163,7 @@
         </div>
     </div>
     <!-- Unannotated -->
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card stats-card bg-warning text-dark">
             <div class="card-body text-center">
                 <h3 id="unannotatedCommentsCount">{{ unannotated_count }}</h3>
@@ -187,7 +187,7 @@
 <!-- Comments List -->
 <div id="commentsContainer">
 {% for comment in comments %}
-    <div class="card comment-card mb-3 {% if comment.toxicity_label == 'toxic' %}label-toxic{% elif comment.toxicity_label == 'non_toxic' %}label-non_toxic{% elif comment.is_skipped %}label-meaningless{% else %}unlabeled{% endif %}"
+    <div class="card comment-card mb-3 {% if comment.labeled %}{% elif comment.is_skipped %} label-meaningless{% else %} unlabeled{% endif %}"
          id="comment-{{ comment.id }}">
         <div class="card-body">
             <div class="d-flex align-items-center gap-2 mb-2">
@@ -200,7 +200,7 @@
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <strong class="comment-author">{{ comment.author|default:"Anonymous" }}</strong>
                         {% if comment.toxicity_label %}
-                        <span id="commentLabel-{{ comment.id }}" class="badge {% if comment.toxicity_label == 'toxic' %}bg-danger{% else %}bg-success{% endif %}">
+                        <span id="commentLabel-{{ comment.id }}" class="badge" style="{% if comment.labeled %}background-color:{{comment.labeled.display_color}}{% endif %}">
                             {{ comment.get_toxicity_label_display }}
                         </span>
                         {% elif comment.is_skipped %}
@@ -546,7 +546,7 @@ async function applyCommentLabel(commentId, labelId, labelName, labelColor) {
                 if (labelId) {
                     const buttons = container.querySelectorAll('.comment-label-btn');
                     buttons.forEach(function(btn) {
-                        if (btn.textContent.trim().includes(labelName)) {
+                        if (btn.textContent.trim() === labelName) {
                             btn.classList.add('active-label-btn');
                             btn.style.backgroundColor = labelColor + '33';
                         }
@@ -640,7 +640,7 @@ function renderLabelFilters() {
         if (isActive) {
             btn.style.backgroundColor = stat.color + '33';
         }
-        btn.innerHTML = `<span class="label-color-dot" style="background-color: ${stat.color};"></span> ${stat.name} (${stat.count})`;
+        btn.innerHTML = `<span class="label-color-dot" style="background-color: ${stat.color};"></span> ${stat.name} (<b id="filter_${stat.id}">${stat.count}</b>)`;
         container.appendChild(btn);
     });
 }
@@ -652,7 +652,7 @@ function renderLabelStats() {
 
     LABEL_STATS.forEach(function(stat) {
         const col = document.createElement('div');
-        col.className = 'col-md-3';
+        col.className = 'col-md-2';
 
         const card = document.createElement('div');
         card.className = 'card stats-card';
@@ -925,14 +925,18 @@ function updateAnnotateButtons(running) {
 function updateStatsCards(stats) {
     const total = document.getElementById('totalCommentsCount');
     const annotated = document.getElementById('annotatedCommentsCount');
-    const toxic = document.getElementById('toxicCommentsCount');
     const unannotated = document.getElementById('unannotatedCommentsCount');
     const continueBtn = document.getElementById('continueAnnotationBtn');
     const unannotatedCount = Number(stats.unannotated_count || 0);
 
     if (total) total.textContent = stats.total_comments ?? total.textContent;
     if (annotated) annotated.textContent = stats.annotated_comments ?? annotated.textContent;
-    if (toxic) toxic.textContent = stats.toxic_comments ?? toxic.textContent;
+    if (stats.label_stats) {
+        for (let stat of stats.label_stats) {
+            document.getElementById('labelStat_' + stat.id).textContent = stat.count
+            document.getElementById('filter_' + stat.id).textContent = stat.count
+        }
+    }
     if (unannotated) unannotated.textContent = unannotatedCount;
     if (continueBtn) continueBtn.style.display = unannotatedCount > 0 ? 'inline-flex' : 'none';
 }
