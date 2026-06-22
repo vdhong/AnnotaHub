@@ -199,12 +199,12 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = f"AnnotaHub Admin <{os.environ.get('EMAIL_HOST_USER')}>"
 
 CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = ["http://localhost:8000", 'http://localhost:6767', "https://tuyensinh.duthu.net"]
+CORS_ALLOWED_ORIGINS = ["http://localhost:8000", 'http://localhost:6868', "https://annotahub.duthu.net"]
 
 CORS_ORIGIN_WHITELIST = (
     'localhost:8000',
-    'localhost:6767',
-    'tuyensinh.duthu.net',
+    'localhost:6868',
+    'annotahub.duthu.net',
 )
 
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", 'http://localhost:6767', "https://tuyensinh.duthu.net"]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8000", 'http://localhost:6868', "https://annotahub.duthu.net"]
