@@ -323,10 +323,10 @@ The system provides management commands for database backup and restore:
 
 ```bash
 # Backup database
-docker-compose exec web python manage.py backup_annotahub
+docker-compose exec web python manage.py db_command restore <sql backup file>
 
 # Restore database
-docker-compose exec web python manage.py restore_annotahub <backup_file>
+docker-compose exec web python manage.py db_command restore <sql backup file>
 ```
 
 Backup files are stored in the `backups/` directory.
@@ -366,8 +366,7 @@ AnnotaHub/
 │   ├── migrations/                 # Database migrations
 │   └── management/                 # Custom management commands
 │       └── commands/
-│           ├── backup_annotahub.py   # Database backup command
-│           └── restore_annotahub.py  # Database restore command
+│           └── db_command.py  # Database backup and restore command
 ├── templates/comments/             # HTML templates (Bootstrap 5)
 │   ├── base.html                   # Base template with navigation
 │   ├── dashboard.html              # Project dashboard
