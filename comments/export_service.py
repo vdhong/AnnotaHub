@@ -11,41 +11,30 @@ from xml.dom import minidom
 from django.http import HttpResponse
 from django.utils import timezone
 from .models import Project, YouTubeLink, Comment, Token, ExportRecord
-
+from django.db.models import Count, Q
 logger = logging.getLogger(__name__)
 
 
 def _get_comments(project, youtube_link, filter_toxicity):
     """Get comments based on filters."""
     if youtube_link:
-        comments = youtube_link.comments.prefetch_related(
-            'tokens',
-            'tokens__ai_label',
-            'tokens__ai_label__label',
-            'tokens__manual_label',
-            'tokens__manual_label__label',
-            'ai_label',
-            'ai_label__label',
-            'manual_label',
-            'manual_label__label',
-        )
+        comments = youtube_link.comments
     else:
         link_ids = project.youtubelinks.all().values_list('id', flat=True)
-        comments = Comment.objects.filter(youtube_link_id__in=link_ids).prefetch_related(
-            'tokens',
-            'tokens__ai_label',
-            'tokens__ai_label__label',
-            'tokens__manual_label',
-            'tokens__manual_label__label',
-            'ai_label',
-            'ai_label__label',
-            'manual_label',
-            'manual_label__label',
-        )
-
-    if filter_toxicity:
-        comments = comments.filter(toxicity_label=filter_toxicity)
-    
+        comments = Comment.objects.filter(youtube_link_id__in=link_ids)
+    if filter_toxicity and filter_toxicity!='all':
+        comments = comments.filter(Q(ai_label__label__name=filter_toxicity)|Q(manual_label__label__name=filter_toxicity))
+    comments = comments.prefetch_related(
+        'tokens',
+        'tokens__ai_label',
+        'tokens__ai_label__label',
+        'tokens__manual_label',
+        'tokens__manual_label__label',
+        'ai_label',
+        'ai_label__label',
+        'manual_label',
+        'manual_label__label',
+    )
     return comments
 
 

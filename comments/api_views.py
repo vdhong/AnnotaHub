@@ -375,29 +375,6 @@ class ToggleTokenView(View):
 
 
 @method_decorator([csrf_exempt, require_http_methods(["POST"])], name='dispatch')
-class ManualLabelView(View):
-    """Manually set the toxicity label for a comment via API."""
-    def post(self, request, comment_id):
-        from django.utils import timezone
-        comment = get_object_or_404(Comment, id=comment_id)
-        label = request.POST.get('label', '').strip()
-
-        if label in ('toxic', 'non_toxic'):
-            comment.toxicity_label = label
-            comment.annotation_source = 'manual'
-            comment.annotated_at = timezone.now()
-            comment.is_meaningful = True
-            comment.save(update_fields=['toxicity_label', 'annotation_source', 'annotated_at', 'is_meaningful'])
-
-            return JsonResponse({
-                'success': True,
-                'label': comment.toxicity_label,
-            })
-
-        return JsonResponse({'success': False, 'error': 'Invalid label'}, status=400)
-
-
-@method_decorator([csrf_exempt, require_http_methods(["POST"])], name='dispatch')
 class StopFetchTaskView(View):
     """Stop the fetch comments task (API)."""
     def post(self, request, link_id):
@@ -502,7 +479,8 @@ class ReannotateLinkView(View):
         link = get_object_or_404(YouTubeLink, id=link_id)
         cancel_tasks_for_link_now(str(link.id))
         link.comments.update(
-            toxicity_label=None,
+            ai_label=None,
+            manual_label=None,
             toxicity_confidence=None,
             annotation_source=None,
             model_response=None,

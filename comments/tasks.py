@@ -497,12 +497,12 @@ def annotate_comments_task(self, youtube_link_id: str):
                         comment.original_text = ''
 
                     if comment.is_meaningful is False:
-                        comment.toxicity_label = None
+                        comment.manual_label = None
                         comment.toxicity_confidence = None
                         comment.ai_label = None
                         Token.objects.filter(comment=comment).delete()
                         comment.save(update_fields=[
-                            'toxicity_label', 'toxicity_confidence',
+                            'manual_label', 'toxicity_confidence',
                             'ai_label', 'annotation_source', 'model_response', 'annotated_at',
                             'is_meaningful', 'text', 'original_text'
                         ])
@@ -512,10 +512,9 @@ def annotate_comments_task(self, youtube_link_id: str):
                         _apply_labels_to_comment(comment, annotation, youtube_link, labels_info)
 
                         # Also save legacy fields
-                        comment.toxicity_label = annotation.get('comment_label', 'non_toxic')
                         comment.toxicity_confidence = annotation.get('confidence', 0.5)
                         comment.save(update_fields=[
-                            'toxicity_label', 'toxicity_confidence',
+                            'toxicity_confidence',
                             'ai_label', 'annotation_source', 'model_response', 'annotated_at',
                             'is_meaningful', 'text', 'original_text'
                         ])
@@ -614,7 +613,8 @@ def reannotate_all_comments(youtube_link_id: str):
 
     # Reset all annotations
     youtube_link.comments.update(
-        toxicity_label=None,
+        manual_label=None,
+        ai_label=None,
         toxicity_confidence=None,
         annotation_source=None,
         model_response=None,

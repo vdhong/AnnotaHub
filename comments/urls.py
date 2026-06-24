@@ -69,8 +69,6 @@ api_urls = [
          views.set_token_labels, name='api_set_token_labels'),
     path('comments/<uuid:comment_id>/set-comment-labels/',
          views.set_comment_labels, name='api_set_comment_labels'),
-    path('comments/<uuid:comment_id>/manual-label/',
-         api_views.ManualLabelView.as_view(), name='api_manual_label'),
     # Task control endpoints
     path('links/<uuid:link_id>/stop-fetch/',
          api_views.StopFetchTaskView.as_view(), name='api_stop_fetch'),
