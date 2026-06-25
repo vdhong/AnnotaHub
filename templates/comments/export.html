@@ -35,8 +35,9 @@
                         <label class="form-label"><strong>{% trans "Filter by Toxicity" %}</strong></label>
                         <select name="filter" class="form-select">
                             <option value="all">{% trans "All Comments" %}</option>
-                            <option value="toxic">{% trans "Toxic Only" %}</option>
-                            <option value="non_toxic">{% trans "Non-Toxic Only" %}</option>
+                            {% for lbl in project_labels %}
+                            <option value="{{lbl.id}}" style="color:{{lbl.color}}">{{lbl.name}}</option>
+                            {%endfor%}
                         </select>
                     </div>
 

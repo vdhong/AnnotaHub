@@ -1078,6 +1078,8 @@ def project_export(request, project_id):
     if request.method == 'POST':
         export_format = request.POST.get('format', 'json_sentence')
         filter_toxicity = request.POST.get('filter', 'all')
+        filter_label = ProjectLabel.objects.filter(pk=filter_toxicity).select_related('label').first()
+        filter_toxicity = 'all' if not filter_label else filter_label.label.name
         link_id = request.POST.get('link_id')
 
         if link_id:
@@ -1086,9 +1088,18 @@ def project_export(request, project_id):
         else:
             return generate_export(project, None, export_format, filter_toxicity)
 
+    project_labels = ProjectLabel.objects.filter(project=project).select_related('label')
+    project_labels = [{
+        'id': str(pl.id),
+        'name': pl.display_name,
+        'color': pl.display_color,
+        'description': pl.display_description,
+    } for pl in project_labels]
+
     return render(request, 'comments/export.html', {
         'project': project,
         'links': links,
+        'project_labels': project_labels,
     })
 
 

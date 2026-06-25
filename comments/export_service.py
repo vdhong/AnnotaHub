@@ -51,7 +51,7 @@ def _get_token_label(token_dict):
     eff = token_dict.get('effective_label')
     if eff:
         return eff.get('name', 'O')
-    return 'B_TOXIC' if token_dict.get('is_toxic') else 'O'
+    return 'O'
 
 
 def export_json_sentence(project, youtube_link, filter_toxicity):
