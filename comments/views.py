@@ -756,10 +756,10 @@ def _serialize_task_progress(progress_record, task_type):
         'processed': progress_record.processed_items,
     }
 
-
+@login_required
 def dashboard(request):
     """Main dashboard showing all projects."""
-    projects = Project.objects.all().annotate(
+    projects = Project.objects.filter(owner=request.user).annotate(
         link_count=Count('youtubelinks', distinct=True),
         comment_count=Count('youtubelinks__comments', distinct=True),
         annotated_count=Count('youtubelinks__comments', filter=Q(youtubelinks__comments__ai_label__isnull=False), distinct=True),
