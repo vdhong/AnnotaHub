@@ -165,6 +165,7 @@ def fetch_comments(
                 part='snippet,replies',
                 videoId=video_id,
                 maxResults=per_page,
+                textFormat="plainText",
                 pageToken=page_token
             )
             response = request.execute()

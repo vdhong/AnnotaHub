@@ -530,20 +530,30 @@ def tokenize_text(text: str) -> List[Dict]:
     Simple text tokenizer that preserves character positions.
     Returns list of {text, start, end} for each token.
     """
-    raw_tokens = []
-    # Match URLs, words, numbers, punctuation and emoji/symbols as separate tokens.
-    pattern = (
-        r'https?://\S+|www\.\S+'
-        r'|[\wÀ-ỹ]+(?:[\'’_-][\wÀ-ỹ]+)*'
-        r'|\d+(?:[.,:/-]\d+)*'
-        r'|[^\w\s]'
-    )
-    for match in re.finditer(pattern, text):
-        raw_tokens.append({
-            'text': match.group(0),
-            'start': match.start(),
-            'end': match.end()
-        })
+    try:
+        import spacy
+        nlp = spacy.blank("vi")
+        raw_tokens = [{
+            "text": token.text,
+            "start": token.idx,
+            "end": token.idx + len(token.text)
+        } for token in nlp(text)]
+    except ImportError:
+        logger.warning("spaCy not installed, falling back to regex-based tokenization.")
+        raw_tokens = []
+        # Match URLs, words, numbers, punctuation and emoji/symbols as separate tokens.
+        pattern = (
+            r'https?://\S+|www\.\S+'
+            r'|[\wÀ-ỹ]+(?:[\'’_-][\wÀ-ỹ]+)*'
+            r'|\d+(?:[.,:/-]\d+)*'
+            r'|[^\w\s]'
+        )
+        for match in re.finditer(pattern, text):
+            raw_tokens.append({
+                'text': match.group(0),
+                'start': match.start(),
+                'end': match.end()
+            })
 
     tokens = []
     for token in raw_tokens:
