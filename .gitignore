@@ -12,3 +12,4 @@ celerybeat-schedule
 .DS_Store
 backups/*
 token_normalizer.py
+staticfiles/*

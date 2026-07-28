@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:17-alpine
     container_name: annotahub_db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: annotahub
       POSTGRES_USER: annotahub_user
@@ -18,6 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     container_name: annotahub_redis
     # ports:
     #   - "127.0.0.1:6779:6379"
@@ -32,6 +34,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: annotahub_web
+    restart: unless-stopped
     command: >
       bash -c "
       python manage.py runserver 0.0.0.0:8000
@@ -61,6 +64,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: annotahub_celery_worker
+    restart: unless-stopped
     command: celery -A annotahub worker -l info -c 4
     volumes:
       - .:/app
@@ -79,6 +83,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: annotahub_celery_beat
+    restart: unless-stopped
     command: celery -A annotahub beat -l info
     volumes:
       - .:/app
