@@ -239,7 +239,7 @@ def cancel_tasks_for_link_now(youtube_link_id: str):
 
     try:
         youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
-        youtube_link.status = _derive_link_status(youtube_link)
+        youtube_link.status = "cancelled" # _derive_link_status(youtube_link)
         youtube_link.save(update_fields=['status', 'updated_at'])
         link_status = youtube_link.status
     except YouTubeLink.DoesNotExist:
@@ -384,8 +384,8 @@ def fetch_comments_task(self, youtube_link_id: str):
         task_progress.error_message = str(e)
         task_progress.completed_at = timezone.now()
         task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-
-        raise self.retry(exc=e) if self.request.retries < self.max_retries else e
+        #chưa rety đủ và lỗi không dính tới API key
+        raise self.retry(exc=e) if self.request.retries < self.max_retries and 'API' not in str(e) else e
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=120)

@@ -45,8 +45,7 @@ def get_video_info(video_id: str, api_key=None) -> Optional[Dict]:
     """Get video metadata and statistics from YouTube API."""
     resolved_key = _get_youtube_api_key(api_key)
     if not resolved_key:
-        logger.warning("YOUTUBE_API_KEY not configured")
-        return None
+        raise Exception("YOUTUBE_API_KEY not configured")
 
     try:
         youtube = build('youtube', 'v3', developerKey=resolved_key)
@@ -80,9 +79,10 @@ def get_video_info(video_id: str, api_key=None) -> Optional[Dict]:
             
     except HttpError as e:
         logger.error(f"YouTube API error getting video info for {video_id}: {e}")
+        raise
     except Exception as e:
         logger.error(f"Unexpected error getting video info for {video_id}: {e}")
-
+        raise
     return None
 
 
@@ -139,8 +139,7 @@ def fetch_comments(
     """
     resolved_key = _get_youtube_api_key(api_key)
     if not resolved_key:
-        logger.error("YOUTUBE_API_KEY not configured")
-        return []
+        raise Exception("YOUTUBE_API_KEY not configured")
 
     all_comments = []
     try:
@@ -207,11 +206,13 @@ def fetch_comments(
         logger.error(f"YouTube API error fetching comments: {e}")
         if on_progress:
             on_progress(0, f"API Error: {str(e)}", 0, 0)
+        raise
     except Exception as e:
         logger.error(f"Unexpected error fetching comments: {e}")
         if on_progress:
             on_progress(0, f"Error: {str(e)}", 0, 0)
-
+        raise
+    
     logger.info(f"Fetched {len(all_comments)} comments for video {video_id}")
     return all_comments
 

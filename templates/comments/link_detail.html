@@ -712,10 +712,17 @@ async function syncLinkStatus() {
             fetchIsRunning = true;
             setProgressCardState('fetch', 'running', 'Running', 0, 'Fetching comments from YouTube');
             updateFetchButtons(true);
+            setTimeout(syncLinkStatus, 3000);
+        } else if (data.status === 'pending') {
+            annotateIsRunning = true;
+            setProgressCardState('pending', 'pending', 'Pending', 0, 'Waiting to process');
+            updateAnnotateButtons(true);
+            setTimeout(syncLinkStatus, 3000);
         } else if (data.status === 'annotating') {
             annotateIsRunning = true;
             setProgressCardState('annotate', 'running', 'Running', 0, 'Annotating comments with Ollama');
             updateAnnotateButtons(true);
+            setTimeout(syncLinkStatus, 3000);
         } else if (data.status === 'annotated' || data.status === 'completed' || data.status === 'failed') {
             fetchIsRunning = false;
             updateFetchButtons(false);
@@ -730,7 +737,6 @@ async function syncLinkStatus() {
 }
 
 syncLinkStatus();
-setInterval(syncLinkStatus, 3000);
 
 async function ajaxPost(url, body) {
     const response = await fetch(url, {
@@ -816,6 +822,7 @@ async function clearAndRefetchTask() {
             setProgressCardState('fetch', 'running', 'Running', 0, 'Cleared old comments, fetching from YouTube...');
             updateFetchButtons(true);
             showToast(data.message || 'Re-fetching comments...', 'success');
+            startEventProgress();
         } else {
             showToast(data.message || 'Failed to clear and refetch.', 'error');
         }
@@ -834,6 +841,7 @@ async function retryFetchTask() {
             setProgressCardState('fetch', 'running', 'Running', 0, 'Refetching from YouTube...');
             updateFetchButtons(true);
             showToast(data.message || 'Refetching comments...', 'success');
+            startEventProgress();
         } else {
             showToast(data.message || 'Failed to refetch.', 'error');
         }
@@ -878,6 +886,7 @@ async function continueAnnotationTask() {
                 showToast(data.message || 'Annotation task is already running.', 'info');
             } else {
                 showToast(data.message || 'Continuing annotation...', 'success');
+                startEventProgress();
             }
         } else {
             showToast(data.message || 'Failed to continue annotation.', 'error');
@@ -897,6 +906,7 @@ async function reannotateAllTask() {
             setProgressCardState('annotate', 'running', 'Running', 0, 'Re-annotating comments...');
             updateAnnotateButtons(true);
             showToast(data.message || 'Re-annotation started...', 'success');
+            startEventProgress();
         } else {
             showToast(data.message || 'Failed to start re-annotation.', 'error');
         }
@@ -957,52 +967,58 @@ function toggleVideoPlayer() {
     panel.classList.toggle('d-none');
     buttonLabel.textContent = panel.classList.contains('d-none') ? I18N.showVideo : I18N.hideVideo;
 }
+let eventSource = null;
 
-// ---- SSE for real-time progress ----
-const eventSource = new EventSource(`/sse/progress/${LINK_ID}/`);
-
-eventSource.addEventListener('message', function(event) {
-    const data = JSON.parse(event.data);
-
-    if (data.type === 'fetch') {
-        updateProgressCard('fetch', data);
-        if (data.status === 'running') {
-            if (!fetchIsRunning) {
-                fetchIsRunning = true;
-                updateFetchButtons(true);
-            }
-        } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
-            if (fetchIsRunning) {
-                fetchIsRunning = false;
-                updateFetchButtons(false);
-            }
-        }
+function startEventProgress() {
+    if (eventSource) {
+        eventSource.close();
     }
 
-    if (data.type === 'annotate') {
-        updateProgressCard('annotate', data);
-        if (data.status === 'running') {
-            if (!annotateIsRunning) {
-                annotateIsRunning = true;
-                updateAnnotateButtons(true);
-            }
-        } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
-            if (annotateIsRunning) {
-                annotateIsRunning = false;
-                updateAnnotateButtons(false);
+    eventSource = new EventSource(`/sse/progress/${LINK_ID}/`);
+    eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'fetch') {
+            updateProgressCard('fetch', data);
+            if (data.status === 'running') {
+                if (!fetchIsRunning) {
+                    fetchIsRunning = true;
+                    updateFetchButtons(true);
+                }
+            } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                if (fetchIsRunning) {
+                    fetchIsRunning = false;
+                    updateFetchButtons(false);
+                }
             }
         }
-    }
-});
+        if (data.type === 'annotate') {
+            updateProgressCard('annotate', data);
+            if (data.status === 'running') {
+                if (!annotateIsRunning) {
+                    annotateIsRunning = true;
+                    updateAnnotateButtons(true);
+                }
+            } else if (data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+                if (annotateIsRunning) {
+                    annotateIsRunning = false;
+                    updateAnnotateButtons(false);
+                }
+            }
+        }
 
-eventSource.addEventListener('done', function(event) {
-    const data = JSON.parse(event.data);
-    console.log('All tasks done, status:', data.status);
-    eventSource.close();
-});
+    };
+    eventSource.addEventListener('done', function(event) {
+        const data = JSON.parse(event.data);
+        console.log('All tasks done, status:', data.status);
+        eventSource.close();
+    });
 
-eventSource.addEventListener('error', function(event) {
-    console.error('SSE error:', event);
-});
+    eventSource.onerror = (err) => {
+        console.error(err);
+        eventSource.close();
+
+    };
+}
+
 </script>
 {% endblock %}

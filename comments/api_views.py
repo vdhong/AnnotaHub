@@ -146,8 +146,10 @@ class LinkManageView(View):
 
             if YouTubeLink.objects.filter(project=project, video_id=video_id).exists():
                 return JsonResponse({'error': 'This video already exists in the project'}, status=400)
-
-            video_info = get_video_info(video_id) or {}
+            try:
+                video_info = get_video_info(video_id) or {}
+            except:
+                return JsonResponse({'error': 'Failed to fetch video info from YouTube API check your link or your YouTube API key'}, status=500)
             link = YouTubeLink.objects.create(
                 project=project,
                 video_id=video_id,

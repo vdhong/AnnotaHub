@@ -63,7 +63,7 @@ def custom_login(request):
                 return redirect(next_url)
             return redirect('comments:project_list')
         else:
-            messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng.')
+            messages.error(request, _('Tên đăng nhập hoặc mật khẩu không đúng.'))
     else:
         form = AuthenticationForm()
 
@@ -73,7 +73,7 @@ def custom_login(request):
 def custom_logout(request):
     """Custom logout view."""
     auth_logout(request)
-    messages.info(request, 'Bạn đã đăng xuất thành công.')
+    messages.info(request, _('Bạn đã đăng xuất thành công.'))
     return redirect('comments:login')
 
 
@@ -104,32 +104,32 @@ def register(request):
 
         # Validate username
         if not username:
-            errors.append('Tên đăng nhập là bắt buộc.')
+            errors.append(_('Tên đăng nhập là bắt buộc.'))
         elif len(username) < 3:
-            errors.append('Tên đăng nhập phải có ít nhất 3 ký tự.')
+            errors.append(_('Tên đăng nhập phải có ít nhất 3 ký tự.'))
         elif len(username) > 150:
-            errors.append('Tên đăng nhập phải có tối đa 150 ký tự.')
+            errors.append(_('Tên đăng nhập phải có tối đa 150 ký tự.'))
         elif User.objects.filter(username=username).exists():
-            errors.append(f'Tên đăng nhập "{username}" đã được sử dụng.')
+            errors.append(_('Tên đăng nhập "%(username)s" đã được sử dụng.') % {'username': username})
 
         # Validate full name
         full_name = f"{first_name} {last_name}".strip()
         if not full_name:
-            errors.append('Họ và tên là bắt buộc.')
+            errors.append(_('Họ và tên là bắt buộc.'))
 
         # Validate email
         if not email:
-            errors.append('Địa chỉ email là bắt buộc.')
+            errors.append(_('Địa chỉ email là bắt buộc.'))
         elif User.objects.filter(email=email).exists():
-            errors.append(f'Địa chỉ email "{email}" đã được đăng ký.')
+            errors.append(_('Địa chỉ email "%(email)s" đã được đăng ký.') % {'email': email})
 
         # Validate password
         if not password:
-            errors.append('Mật khẩu là bắt buộc.')
+            errors.append(_('Mật khẩu là bắt buộc.'))
         elif len(password) < 8:
-            errors.append('Mật khẩu phải có ít nhất 8 ký tự.')
+            errors.append(_('Mật khẩu phải có ít nhất 8 ký tự.'))
         elif password != password_confirm:
-            errors.append('Hai mật khẩu nhập lại không khớp.')
+            errors.append(_('Hai mật khẩu nhập lại không khớp.'))
 
         if errors:
             for error in errors:
@@ -161,14 +161,14 @@ def register(request):
         if email_sent:
             messages.success(
                 request,
-                f'Dăng ký tài khoản thành công! Vui lòng kiểm tra hộp thư {email} '
-                'để xác thực địa chỉ email. Liên kết xác thực sẽ hết hạn sau 7 ngày.'
+                _('Dăng kư̛ tai khoản thành công! Vui lòng kiểm tra hộp thư %(email)s '
+                'để xác thực địa chỉ email. Liên kết xác thực sẽ hết hạn sau 7 ngày.') % {'email': email}
             )
         else:
             messages.warning(
                 request,
-                f'Dăng ký tài khoản thành công nhưng không thể gửi email xác thực. '
-                f'Vui lòng nhấn nút "Gửi lại email" bên dưới hoặc liên hệ quản trị viên.'
+                _('Dăng kư̛ tai khoản thành công nhưng không thể gửi email xác thực. '
+                'Vui lòng nhấn nút "Gửi lại email" bên dưới hoặc liên hệ quản trị viên.')
             )
 
         return render(request, 'comments/verification_sent.html', {
@@ -195,17 +195,17 @@ def verify_email(request, token):
     try:
         verification = EmailVerification.objects.get(token=token)
     except EmailVerification.DoesNotExist:
-        messages.error(request, 'Liên kết xác thực không hợp lệ.')
+        messages.error(request, _('Liên kết xác thực không hợp lệ.'))
         return redirect('comments:login')
 
     # Check if already verified
     if verification.is_verified:
-        messages.info(request, 'Email đã được xác thực. Vui lòng đăng nhập.')
+        messages.info(request, _('Email đã được xác thực. Vui lòng đăng nhập.'))
         return redirect('comments:login')
 
     # Check if expired
     if verification.is_expired():
-        messages.error(request, 'Liên kết xác thực đã hết hạn. Vui lòng đăng ký lại hoặc liên hệ quản trị viên.')
+        messages.error(request, _('Liên kết xác thực đã hết hạn. Vui lòng đăng ký lại hoặc liên hệ quản trị viên.'))
         return redirect('comments:register')
 
     user = verification.user
@@ -219,7 +219,7 @@ def verify_email(request, token):
     # Auto-login the user
     auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
-    messages.success(request, 'Xác thực email thành công! Chào mừng bạn đến với AnnotaHub.')
+    messages.success(request, _('Xác thực email thành công! Chào mừng bạn đến với AnnotaHub.'))
     return redirect('comments:project_list')
 
 
@@ -231,18 +231,18 @@ def resend_verification(request):
         email = request.POST.get('email', '').strip().lower()
 
         if not email:
-            messages.error(request, 'Vui lòng nhập địa chỉ email.')
+            messages.error(request, _('Vui lòng nhập địa chỉ email.'))
             return redirect('comments:register')
 
         # Find user with unverified email
         user = User.objects.filter(email=email).first()
 
         if not user:
-            messages.error(request, f'Không tìm thấy tài khoản với email "{email}".')
+            messages.error(request, _('Không tìm thấy tài khoản với email "%(email)s".') % {'email': email})
             return redirect('comments:register')
 
         if user.is_active:
-            messages.info(request, f'Tài khoản với email "{email}" đã được xác thực. Vui lòng đăng nhập.')
+            messages.info(request, _('Tài khoản với email "%(email)s" đã được xác thực. Vui lòng đăng nhập.') % {'email': email})
             return redirect('comments:login')
 
         # Get or create verification
@@ -259,9 +259,9 @@ def resend_verification(request):
         email_sent = send_verification_email(email, verification.token)
 
         if email_sent:
-            messages.success(request, f'Email xác thực đã được gửi lại đến {email}.')
+            messages.success(request, _('Email xác thực đã được gửi lại đến %(email)s.') % {'email': email})
         else:
-            messages.error(request, 'Không thể gửi email xác thực. Vui lòng thử lại sau hoặc liên hệ quản trị viên.')
+            messages.error(request, _('Không thể gửi email xác thực. Vui lòng thử lại sau hoặc liên hệ quản trị viên.'))
 
         return redirect('comments:register')
 
@@ -284,22 +284,22 @@ def accept_invitation(request, token):
     try:
         invitation = UserInvitation.objects.get(token=token)
     except UserInvitation.DoesNotExist:
-        messages.error(request, 'Liên kết mời không hợp lệ hoặc đã hết hạn.')
+        messages.error(request, _('Liên kết mời không hợp lệ hoặc đã hết hạn.'))
         return redirect('comments:project_list')
     
     # Check if invitation is already used
     if invitation.is_used:
-        messages.error(request, 'Liên kết mời này đã được sử dụng.')
+        messages.error(request, _('Liên kết mời này đã được sử dụng.'))
         return redirect('comments:project_list')
     
     # Check if invitation is expired
     if invitation.is_expired():
-        messages.error(request, 'Liên kết mời đã hết hạn. Vui lòng liên hệ chủ dự án để gửi lại lời mời.')
+        messages.error(request, _('Liên kết mời đã hết hạn. Vui lòng liên hệ chủ dự án để gửi lại lời mời.'))
         return redirect('comments:project_list')
     
     # Check if user exists
     if not invitation.user:
-        messages.error(request, 'Không tìm thấy tài khoản liên kết với lời mời này.')
+        messages.error(request, _('Không tìm thấy tài khoản liên kết với lời mời này.'))
         return redirect('comments:project_list')
     
     user = invitation.user
@@ -314,16 +314,16 @@ def accept_invitation(request, token):
         
         # Validate username
         if not username:
-            messages.error(request, 'Tên đăng nhập là bắt buộc.')
+            messages.error(request, _('Tên đăng nhập là bắt buộc.'))
         elif User.objects.filter(username=username).exclude(pk=user.pk).exists():
-            messages.error(request, f'Tên đăng nhập "{username}" đã được sử dụng.')
+            messages.error(request, _('Tên đăng nhập "%(username)s" đã được sử dụng.') % {'username': username})
         # Validate password
         elif not password:
-            messages.error(request, 'Mật khẩu là bắt buộc.')
+            messages.error(request, _('Mật khẩu là bắt buộc.'))
         elif password != password_confirm:
-            messages.error(request, 'Hai mật khẩu không khớp.')
+            messages.error(request, _('Hai mật khẩu không khớp.'))
         elif len(password) < 8:
-            messages.error(request, 'Mật khẩu phải có ít nhất 8 ký tự.')
+            messages.error(request, _('Mật khẩu phải có ít nhất 8 ký tự.'))
         else:
             # Update user profile
             user.username = username
@@ -345,7 +345,7 @@ def accept_invitation(request, token):
             # Auto-login the user
             auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')
             
-            messages.success(request, 'Tài khoản đã được kích hoạt thành công! Bạn đã được thêm vào dự án.')
+            messages.success(request, _('Tài khoản đã được kích hoạt thành công! Bạn đã được thêm vào dự án.'))
             return redirect('comments:project_list')
     
     # GET request - show the profile completion form
@@ -374,11 +374,11 @@ def check_project_access(request, project_id, require_owner=False):
         return (project, True, False)
     elif project.is_participant(request.user):
         if require_owner:
-            messages.error(request, 'Bạn không có quyền thực hiện hành động này. Chỉ chủ sở hữu dự án mới có thể thực hiện.')
+            messages.error(request, _('Bạn không có quyền thực hiện hành động này. Chỉ chủ sở hữu dự án mới có thể thực hiện.'))
             return redirect('comments:project_list')
         return (project, False, True)
     else:
-        messages.error(request, 'Bạn không có quyền truy cập dự án này.')
+        messages.error(request, _('Bạn không có quyền truy cập dự án này.'))
         return redirect('comments:project_list')
 
 
@@ -408,7 +408,7 @@ def user_settings(request):
         settings_obj.ollama_model = ollama_model if ollama_model else ''
         settings_obj.save()
 
-        messages.success(request, 'Cài đặt đã được lưu thành công.')
+        messages.success(request, _('Cài đặt đã được lưu thành công.'))
         return redirect('comments:user_settings')
 
     # Show global defaults for reference
@@ -446,11 +446,11 @@ def label_create(request):
         color = request.POST.get('color', '#FF0000').strip()
 
         if not name:
-            messages.error(request, 'Tên nhãn là bắt buộc.')
+            messages.error(request, _('Tên nhãn là bắt buộc.'))
             return redirect('comments:label_list')
 
         if Label.objects.filter(owner=request.user, name=name).exists():
-            messages.error(request, f'Bạn đã có nhãn "{name}".')
+            messages.error(request, _('Bạn đã có nhãn "%(name)s".') % {'name': name})
             return redirect('comments:label_list')
 
         Label.objects.create(
@@ -459,7 +459,7 @@ def label_create(request):
             description=description,
             color=color
         )
-        messages.success(request, f'Nhãn "{name}" đã được tạo.')
+        messages.success(request, _('Nhãn "%(name)s" đã được tạo.') % {'name': name})
         return redirect('comments:label_list')
 
     return render(request, 'comments/label_form.html', {'action': 'Create'})
@@ -472,7 +472,7 @@ def label_edit(request, label_id):
     
     # Only owner can edit
     if label.owner != request.user:
-        messages.error(request, 'Bạn không có quyền chỉnh sửa nhãn này.')
+        messages.error(request, _('Bạn không có quyền chỉnh sửa nhãn này.'))
         return redirect('comments:label_list')
 
     if request.method == 'POST':
@@ -482,16 +482,16 @@ def label_edit(request, label_id):
         is_active = request.POST.get('is_active') == 'on'
 
         if not name:
-            messages.error(request, 'Tên nhãn là bắt buộc.')
+            messages.error(request, _('Tên nhãn là bắt buộc.'))
         elif Label.objects.filter(owner=request.user, name=name).exclude(pk=label.pk).exists():
-            messages.error(request, f'Bạn đã có nhãn "{name}".')
+            messages.error(request, _('Bạn đã có nhãn "%(name)s".') % {'name': name})
         else:
             label.name = name
             label.description = description
             label.color = color
             label.is_active = is_active
             label.save()
-            messages.success(request, f'Nhãn "{name}" đã được cập nhật.')
+            messages.success(request, _('Nhãn "%(name)s" đã được cập nhật.') % {'name': name})
             return redirect('comments:label_list')
 
     return render(request, 'comments/label_form.html', {'label': label, 'action': 'Edit'})
@@ -505,17 +505,17 @@ def label_delete(request, label_id):
     
     # Only owner can delete
     if label.owner != request.user:
-        messages.error(request, 'Bạn không có quyền xoá nhãn này.')
+        messages.error(request, _('Bạn không có quyền xoá nhãn này.'))
         return redirect('comments:label_list')
     
     # Cannot delete if label is in use
     if label.is_in_use():
-        messages.error(request, f'Không thể xoá nhãn "{label.name}" vì đang được sử dụng trong các bình luận hoặc token.')
+        messages.error(request, _('Không thể xoá nhãn "%(name)s" vì đang được sử dụng trong các bình luận hoặc token.') % {'name': label.name})
         return redirect('comments:label_list')
     
     label_name = label.name
     label.delete()
-    messages.success(request, f'Nhãn "{label_name}" đã được xoá.')
+    messages.success(request, _('Nhãn "%(name)s" đã được xoá.') % {'name': label_name})
     return redirect('comments:label_list')
 
 
@@ -534,7 +534,7 @@ def project_labels_settings(request, project_id):
     
     # Only project owner can manage labels
     if project.owner != request.user:
-        messages.error(request, 'Chỉ chủ sở hữu dự án mới có thể quản lý nhãn.')
+        messages.error(request, _('Chỉ chủ sở hữu dự án mới có thể quản lý nhãn.'))
         return redirect('comments:project_detail', project_id=project.id)
 
     if request.method == 'POST':
@@ -548,14 +548,14 @@ def project_labels_settings(request, project_id):
                     Label, id=label_id, owner=project.owner
                 )
                 ProjectLabel.objects.get_or_create(project=project, label=label)
-                messages.success(request, f'Đã thêm nhãn "{label.name}" vào dự án.')
+                messages.success(request, _('Đã thêm nhãn "%(name)s" vào dự án.') % {'name': label.name})
 
         elif action == 'remove_label':
             project_label_id = request.POST.get('project_label_id')
             if project_label_id:
                 pl = get_object_or_404(ProjectLabel, id=project_label_id, project=project)
                 pl.delete()
-                messages.success(request, 'Đã bỏ nhãn khỏi dự án.')
+                messages.success(request, _('Đã bỏ nhãn khỏi dự án.'))
 
         elif action == 'update_override':
             project_label_id = request.POST.get('project_label_id')
@@ -565,7 +565,7 @@ def project_labels_settings(request, project_id):
                 pl.override_description = request.POST.get('override_description') or None
                 pl.override_color = request.POST.get('override_color') or None
                 pl.save()
-                messages.success(request, 'Đã cập nhật nhãn.')
+                messages.success(request, _('Đã cập nhật nhãn.'))
 
         elif action == 'add_custom_label':
             name = request.POST.get('custom_name', '').strip()
@@ -583,9 +583,9 @@ def project_labels_settings(request, project_id):
                     label.color = color
                     label.save()
                 ProjectLabel.objects.get_or_create(project=project, label=label)
-                messages.success(request, f'Đã thêm nhãn "{name}" vào dự án.')
+                messages.success(request, _('Đã thêm nhãn "%(name)s" vào dự án.') % {'name': name})
             else:
-                messages.error(request, 'Tên nhãn là bắt buộc.')
+                messages.error(request, _('Tên nhãn là bắt buộc.'))
 
         return redirect('comments:project_labels_settings', project_id=project.id)
 
@@ -627,7 +627,7 @@ def set_token_labels(request, comment_id, token_position):
     comment = get_object_or_404(Comment, id=comment_id)
     token = comment.get_or_create_token_for_position(token_position)
     if token is None:
-        return JsonResponse({'success': False, 'error': 'Token not found'}, status=404)
+        return JsonResponse({'success': False, 'error': _('Token not found')}, status=404)
 
     # Parse label ID from request body (JSON)
     import json as json_lib
@@ -920,7 +920,7 @@ def project_delete(request, project_id):
 
     project_name = project.name
     project.delete()
-    messages.success(request, f'Project "{project_name}" deleted.')
+    messages.success(request, _('Project "%(name)s" deleted.') % {'name': project_name})
     return redirect('comments:project_list')
 
 
@@ -945,14 +945,14 @@ def project_manage_participants(request, project_id):
                 if user:
                     # User exists with this email
                     if user == request.user:
-                        messages.error(request, 'Ban khong the them chinh minh vao danh sach tham gia.')
+                        messages.error(request, _('Bạn không thể thêm chính mình vào danh sách tham gia.'))
                     elif project.participants.filter(pk=user.pk).exists():
-                        messages.warning(request, f'User "{user.username}" da la thanh vien tham gia.')
+                        messages.warning(request, _('User "%(username)s" đã là thành viên tham gia.') % {'username': user.username})
                     elif project.owner == user:
-                        messages.warning(request, f'User "{user.username}" la chu so hữu dự án, không cần thêm.')
+                        messages.warning(request, _('User "%(username)s" là chủ sở hữu dự án, không cần thêm.') % {'username': user.username})
                     else:
                         project.participants.add(user)
-                        messages.success(request, f'User "{user.username}" (email: {email}) da duoc them vao danh sach tham gia.')
+                        messages.success(request, _('User "%(username)s" (email: %(email)s) đã được thêm vào danh sách tham gia.') % {'username': user.username, 'email': email})
                 else:
                     # User does not exist - create inactive user and send invitation
                     # Create a new inactive user with this email
@@ -986,7 +986,7 @@ def project_manage_participants(request, project_id):
                     if email_sent:
                         messages.success(
                             request, 
-                            f'Email mời đã được gửi đến {email}. User sẽ được thêm vào dự án sau khi xác nhận email.'
+                            _('Email mời đã được gửi đến %(email)s. User sẽ được thêm vào dự án sau khi xác nhận email.') % {'email': email}
                         )
                     else:
                         # If email fails, still show the link for manual sharing
@@ -995,10 +995,10 @@ def project_manage_participants(request, project_id):
                         invitation_link = f"{site_url}/invite/{invitation.token}/"
                         messages.warning(
                             request,
-                            f'Không thể gửi email mời. Vui lòng gửi liên kết này manually: {invitation_link}'
+                            _('Không thể gửi email mời. Vui lòng gửi liên kết này manually: %(link)s') % {'link': invitation_link}
                         )
             else:
-                messages.error(request, 'Vui long nhap email.')
+                messages.error(request, _('Vui lòng nhập email.'))
 
         elif action == 'remove_participant':
             user_id = request.POST.get('user_id')
@@ -1006,11 +1006,11 @@ def project_manage_participants(request, project_id):
                 user = User.objects.filter(pk=user_id).first()
                 if user and project.participants.filter(pk=user.pk).exists():
                     project.participants.remove(user)
-                    messages.success(request, f'User "{user.username}" da duoc xoa khoi danh sach tham gia.')
+                    messages.success(request, _('User "%(username)s" đã được xóa khỏi danh sách tham gia.') % {'username': user.username})
                 else:
-                    messages.error(request, 'User khong ton tai trong danh sach tham gia.')
+                    messages.error(request, _('User không tồn tại trong danh sách tham gia.'))
             else:
-                messages.error(request, 'Thieu user_id.')
+                messages.error(request, _('Thiếu user_id.'))
 
         elif action == 'delete_invitation':
             invitation_id = request.POST.get('invitation_id')
@@ -1023,11 +1023,11 @@ def project_manage_participants(request, project_id):
                 if invitation:
                     email = invitation.email
                     invitation.delete()
-                    messages.success(request, f'Da xoa loi moi cho {email}.')
+                    messages.success(request, _('Đã xóa lời mời cho %(email)s.') % {'email': email})
                 else:
-                    messages.error(request, 'Khong tim thay loi moi hoac da duoc su dung.')
+                    messages.error(request, _('Không tìm thấy lời mời hoặc đã được sử dụng.'))
             else:
-                messages.error(request, 'Thieu invitation_id.')
+                messages.error(request, _('Thiếu invitation_id.'))
 
         elif action == 'resend_invitation':
             invitation_id = request.POST.get('invitation_id')
@@ -1045,13 +1045,13 @@ def project_manage_participants(request, project_id):
                     
                     email_sent = send_invitation_email(invitation.email, invitation.token)
                     if email_sent:
-                        messages.success(request, f'Email moi da duoi gui lai den {invitation.email}.')
+                        messages.success(request, _('Email mời đã được gửi lại đến %(email)s.') % {'email': invitation.email})
                     else:
-                        messages.error(request, f'Khong the gui lai email moi den {invitation.email}.')
+                        messages.error(request, _('Không thể gửi lại email mời đến %(email)s.') % {'email': invitation.email})
                 else:
-                    messages.error(request, 'Khong tim thay loi moi hoac da duoc su dung.')
+                    messages.error(request, _('Không tìm thấy lời mời hoặc đã được sử dụng.'))
             else:
-                messages.error(request, 'Thieu invitation_id.')
+                messages.error(request, _('Thiếu invitation_id.'))
 
         return redirect('comments:project_manage_participants', project_id=project.id)
 
@@ -1116,17 +1116,17 @@ def add_youtube_link(request, project_id):
         url = request.POST.get('url', '').strip()
 
         if not url:
-            messages.error(request, 'YouTube URL is required.')
+            messages.error(request, _('YouTube URL is required.'))
             return redirect('comments:project_detail', project_id=project.id)
 
         video_id = extract_video_id(url)
         if not video_id:
-            messages.error(request, 'Invalid YouTube URL. Please provide a valid YouTube video link.')
+            messages.error(request, _('Invalid YouTube URL. Please provide a valid YouTube video link.'))
             return redirect('comments:project_detail', project_id=project.id)
 
         # Check if already exists
         if YouTubeLink.objects.filter(project=project, video_id=video_id).exists():
-            messages.warning(request, 'This video is already in the project.')
+            messages.warning(request, _('This video is already in the project.'))
             return redirect('comments:project_detail', project_id=project.id)
 
         # Get owner's YouTube API key (falls back to global settings if not set)
@@ -1140,8 +1140,12 @@ def add_youtube_link(request, project_id):
             owner_youtube_api_key = owner_settings.youtube_api_key
 
         # Get video info using owner's API key
-        video_info = get_video_info(video_id, api_key=owner_youtube_api_key) or {}
-
+        try:
+            video_info = get_video_info(video_id, api_key=owner_youtube_api_key) or {}
+        except:
+            messages.error(request, _('Failed to fetch video info from YouTube API check your link or your YouTube API key'))
+            return redirect('comments:project_detail', project_id=project.id)
+                    
         link = YouTubeLink.objects.create(
             project=project,
             video_id=video_id,
@@ -1156,7 +1160,7 @@ def add_youtube_link(request, project_id):
 
         # Start fetching comments in background
         enqueue_fetch_comments_task(link, 'Starting comment fetch')
-        messages.success(request, f'Started fetching comments for "{video_info.get("title", video_id)}".')
+        messages.success(request, _('Started fetching comments for "%(title)s".') % {'title': video_info.get("title", video_id)})
         return redirect('comments:project_detail', project_id=project.id)
 
     return render(request, 'comments/add_link.html', {'project': project})
@@ -1284,7 +1288,7 @@ def delete_youtube_link(request, link_id):
     cancel_tasks_for_link_now(str(link.id))
 
     link.delete()
-    messages.success(request, 'YouTube link and all its data deleted.')
+    messages.success(request, _('YouTube link and all its data deleted.'))
     return redirect('comments:project_detail', project_id=project_id)
 
 
@@ -1313,7 +1317,7 @@ def reannotate_link(request, link_id):
     )
     Token.objects.filter(comment__youtube_link=link).delete()
     enqueue_annotation_task(link, 'Re-annotating all comments')
-    messages.info(request, 'Re-annotation started in background. All labels have been reset.')
+    messages.info(request, _('Re-annotation started in background. All labels have been reset.'))
     return redirect('comments:link_detail', link_id=link.id)
 
 
@@ -1334,7 +1338,7 @@ def retry_fetch_link(request, link_id):
     enqueue_fetch_comments_task(link, 'Refetching comments without clearing existing data')
     messages.success(
         request,
-        f'Refetching comments for "{link.title or link.video_id}". Existing comments will be kept.'
+        _('Refetching comments for "%(title)s". Existing comments will be kept.') % {'title': link.title or link.video_id}
     )
     return redirect('comments:link_detail', link_id=link.id)
 
@@ -1347,13 +1351,13 @@ def clear_and_refetch_link(request, link_id):
 
     clear_result = clear_link_data_for_refetch(str(link.id))
     if clear_result.get('status') == 'error':
-        messages.error(request, clear_result.get('message', 'Failed to clear link data.'))
+        messages.error(request, clear_result.get('message', _('Failed to clear link data.')))
         return redirect('comments:link_detail', link_id=link.id)
 
     enqueue_fetch_comments_task(link, 'Clearing old comments and refetching')
     messages.success(
         request,
-        f'Cleared {clear_result.get("deleted_comments", 0)} comments and started refetching for "{link.title or link.video_id}".'
+        _('Cleared %(count)s comments and started refetching for "%(title)s".') % {'count': clear_result.get("deleted_comments", 0), 'title': link.title or link.video_id}
     )
     return redirect('comments:link_detail', link_id=link.id)
 
@@ -1366,7 +1370,7 @@ def stop_fetch_task(request, link_id):
 
     # Cancel running tasks
     cancel_tasks_for_link_now(str(link.id))
-    messages.info(request, 'Fetch task has been stopped.')
+    messages.info(request, _('Fetch task has been stopped.'))
     return redirect('comments:link_detail', link_id=link.id)
 
 
@@ -1378,7 +1382,7 @@ def stop_annotation_task(request, link_id):
 
     # Cancel running tasks
     cancel_tasks_for_link_now(str(link.id))
-    messages.info(request, 'Annotation task has been stopped.')
+    messages.info(request, _('Annotation task has been stopped.'))
     return redirect('comments:link_detail', link_id=link.id)
 
 
@@ -1391,18 +1395,18 @@ def continue_annotation(request, link_id):
     # Check if there are unannotated comments
     unannotated = link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).count()
     if unannotated == 0:
-        messages.info(request, 'No unannotated comments found.')
+        messages.info(request, _('No unannotated comments found.'))
         return redirect('comments:link_detail', link_id=link.id)
 
     # Check if annotation is already running
     running_task = get_effective_task_progress(str(link.id), 'annotating')
     if running_task and running_task.status == 'running':
-        messages.info(request, 'Annotation task is already running. Progress is being updated.')
+        messages.info(request, _('Annotation task is already running. Progress is being updated.'))
         return redirect('comments:link_detail', link_id=link.id)
 
     # Start annotation task (it will only process unannotated comments)
     enqueue_annotation_task(link, 'Continuing annotation')
-    messages.success(request, f'Continuing annotation for {unannotated} unannotated comments.')
+    messages.success(request, _('Continuing annotation for %(count)s unannotated comments.') % {'count': unannotated})
     return redirect('comments:link_detail', link_id=link.id)
 
 

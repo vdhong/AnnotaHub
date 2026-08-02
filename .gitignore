@@ -13,3 +13,5 @@ celerybeat-schedule
 backups/*
 token_normalizer.py
 staticfiles/*
+.clinerules
+notes.txt
