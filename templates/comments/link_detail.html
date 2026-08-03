@@ -1019,6 +1019,7 @@ function startEventProgress() {
         const data = JSON.parse(event.data);
         console.log('All tasks done, status:', data.status);
         eventSource.close();
+        syncLinkStatus();
     });
 
     eventSource.onerror = (err) => {

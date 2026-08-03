@@ -1427,7 +1427,7 @@ def progress_event_stream(request, link_id):
             return (
                 progress_record.status,
                 progress_record.progress_percent,
-                progress_record.current_step,
+                _(progress_record.current_step) if progress_record.current_step else '',
                 progress_record.total_items,
                 progress_record.processed_items,
             )

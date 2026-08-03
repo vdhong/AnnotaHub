@@ -3,6 +3,7 @@ Celery Tasks for YouTube Comment Collection and Toxicity Annotation
 """
 import logging
 import uuid
+from annotahub import settings
 from celery import shared_task
 from django.utils import timezone
 from django.db import transaction
@@ -41,11 +42,11 @@ def _get_owner_ollama_config(project: Project):
     Returns (base_url, api_key, model) tuple, or (None, None, None) to use global defaults.
     """
     owner_settings = _get_owner_settings(project)
-    if owner_settings and owner_settings.has_ollama_config:
+    if owner_settings:
         return (
-            owner_settings.ollama_base_url,
-            owner_settings.ollama_api_key,
-            owner_settings.ollama_model,
+            owner_settings.ollama_base_url or settings.OLLAMA_BASE_URL,
+            owner_settings.ollama_api_key or settings.OLLAMA_API_KEY,
+            owner_settings.ollama_model or settings.OLLAMA_MODEL,
         )
     return (None, None, None)
 

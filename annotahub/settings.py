@@ -143,7 +143,7 @@ CELERY_TASK_SOFT_TIME_LIMIT = 3000
 YOUTUBE_API_KEY = os.environ.get('YOUTUBE_API_KEY', '')
 
 # Ollama Configuration
-OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', '')
+OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'https://ai.phongdaotao.com/')
 OLLAMA_API_KEY = os.environ.get('OLLAMA_API_KEY', '')
 OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'qwen3.6:27b')
 
