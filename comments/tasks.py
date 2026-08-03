@@ -16,7 +16,6 @@ from .services.ollama_service import (
     get_comment_label_name,
 )
 
-
 def _get_owner_settings(project: Project):
     """
     Get the UserSettings for the project owner.
@@ -61,7 +60,6 @@ def _gather_labels_info(youtube_link: YouTubeLink):
     ).select_related('label')
     if not project_labels.exists():
         return None  # Use legacy mode
-
     result = []
     for pl in project_labels:
         result.append({
@@ -448,8 +446,9 @@ def annotate_comments_task(self, youtube_link_id: str):
             task_progress.error_message = "Chưa thiết lập nhãn cho dự án hiện tại."
             task_progress.completed_at = timezone.now()
             task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-            youtube_link.status = 'pending'
+            youtube_link.status = 'failed'
             youtube_link.save(update_fields=['status', 'updated_at'])
+            logger.info("Chưa thiết lập nhãn cho dự án hiện tại.")
             return {'status': 'success', 'annotated': 0}
         # Get owner's Ollama config (falls back to global settings if not set)
         owner_ollama_base_url, owner_ollama_api_key, owner_ollama_model = _get_owner_ollama_config(youtube_link.project)
@@ -458,7 +457,7 @@ def annotate_comments_task(self, youtube_link_id: str):
             task_progress.error_message = "Chưa thiết lập API KEY, OLLAMA URL và OLLAMA MODEL."
             task_progress.completed_at = timezone.now()
             task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-            youtube_link.status = 'pending'
+            youtube_link.status = 'failed'
             youtube_link.save(update_fields=['status', 'updated_at'])
             return {'status': 'success', 'annotated': 0}
         annotated_count = 0
@@ -569,7 +568,10 @@ def annotate_comments_task(self, youtube_link_id: str):
         task_progress.error_message = str(e)
         task_progress.completed_at = timezone.now()
         task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-
+        if self.request.retries >= self.max_retries:
+            youtube_link.status = 'failed'
+            youtube_link.save(update_fields=['status', 'updated_at'])
+            logger.info(f"Lỗi: {str(e)}")
         raise self.retry(exc=e) if self.request.retries < self.max_retries else e
 
 

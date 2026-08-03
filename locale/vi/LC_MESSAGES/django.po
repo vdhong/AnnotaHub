@@ -1569,3 +1569,15 @@ msgstr "Không thể tải thông tin video hãy kiểm tra lại link hoặc Yo
 
 msgid "Token not found"
 msgstr "Không thấy token"
+
+msgid "Chưa thiết lập nhãn cho dự án hiện tại."
+msgstr ""
+
+msgid "Chưa thiết lập API KEY, OLLAMA URL và OLLAMA MODEL."
+msgstr ""
+
+msgid "Annotating comments with Ollama"
+msgstr "Đang gán nhãn dùng Ollama"
+
+msgid "Fetching comments from YouTube"
+msgstr "Đang tải comment từ YouTube"

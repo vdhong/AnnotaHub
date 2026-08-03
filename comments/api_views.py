@@ -26,7 +26,7 @@ from .tasks import (
     clear_link_data_for_refetch,
 )
 from .export_service import generate_export
-
+from django.utils.translation import gettext_lazy as _
 logger = logging.getLogger(__name__)
 
 
@@ -222,14 +222,16 @@ class LinkStatusView(View):
         ):
             if not task:
                 continue
+            print(f"Task: {task.task_type}, Status: {task.status}, Progress: {task.progress_percent}%")
             tasks_data.append({
                 'type': task.task_type,
                 'status': task.status,
                 'status_display': task.get_status_display(),
                 'progress': task.progress_percent,
-                'step': task.current_step,
+                'step': _(task.current_step) if task.current_step else '',
                 'total': task.total_items,
                 'processed': task.processed_items,
+                'error_message': _(task.error_message) if task.error_message else '',
             })
 
         return JsonResponse({

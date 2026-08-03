@@ -1545,3 +1545,15 @@ msgstr ""
 
 msgid "Token not found"
 msgstr ""
+
+msgid "Chưa thiết lập nhãn cho dự án hiện tại."
+msgstr "No labels have been configured for the current project."
+
+msgid "Chưa thiết lập API KEY, OLLAMA URL và OLLAMA MODEL."
+msgstr "API Key, Ollama URL, and Ollama model have not been configured."
+
+msgid "Annotating comments with Ollama"
+msgstr ""
+
+msgid "Fetching comments from YouTube"
+msgstr ""

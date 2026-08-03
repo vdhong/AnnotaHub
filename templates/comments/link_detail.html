@@ -622,6 +622,7 @@ async function applyCommentLabel(commentId, labelId, labelName, labelColor) {
 
     // Render dynamic label stat cards
     renderLabelStats();
+    syncLinkStatus();
 })();
 
 // ---- Render dynamic label filter buttons ----
@@ -687,6 +688,7 @@ function applyTaskSnapshot(task) {
         step: task.step || '',
         total: task.total || 0,
         processed: task.processed || 0,
+        error_message: task.error_message || ''
     });
 
     if (prefix === 'fetch') {
@@ -736,8 +738,6 @@ async function syncLinkStatus() {
     }
 }
 
-syncLinkStatus();
-
 async function ajaxPost(url, body) {
     const response = await fetch(url, {
         method: 'POST',
@@ -778,7 +778,11 @@ function updateProgressCard(prefix, data) {
         else if (data.status === 'cancelled') status.classList.add('text-warning');
     }
     if (percent) percent.textContent = `${data.progress}%`;
-    if (step) step.textContent = data.step || '';
+    if (data.status === 'failed' && data.error_message) {
+        step.textContent = data.error_message;
+    } else if (step) {
+        step.textContent = data.step || '';
+    }
     if (count) {
         const unit = I18N.comments;
         const processed = typeof data.processed === 'number' ? data.processed : 0;
@@ -823,6 +827,7 @@ async function clearAndRefetchTask() {
             updateFetchButtons(true);
             showToast(data.message || 'Re-fetching comments...', 'success');
             startEventProgress();
+            syncLinkStatus();
         } else {
             showToast(data.message || 'Failed to clear and refetch.', 'error');
         }
@@ -842,6 +847,7 @@ async function retryFetchTask() {
             updateFetchButtons(true);
             showToast(data.message || 'Refetching comments...', 'success');
             startEventProgress();
+            syncLinkStatus();
         } else {
             showToast(data.message || 'Failed to refetch.', 'error');
         }
@@ -888,6 +894,7 @@ async function continueAnnotationTask() {
                 showToast(data.message || 'Continuing annotation...', 'success');
                 startEventProgress();
             }
+            syncLinkStatus();
         } else {
             showToast(data.message || 'Failed to continue annotation.', 'error');
         }
@@ -907,6 +914,7 @@ async function reannotateAllTask() {
             updateAnnotateButtons(true);
             showToast(data.message || 'Re-annotation started...', 'success');
             startEventProgress();
+            syncLinkStatus();
         } else {
             showToast(data.message || 'Failed to start re-annotation.', 'error');
         }
