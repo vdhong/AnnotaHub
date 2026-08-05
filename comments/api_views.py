@@ -326,59 +326,6 @@ class CommentTokensView(View):
 
 
 @method_decorator([csrf_exempt, require_http_methods(["POST"])], name='dispatch')
-class ToggleTokenView(View):
-    """
-    Toggle token label between toxic-like and O (neutral).
-    Sets manual_label on the token (overrides ai_label for display).
-    """
-    def post(self, request, comment_id, token_position):
-        comment = get_object_or_404(Comment, id=comment_id)
-        token = comment.get_or_create_token_for_position(token_position)
-        if token is None:
-            return JsonResponse({'success': False, 'error': 'Token not found'}, status=404)
-
-        project = comment.youtube_link.project
-        currently_toxic = token.is_toxic
-
-        if currently_toxic:
-            o_label = None
-            for pl in ProjectLabel.objects.filter(project=project).select_related('label'):
-                if pl.label.name.upper() == 'O' or pl.label.name.lower() == 'non_toxic':
-                    o_label = pl
-                    break
-            token.manual_label = o_label
-        else:
-            toxic_label = None
-            for pl in ProjectLabel.objects.filter(project=project).select_related('label'):
-                if pl.label.name.lower() in ('toxic', 'offensive', 'abusive', 'hate'):
-                    toxic_label = pl
-                    break
-            token.manual_label = toxic_label
-
-        token.annotation_source = 'manual'
-        token.save(update_fields=['manual_label', 'annotation_source'])
-
-        comment.update_comment_label()
-        comment.is_meaningful = True
-        comment.annotated_at = timezone.now()
-        if comment.annotation_source == 'auto':
-            comment.annotation_source = 'mixed'
-        elif comment.annotation_source is None:
-            comment.annotation_source = 'manual'
-        comment.save(update_fields=['annotation_source', 'is_meaningful', 'annotated_at'])
-
-        return JsonResponse({
-            'success': True,
-            'token_text': token.text,
-            'is_toxic': token.is_toxic,
-            'comment_label': comment.toxicity_label,
-            'effective_label': token.effective_label_data,
-            'ai_label': token.ai_label_data,
-            'manual_label': token.manual_label_data,
-        })
-
-
-@method_decorator([csrf_exempt, require_http_methods(["POST"])], name='dispatch')
 class StopFetchTaskView(View):
     """Stop the fetch comments task (API)."""
     def post(self, request, link_id):
@@ -406,7 +353,17 @@ class StopAnnotationTaskView(View):
 class RetryFetchView(View):
     """Refetch comments without deleting existing stored comments (API)."""
     def post(self, request, link_id):
-        link = get_object_or_404(YouTubeLink, id=link_id)
+        link = YouTubeLink.objects.select_related('project').filter(id=link_id).first()
+        if link is None:
+            return JsonResponse({
+                'success': False,
+                'message': 'Link not found',
+            }, status=404)
+        if link.project.is_locked:
+            return JsonResponse({
+                'success': False,
+                'message': 'Project is locked',
+            }, status=403)
         cancel_tasks_for_link_now(str(link.id))
         link.status = 'pending'
         link.save(update_fields=['status', 'updated_at'])
@@ -421,7 +378,17 @@ class RetryFetchView(View):
 class ClearAndRefetchView(View):
     """Clear existing comments and refetch comments from YouTube (API)."""
     def post(self, request, link_id):
-        link = get_object_or_404(YouTubeLink, id=link_id)
+        link = YouTubeLink.objects.select_related('project').filter(id=link_id).first()
+        if link is None:
+            return JsonResponse({
+                'success': False,
+                'message': 'Link not found',
+            }, status=404)
+        if link.project.is_locked:
+            return JsonResponse({
+                'success': False,
+                'message': 'Project is locked',
+            }, status=403)
         clear_result = clear_link_data_for_refetch(str(link.id))
         if clear_result.get('status') == 'error':
             return JsonResponse({
@@ -444,12 +411,17 @@ class ClearAndRefetchView(View):
 class ContinueAnnotationView(View):
     """Continue annotation for unannotated comments (API)."""
     def post(self, request, link_id):
-        link = get_object_or_404(YouTubeLink, id=link_id)
+        link = YouTubeLink.objects.select_related('project').filter(id=link_id).first()
+        if link is None:
+            return JsonResponse({
+                'success': False,
+                'message': 'Link not found',
+            }, status=404)
         unannotated = link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).count()
         if unannotated == 0:
             return JsonResponse({
                 'success': False,
-                'message': 'No unannotated comments found.',
+                'message': _('No unannotated comments found.'),
             }, status=400)
 
         running_task = get_effective_task_progress(str(link.id), 'annotating')
@@ -457,7 +429,7 @@ class ContinueAnnotationView(View):
             return JsonResponse({
                 'success': True,
                 'already_running': True,
-                'message': 'Annotation task is already running. Progress updated.',
+                'message': _('Annotation task is already running. Progress updated.'),
                 'task': {
                     'type': running_task.task_type,
                     'status': running_task.status,
@@ -468,7 +440,11 @@ class ContinueAnnotationView(View):
                     'processed': running_task.processed_items,
                 }
             })
-
+        if link.project.is_locked:
+            return JsonResponse({
+                'success': False,
+                'message': 'Project is locked',
+            }, status=403)
         enqueue_annotation_task(link, 'Continuing annotation')
         return JsonResponse({
             'success': True,
@@ -480,7 +456,17 @@ class ContinueAnnotationView(View):
 class ReannotateLinkView(View):
     """Re-run annotation for all comments in a link (API)."""
     def post(self, request, link_id):
-        link = get_object_or_404(YouTubeLink, id=link_id)
+        link = YouTubeLink.objects.select_related('project').filter(id=link_id).first()
+        if link is None:
+            return JsonResponse({
+                'success': False,
+                'message': 'Link not found',
+            }, status=404)
+        if link.project.is_locked:
+            return JsonResponse({
+                'success': False,
+                'message': 'Project is locked',
+            }, status=403)
         cancel_tasks_for_link_now(str(link.id))
         link.comments.update(
             ai_label=None,

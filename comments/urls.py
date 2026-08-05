@@ -30,6 +30,7 @@ web_urls = [
     path('projects/<uuid:project_id>/export/', views.project_export, name='project_export'),
     path('projects/<uuid:project_id>/labels/', views.project_labels_settings, name='project_labels_settings'),
     path('projects/<uuid:project_id>/participants/', views.project_manage_participants, name='project_manage_participants'),
+    path('projects/<uuid:project_id>/lock/', views.project_lock, name='project_lock'),
 
     # Label Management views
     path('labels/', views.label_list, name='label_list'),
@@ -41,12 +42,6 @@ web_urls = [
     path('projects/<uuid:project_id>/links/add/', views.add_youtube_link, name='add_youtube_link'),
     path('links/<uuid:link_id>/detail/', views.link_detail, name='link_detail'),
     path('links/<uuid:link_id>/delete/', views.delete_youtube_link, name='delete_youtube_link'),
-    path('links/<uuid:link_id>/reannotate/', views.reannotate_link, name='reannotate_link'),
-    path('links/<uuid:link_id>/retry/', views.retry_fetch_link, name='retry_fetch_link'),
-    path('links/<uuid:link_id>/clear-refetch/', views.clear_and_refetch_link, name='clear_and_refetch_link'),
-    path('links/<uuid:link_id>/stop-fetch/', views.stop_fetch_task, name='stop_fetch_task'),
-    path('links/<uuid:link_id>/stop-annotate/', views.stop_annotation_task, name='stop_annotation_task'),
-    path('links/<uuid:link_id>/continue-annotate/', views.continue_annotation, name='continue_annotation'),
 
     # SSE for real-time progress
     path('sse/progress/<uuid:link_id>/', views.progress_event_stream, name='progress_event_stream'),
@@ -63,8 +58,6 @@ api_urls = [
     path('links/<uuid:link_id>/comments/', api_views.LinkCommentsView.as_view(), name='api_link_comments'),
     path('links/<uuid:link_id>/export/', api_views.LinkExportView.as_view(), name='api_link_export'),
     path('comments/<uuid:comment_id>/tokens/', api_views.CommentTokensView.as_view(), name='api_comment_tokens'),
-    path('comments/<uuid:comment_id>/toggle-token/<int:token_position>/',
-         api_views.ToggleTokenView.as_view(), name='api_toggle_token'),
     path('comments/<uuid:comment_id>/set-token-labels/<int:token_position>/',
          views.set_token_labels, name='api_set_token_labels'),
     path('comments/<uuid:comment_id>/set-comment-labels/',

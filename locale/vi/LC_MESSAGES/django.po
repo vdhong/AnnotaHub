@@ -1581,3 +1581,24 @@ msgstr "Đang gán nhãn dùng Ollama"
 
 msgid "Fetching comments from YouTube"
 msgstr "Đang tải comment từ YouTube"
+
+msgid "Project is locked"
+msgstr "Dự án đã khoá"
+
+msgid "Permission denied"
+msgstr "Không có quyền truy cập"
+
+msgid "Link not found"
+msgstr "Không tìm thấy link"
+
+msgid "Annotation task is already running. Progress updated."
+msgstr "Tiến trình gán nhãn đang chạy."
+
+msgid "Lock"
+msgstr "Khoá"
+
+msgid "Unlock"
+msgstr "Mở khoá"
+
+msgid "Locked"
+msgstr "Đã khoá"

@@ -275,7 +275,7 @@ class Project(models.Model):
     )
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-
+    is_locked = models.BooleanField(default=False)
     class Meta:
         ordering = ['-created_at']
 

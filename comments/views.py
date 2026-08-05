@@ -368,7 +368,7 @@ def check_project_access(request, project_id, require_owner=False):
     - Participant: label-only access (can view, can label)
     Returns (project, is_owner, is_participant) tuple or redirects with error.
     """
-    project = get_object_or_404(Project, id=project_id)
+    project = get_object_or_404(Project, id=project_id) if type(project_id) != Project else project_id
 
     if project.is_owner(request.user):
         return (project, True, False)
@@ -624,7 +624,13 @@ def set_token_labels(request, comment_id, token_position):
     Set manual label for a token.
     Each token has ONE manual_label (user-assigned) that overrides ai_label.
     """
-    comment = get_object_or_404(Comment, id=comment_id)
+    comment = Comment.objects.select_related('youtube_link__project').filter(id=comment_id).first()
+    if comment is None:
+        return JsonResponse({'success': False, 'error': _('Comment not found')}, status=404)
+    if comment.youtube_link.project.owner != request.user and not comment.youtube_link.project.participants.filter(id=request.user.id).exists():
+        return JsonResponse({'success': False, 'error': _('Permission denied')}, status=403)
+    if comment.youtube_link.project.is_locked:
+        return JsonResponse({'success': False, 'error': _('Project is locked')}, status=403)
     token = comment.get_or_create_token_for_position(token_position)
     if token is None:
         return JsonResponse({'success': False, 'error': _('Token not found')}, status=404)
@@ -682,7 +688,13 @@ def set_comment_labels(request, comment_id):
     Set manual label for a comment.
     Each comment has ONE manual_label (user-assigned) that overrides ai_label.
     """
-    comment = get_object_or_404(Comment, id=comment_id)
+    comment = Comment.objects.select_related('youtube_link__project').filter(id=comment_id).first()
+    if comment is None:
+        return JsonResponse({'success': False, 'error': _('Comment not found')}, status=404)
+    if comment.youtube_link.project.owner != request.user and not comment.youtube_link.project.participants.filter(id=request.user.id).exists():
+        return JsonResponse({'success': False, 'error': _('Permission denied')}, status=403)
+    if comment.youtube_link.project.is_locked:
+        return JsonResponse({'success': False, 'error': _('Project is locked')}, status=403)
 
     import json as json_lib
     body = request.body.decode('utf-8')
@@ -912,7 +924,7 @@ def project_delete(request, project_id):
     if not isinstance(result, tuple):
         return result  # redirect
 
-    project, is_owner, is_participant = result
+    project, _, _ = result
 
     # Cancel all running tasks for all links in this project
     for link in project.youtubelinks.all():
@@ -923,6 +935,18 @@ def project_delete(request, project_id):
     messages.success(request, _('Project "%(name)s" deleted.') % {'name': project_name})
     return redirect('comments:project_list')
 
+@login_required
+@require_POST
+def project_lock(request, project_id):
+    """Lock a project and prevent further modifications. Only owner can lock."""
+    result = check_project_access(request, project_id, require_owner=True)
+    if not isinstance(result, tuple):
+        return result  # redirect
+
+    project, _, _ = result
+    project.is_locked = not project.is_locked
+    project.save(update_fields=['is_locked'])
+    return redirect('comments:project_detail', project_id=project.id)
 
 @login_required
 def project_manage_participants(request, project_id):
@@ -931,7 +955,7 @@ def project_manage_participants(request, project_id):
     if not isinstance(result, tuple):
         return result  # redirect
 
-    project, is_owner, is_participant = result
+    project, _, _ = result
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
@@ -1112,6 +1136,10 @@ def add_youtube_link(request, project_id):
 
     project, is_owner, is_participant = result
 
+    if project.is_locked:
+        messages.error(request, _('Project is locked'))
+        return redirect('comments:project_detail', project_id=project.id)
+
     if request.method == 'POST':
         url = request.POST.get('url', '').strip()
 
@@ -1275,13 +1303,17 @@ def link_detail(request, link_id):
 @require_POST
 def delete_youtube_link(request, link_id):
     """Delete a YouTube link and all its comments. Only owner can delete."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
+    link = YouTubeLink.objects.select_related('project').filter(id=link_id).first()
+    if link is None:
+        return redirect('comments:project_detail', project_id=project_id)
     # Check owner access
-    result = check_project_access(request, link.project.id, require_owner=True)
+    result = check_project_access(request, link.project, require_owner=True)
     if not isinstance(result, tuple):
         return result
-
+    
+    if link.project.is_locked:
+        messages.error(request, _('Project is locked'))
+        return redirect('comments:project_detail', project_id=link.project.id)
     project_id = link.project.id
 
     # Cancel running tasks
@@ -1290,125 +1322,6 @@ def delete_youtube_link(request, link_id):
     link.delete()
     messages.success(request, _('YouTube link and all its data deleted.'))
     return redirect('comments:project_detail', project_id=project_id)
-
-
-@login_required
-@require_POST
-def reannotate_link(request, link_id):
-    """Re-run annotation for all comments in a link. Only owner can reannotate."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
-    # Check owner access
-    result = check_project_access(request, link.project.id, require_owner=True)
-    if not isinstance(result, tuple):
-        return result
-
-    # Cancel any running annotation task first
-    cancel_tasks_for_link_now(str(link.id))
-
-    link.comments.update(
-        #toxicity_label=None,
-        toxicity_confidence=None,
-        annotation_source=None,
-        model_response=None,
-        annotated_at=None,
-        original_text='',
-        is_meaningful=None,
-    )
-    Token.objects.filter(comment__youtube_link=link).delete()
-    enqueue_annotation_task(link, 'Re-annotating all comments')
-    messages.info(request, _('Re-annotation started in background. All labels have been reset.'))
-    return redirect('comments:link_detail', link_id=link.id)
-
-
-@login_required
-@require_POST
-def retry_fetch_link(request, link_id):
-    """Refetch comments without deleting existing stored comments."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
-    # Cancel any running tasks for this link first
-    cancel_tasks_for_link_now(str(link.id))
-
-    # Reset link status to allow refetching
-    link.status = 'pending'
-    link.save(update_fields=['status', 'updated_at'])
-
-    # Start fetching comments again without clearing existing data
-    enqueue_fetch_comments_task(link, 'Refetching comments without clearing existing data')
-    messages.success(
-        request,
-        _('Refetching comments for "%(title)s". Existing comments will be kept.') % {'title': link.title or link.video_id}
-    )
-    return redirect('comments:link_detail', link_id=link.id)
-
-
-@login_required
-@require_POST
-def clear_and_refetch_link(request, link_id):
-    """Clear existing comments and refetch comments from YouTube."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
-    clear_result = clear_link_data_for_refetch(str(link.id))
-    if clear_result.get('status') == 'error':
-        messages.error(request, clear_result.get('message', _('Failed to clear link data.')))
-        return redirect('comments:link_detail', link_id=link.id)
-
-    enqueue_fetch_comments_task(link, 'Clearing old comments and refetching')
-    messages.success(
-        request,
-        _('Cleared %(count)s comments and started refetching for "%(title)s".') % {'count': clear_result.get("deleted_comments", 0), 'title': link.title or link.video_id}
-    )
-    return redirect('comments:link_detail', link_id=link.id)
-
-
-@login_required
-@require_POST
-def stop_fetch_task(request, link_id):
-    """Stop the fetch comments task."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
-    # Cancel running tasks
-    cancel_tasks_for_link_now(str(link.id))
-    messages.info(request, _('Fetch task has been stopped.'))
-    return redirect('comments:link_detail', link_id=link.id)
-
-
-@login_required
-@require_POST
-def stop_annotation_task(request, link_id):
-    """Stop the AI annotation task."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
-    # Cancel running tasks
-    cancel_tasks_for_link_now(str(link.id))
-    messages.info(request, _('Annotation task has been stopped.'))
-    return redirect('comments:link_detail', link_id=link.id)
-
-
-@login_required
-@require_POST
-def continue_annotation(request, link_id):
-    """Continue annotation for unannotated comments."""
-    link = get_object_or_404(YouTubeLink, id=link_id)
-
-    # Check if there are unannotated comments
-    unannotated = link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).count()
-    if unannotated == 0:
-        messages.info(request, _('No unannotated comments found.'))
-        return redirect('comments:link_detail', link_id=link.id)
-
-    # Check if annotation is already running
-    running_task = get_effective_task_progress(str(link.id), 'annotating')
-    if running_task and running_task.status == 'running':
-        messages.info(request, _('Annotation task is already running. Progress is being updated.'))
-        return redirect('comments:link_detail', link_id=link.id)
-
-    # Start annotation task (it will only process unannotated comments)
-    enqueue_annotation_task(link, 'Continuing annotation')
-    messages.success(request, _('Continuing annotation for %(count)s unannotated comments.') % {'count': unannotated})
-    return redirect('comments:link_detail', link_id=link.id)
-
 
 def progress_event_stream(request, link_id):
     """Server-Sent Events endpoint for real-time progress updates."""

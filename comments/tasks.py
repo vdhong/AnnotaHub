@@ -291,13 +291,21 @@ def fetch_comments_task(self, youtube_link_id: str):
         youtube_link_id: UUID of the YouTubeLink instance
     """
     try:
-        youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
+        youtube_link = YouTubeLink.objects.select_related('project').get(id=youtube_link_id)
     except YouTubeLink.DoesNotExist:
         logger.error(f"YouTubeLink {youtube_link_id} not found")
         return {'status': 'error', 'message': 'YouTubeLink not found'}
 
+    if youtube_link.project.is_locked:
+        youtube_link.status = 'completed'
+        youtube_link.save(update_fields=['status'])
+        # Mark task as completed
+        task_progress.status = 'failed'
+        task_progress.error_message = "Project is locked"
+        task_progress.save(update_fields=['status', 'error_message'])
+        return {'status': 'error', 'message': 'Project is locked'}
+    
     logger.info(f"Starting comment fetch for video {youtube_link.video_id}")
-
     # Create task progress record
     task_progress = _bootstrap_task_progress(
         youtube_link,
@@ -397,11 +405,20 @@ def annotate_comments_task(self, youtube_link_id: str):
         youtube_link_id: UUID of the YouTubeLink instance
     """
     try:
-        youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
+        youtube_link = YouTubeLink.objects.select_related('project').get(id=youtube_link_id)
     except YouTubeLink.DoesNotExist:
         logger.error(f"YouTubeLink {youtube_link_id} not found")
         return {'status': 'error', 'message': 'YouTubeLink not found'}
 
+    if youtube_link.project.is_locked:
+        youtube_link.status = 'completed'
+        youtube_link.save(update_fields=['status'])
+        # Mark task as completed
+        task_progress.status = 'failed'
+        task_progress.error_message = "Project is locked"
+        task_progress.save(update_fields=['status', 'error_message'])
+        return {'status': 'error', 'message': 'Project is locked'}
+    
     logger.info(f"Starting annotation for video {youtube_link.video_id}")
 
     # Get unannotated comments
