@@ -1130,7 +1130,7 @@ def project_export(request, project_id):
 @login_required
 def add_youtube_link(request, project_id):
     """Add a YouTube link to a project. Only owner can add links."""
-    result = check_project_access(request, project_id, require_owner=True)
+    result = check_project_access(request, project_id, require_owner=False)
     if not isinstance(result, tuple):
         return result  # redirect
 

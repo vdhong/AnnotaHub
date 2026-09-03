@@ -5,6 +5,9 @@ An open-source platform for automatically collecting Vietnamese YouTube comments
 ##Online demo
 
 Click here to try [online demo here](https://annotahub.duthu.net/).
+Demo account:
+- Username: vudinhhong
+- Password: demo@123
 
 ## 🎯 Objectives
 
