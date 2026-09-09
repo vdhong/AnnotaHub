@@ -3,38 +3,58 @@
 {% block title %}{% trans "Export" %} - {{ project.name }}{% endblock %}
 
 {% block content %}
+
+{% include "comments/_project_nav.html" with active='export' %}
+
+<div class="page-head">
+    <div>
+        <h1 class="h4 mb-1"><i class="bi bi-download"></i> {% trans "Export Dataset" %}</h1>
+        <p class="text-muted mb-0">{% trans "Chọn định dạng và phạm vi dữ liệu để tải bộ dữ liệu về máy." %}</p>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-8">
         <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-download"></i> {% trans "Export Dataset" %} - {{ project.name }}</h5>
-            </div>
             <div class="card-body">
                 <form method="post" id="exportForm">
                     {% csrf_token %}
 
                     <div class="mb-3">
-                        <label class="form-label"><strong>{% trans "Export Format" %}</strong></label>
-                        <select name="format" class="form-select" required>
-                            <optgroup label="{% trans "JSON Format" %}">
-                                <option value="json_sentence">{% trans "JSON - Sentence Level (comment + label)" %}</option>
-                                <option value="json_token">{% trans "JSON - Token Level (comment + tokens + BIO labels)" %}</option>
-                                <option value="json_llm">{% trans "JSON - LLM Training (instruction/input/output format)" %}</option>
+                        <label class="form-label"><strong>{% trans "Định dạng xuất" %}</strong></label>
+                        <select name="format" id="formatSelect" class="form-select" required>
+                            {% for group, items in format_groups.items %}
+                            <optgroup label="{{ group }}">
+                                {% for item in items %}
+                                <option value="{{ item.key }}" data-ext="{{ item.extension }}"
+                                        {% if item.key == 'conll' %}selected{% endif %}>
+                                    {{ item.label }}
+                                </option>
+                                {% endfor %}
                             </optgroup>
-                            <optgroup label="{% trans "XML Format" %}">
-                                <option value="xml_conll">{% trans "XML - CoNLL-like (token-level with tags)" %}</option>
-                            </optgroup>
-                            <optgroup label="{% trans "CSV Format" %}">
-                                <option value="csv_sentence">{% trans "CSV - Sentence Level" %}</option>
-                                <option value="csv_token">{% trans "CSV - Token Level" %}</option>
-                            </optgroup>
+                            {% endfor %}
                         </select>
+                        <div class="form-text" id="formatHint"></div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label"><strong>{% trans "Filter by Toxicity" %}</strong></label>
+                        <label class="form-label"><strong>{% trans "Phạm vi dữ liệu" %}</strong></label>
+                        <select name="review" id="reviewSelect" class="form-select">
+                            <option value="all">{% trans "Tất cả bình luận (kể cả chưa gán nhãn)" %}</option>
+                            <option value="labelled">{% trans "Đã có nhãn (AI hoặc người)" %}</option>
+                            <option value="human">{% trans "Có nhãn do người gán" %}</option>
+                            <option value="gold" selected>{% trans "Chỉ nhãn đã chốt — dùng để công bố / huấn luyện" %}</option>
+                        </select>
+                        <div class="form-text">
+                            {% blocktrans %}Dữ liệu công bố hoặc huấn luyện mô hình nên dùng <b>"chỉ nhãn đã chốt"</b>.
+                            Xuất cả bình luận chưa ai gán nhãn sẽ dạy mô hình rằng "chưa gán nhãn" nghĩa là "O".{% endblocktrans %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label"><strong>{% trans "Lọc theo nhãn" %}</strong></label>
                         <select name="filter" class="form-select">
-                            <option value="all">{% trans "All Comments" %}</option>
+                            <option value="all">{% trans "Tất cả nhãn" %}</option>
                             {% for lbl in project_labels %}
                             <option value="{{lbl.id}}" style="color:{{lbl.color}}">{{lbl.name}}</option>
                             {%endfor%}
@@ -63,11 +83,78 @@
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-success">
-                            <i class="bi bi-download"></i> {% trans "Download Dataset" %}
+                            <i class="bi bi-play-circle"></i> {% trans "Bắt đầu xuất" %}
                         </button>
                         <a href="{% url 'comments:project_detail' project.id %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
                     </div>
+                    <div class="form-text mt-2">
+                        {% blocktrans %}Việc xuất chạy ở chế độ nền nên dataset lớn không bị ngắt giữa chừng.
+                        Khi xong, file sẽ xuất hiện ở bảng bên dưới và tự tải về.{% endblocktrans %}
+                    </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Lịch sử xuất = danh sách file tải về -->
+        <div class="card mt-4" id="exportHistoryCard">
+            <div class="card-header d-flex align-items-center">
+                <h6 class="mb-0"><i class="bi bi-clock-history"></i> {% trans "Lần xuất gần đây" %}</h6>
+                <span class="ms-auto small text-muted" id="exportRefreshHint"></span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0 align-middle">
+                    <thead><tr>
+                        <th>{% trans "Định dạng" %}</th>
+                        <th>{% trans "Phạm vi" %}</th>
+                        <th class="text-end">{% trans "Bình luận" %}</th>
+                        <th>{% trans "Thời điểm" %}</th>
+                        <th>{% trans "Trạng thái" %}</th>
+                        <th class="text-end">{% trans "Tải về" %}</th>
+                    </tr></thead>
+                    <tbody id="exportHistoryBody">
+                        {% for record in exports %}
+                        <tr data-export-id="{{ record.id }}">
+                            <td class="small"><code>{{ record.export_format }}</code></td>
+                            <td class="small">{{ record.youtube_link.title|default:_("Cả dự án")|truncatechars:32 }}</td>
+                            <td class="text-end small">{{ record.comment_count }}</td>
+                            <td class="small text-muted">{{ record.generated_at|date:"Y-m-d H:i" }}</td>
+                            {% comment %}
+                            Trạng thái render sẵn từ server rồi JS mới cập
+                            nhật: hỏng mạng hay tắt JS thì bảng vẫn dùng được,
+                            không phải một bảng trống.
+                            {% endcomment %}
+                            <td class="js-status" style="min-width:190px">
+                              {% if record.is_running %}
+                              <div class="progress progress-thin">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                                     style="width:{% if record.progress_percent %}{{ record.progress_percent }}{% else %}3{% endif %}%"></div>
+                              </div>
+                              <div class="small text-muted mt-1">
+                                {{ record.current_step|default:_("Chờ xử lý") }} · {{ record.progress_percent }}%
+                              </div>
+                              {% elif record.status == 'ready' %}
+                              <span class="badge bg-success">{% trans "Sẵn sàng" %}</span>
+                              {% if record.file_size %}<span class="small text-muted ms-2">{{ record.file_size }}</span>{% endif %}
+                              {% else %}
+                              <span class="badge bg-danger" title="{{ record.error_message }}">{% trans "Thất bại" %}</span>
+                              {% endif %}
+                            </td>
+                            <td class="text-end js-download">
+                              {% if record.can_download %}
+                              <a class="btn btn-sm btn-outline-primary"
+                                 href="{% url 'comments:export_download' project.id record.id %}">{% trans "Tải về" %}</a>
+                              {% elif record.status == 'ready' %}
+                              <span class="small text-muted">{% trans "File đã bị xoá" %}</span>
+                              {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">
+                            {% trans "Chưa có lần xuất nào." %}
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -77,33 +164,49 @@
                 <h6 class="mb-0"><i class="bi bi-info-circle"></i> {% trans "Format Descriptions" %}</h6>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <strong>{% trans "JSON - Sentence Level:" %}</strong>
-                    <pre class="bg-light p-2 small">{[{"id": "...", "text": "comment text", "label": "toxic/non_toxic", ...}]}</pre>
-                </div>
-                <div class="mb-3">
-                    <strong>{% trans "JSON - Token Level (BIO):" %}</strong>
-                    <pre class="bg-light p-2 small">{[{"id": "...", "text": "...", "label": "...", "tokens": [{"text": "word", "label": "B_TOXIC/O", ...}] }]}</pre>
-                </div>
-                <div class="mb-3">
-                    <strong>{% trans "JSON - LLM Training:" %}</strong>
-                    <pre class="bg-light p-2 small">{[{"instruction": "...", "input": "comment text", "output": "{\"is_toxic\": true, \"toxic_words\": [...]}"}]}</pre>
-                </div>
-                <div>
-                    <strong>{% trans "XML - CoNLL-like:" %}</strong>
-                    <pre class="bg-light p-2 small"><corpus>
-  <sentence id="..." label="toxic">
-    <tokens>
-      <token text="word" label="B_TOXIC" position="0"/>
-    </tokens>
-  </sentence>
-</corpus></pre>
+                <p class="text-muted small">
+                    {% blocktrans %}Chọn định dạng phù hợp với công cụ bạn sẽ dùng. Các định dạng
+                    nhóm <b>Chuẩn NLP</b> nạp trực tiếp được vào thư viện huấn luyện mô hình.{% endblocktrans %}
+                </p>
+
+                <div class="accordion accordion-flush" id="formatDocs">
+                {% for group, items in format_groups.items %}
+                    <div class="mt-2 mb-1 small text-uppercase text-muted fw-bold">{{ group }}</div>
+                    {% for item in items %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed py-2" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#doc-{{ item.key }}"
+                                    aria-expanded="false">
+                                <span class="flex-grow-1">{{ item.label }}</span>
+                                <code class="small text-muted me-2">{{ item.extension }}</code>
+                            </button>
+                        </h2>
+                        <div id="doc-{{ item.key }}" class="accordion-collapse collapse"
+                             data-bs-parent="#formatDocs">
+                            <div class="accordion-body pt-2">
+                                <p class="small mb-2">{{ item.description }}</p>
+                                <pre class="bg-light p-2 small mb-0" style="white-space:pre-wrap">{{ item.sample }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </div>
-
+{% endblock %}
+{% block extra_js %}
+{% trans "Chờ xử lý" as t_pending %}
+{% trans "Đang xuất" as t_running %}
+{% trans "Sẵn sàng" as t_ready %}
+{% trans "Thất bại" as t_failed %}
+{% trans "Tải về" as t_download %}
+{% trans "File đã bị xoá" as t_gone %}
+{% trans "Đang cập nhật tiến độ…" as t_watching %}
 <script>
 document.querySelectorAll('input[name="scope"]').forEach(radio => {
     radio.addEventListener('change', function() {
@@ -112,4 +215,163 @@ document.querySelectorAll('input[name="scope"]').forEach(radio => {
     });
 });
 </script>
+
+<script>
+"use strict";
+(function () {
+  const select = document.getElementById('formatSelect');
+  const review = document.getElementById('reviewSelect');
+  const hint = document.getElementById('formatHint');
+  if (!select || !review || !hint) return;
+
+  const MSG = {
+    resultFile: "{% trans 'Tệp kết quả' %}",
+    trainingWarning: "{% trans 'CẢNH BÁO: định dạng này dùng để huấn luyện mô hình. Với phạm vi \"tất cả bình luận\", dữ liệu chưa gán nhãn sẽ bị coi là nhãn \"O\". Nên chọn \"chỉ nhãn đã chốt\".' %}",
+    seeDescription: "{% trans 'Xem mô tả chi tiết ở khung bên cạnh.' %}",
+  };
+
+  // Định dạng dùng để huấn luyện: cảnh báo nếu xuất cả dữ liệu chưa gán nhãn.
+  const TRAINING = new Set(['json_llm', 'hf_jsonl', 'conll', 'conll_full', 'spacy_json']);
+
+  function update() {
+    const key = select.value;
+    const option = select.options[select.selectedIndex];
+    const ext = option ? option.dataset.ext : '';
+    let text = MSG.resultFile + ': ' + ext;
+
+    if (TRAINING.has(key) && review.value === 'all') {
+      hint.className = 'form-text text-danger';
+      text += ' — ' + MSG.trainingWarning;
+    } else {
+      hint.className = 'form-text';
+      text += ' — ' + MSG.seeDescription;
+    }
+    hint.textContent = text;
+
+    // Mở sẵn phần mô tả của định dạng đang chọn.
+    const panel = document.getElementById('doc-' + key);
+    if (panel && window.bootstrap) {
+      bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).show();
+    }
+  }
+
+  select.addEventListener('change', update);
+  review.addEventListener('change', update);
+  update();
+})();
+
+/* ------------------------------------------------------------------
+   Theo dõi tiến độ các lần xuất.
+
+   Việc xuất chạy ở worker nên trang phải hỏi lại trạng thái. Chỉ hỏi khi còn
+   việc đang chạy — xong hết thì dừng hẳn, không để trang tự gọi API mãi.
+   ------------------------------------------------------------------ */
+(function exportJobs() {
+  const JOBS_URL = "{% url 'api:api_export_jobs' project.id %}";
+  // Lần xuất mà CHÍNH trình duyệt này vừa đặt: xong là tự tải về.
+  let watching = "{{ watch_job|escapejs }}";
+  let autoDownloaded = false;
+  let timer = null;
+
+  const L = {
+    pending: "{{ t_pending|escapejs }}",
+    running: "{{ t_running|escapejs }}",
+    ready: "{{ t_ready|escapejs }}",
+    failed: "{{ t_failed|escapejs }}",
+    download: "{{ t_download|escapejs }}",
+    gone: "{{ t_gone|escapejs }}",
+    watching: "{{ t_watching|escapejs }}",
+  };
+
+  function renderRow(row, job) {
+    const status = row.querySelector('.js-status');
+    const download = row.querySelector('.js-download');
+    if (!status || !download) return;
+
+    status.textContent = '';
+    if (job.status === 'pending' || job.status === 'running') {
+      const wrap = document.createElement('div');
+      const bar = document.createElement('div');
+      bar.className = 'progress progress-thin';
+      const inner = document.createElement('div');
+      inner.className = 'progress-bar progress-bar-striped progress-bar-animated bg-info';
+      inner.style.width = Math.max(3, job.progress_percent) + '%';
+      bar.appendChild(inner);
+      const label = document.createElement('div');
+      label.className = 'small text-muted mt-1';
+      label.textContent = (job.current_step || L[job.status]) + ' · ' + job.progress_percent + '%';
+      wrap.append(bar, label);
+      status.appendChild(wrap);
+    } else if (job.status === 'ready') {
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-success';
+      badge.textContent = L.ready;
+      status.appendChild(badge);
+      if (job.file_size) {
+        const size = document.createElement('span');
+        size.className = 'small text-muted ms-2';
+        size.textContent = job.file_size;
+        status.appendChild(size);
+      }
+    } else {
+      const badge = document.createElement('span');
+      badge.className = 'badge bg-danger';
+      badge.textContent = L.failed;
+      badge.title = job.error || '';
+      status.appendChild(badge);
+    }
+
+    download.textContent = '';
+    if (job.download_url) {
+      const link = document.createElement('a');
+      link.className = 'btn btn-sm btn-outline-primary';
+      link.href = job.download_url;
+      link.textContent = L.download;
+      download.appendChild(link);
+    } else if (job.status === 'ready') {
+      const note = document.createElement('span');
+      note.className = 'small text-muted';
+      note.textContent = L.gone;
+      download.appendChild(note);
+    }
+  }
+
+  async function poll() {
+    let data;
+    try {
+      const response = await fetch(JOBS_URL, { cache: 'no-store' });
+      if (!response.ok) return;
+      data = await response.json();
+    } catch (err) {
+      return;
+    }
+
+    let busy = false;
+    (data.exports || []).forEach(function(job) {
+      const row = document.querySelector(`tr[data-export-id="${job.id}"]`);
+      if (row) renderRow(row, job);
+      if (job.status === 'pending' || job.status === 'running') busy = true;
+
+      // Tự tải đúng MỘT lần, và chỉ với lần xuất do trang này đặt.
+      if (watching && job.id === watching && job.download_url && !autoDownloaded) {
+        autoDownloaded = true;
+        window.location = job.download_url;
+      }
+    });
+
+    const hint = document.getElementById('exportRefreshHint');
+    if (hint) hint.textContent = busy ? L.watching : '';
+
+    if (busy) {
+      timer = setTimeout(poll, 2000);
+    } else if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  }
+
+  poll();
+})();
+</script>
+
 {% endblock %}

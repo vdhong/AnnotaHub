@@ -1,0 +1,292 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Phiên bản dataset" %} — {{ project.name }}{% endblock %}
+{% block content %}
+<div class="container-fluid p-0">
+  {% include "comments/_project_nav.html" with active='versions' %}
+
+  <div class="page-head">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-bookmark-check"></i> {% trans "Phiên bản dataset" %}</h1>
+      <p class="text-muted mb-0">
+        {% blocktrans %}Mỗi phiên bản là một ảnh chụp bất biến kèm checksum — dùng để tái lập kết quả nghiên cứu.{% endblocktrans %}
+      </p>
+    </div>
+    {% if is_owner %}
+    <div class="page-head__actions">
+      <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#newVersionModal">
+        <i class="bi bi-bookmark-plus"></i> {% trans "Chốt phiên bản mới" %}
+      </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table mb-0">
+        <thead><tr>
+          <th>{% trans "Phiên bản" %}</th><th>{% trans "Trạng thái" %}</th>
+          <th>{% trans "Định dạng" %}</th>
+          <th class="text-end">{% trans "Bình luận" %}</th>
+          <th class="text-end">{% trans "Token" %}</th>
+          <th class="text-end">α</th>
+          <th>{% trans "Checksum" %}</th><th>{% trans "Người tạo" %}</th><th>{% trans "Thời điểm" %}</th>
+          <th class="text-end">{% trans "Thao tác" %}</th>
+        </tr></thead>
+        <tbody>
+          {% for version in versions %}
+          <tr>
+            <td><b>{{ version.version }}</b>
+              {% if version.notes %}<div class="small text-muted">{{ version.notes|truncatechars:80 }}</div>{% endif %}
+            </td>
+            <td data-version-id="{{ version.id }}" class="js-version-status" style="min-width:180px">
+              {% if version.status == 'ready' %}<span class="badge bg-success">{% trans "Sẵn sàng" %}</span>
+              {% elif version.status == 'building' %}
+              {% comment %}
+              Chốt phiên bản chạy nền và có thể mất vài phút; thiếu thanh tiến
+              độ thì người dùng chỉ thấy chữ "Đang tạo" đứng im và tưởng treo.
+              {% endcomment %}
+              <div class="progress progress-thin">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+                     style="width:{% if version.progress_percent %}{{ version.progress_percent }}{% else %}3{% endif %}%"></div>
+              </div>
+              <div class="small text-muted mt-1">
+                {{ version.current_step|default:_("Đang tạo") }} · {{ version.progress_percent }}%
+              </div>
+              {% else %}<span class="badge bg-danger" title="{{ version.current_step }}">{% trans "Lỗi" %}</span>{% endif %}
+            </td>
+            <td class="small">{{ version.export_format }}
+              {% if version.can_download %}
+              <div class="text-muted">{{ version.file_size_bytes|filesizeformat }}</div>
+              {% endif %}
+            </td>
+            <td class="text-end">{{ version.comment_count }}</td>
+            <td class="text-end">{{ version.token_count }}</td>
+            <td class="text-end">{{ version.agreement_score|default:"—" }}</td>
+            <td><code class="small">{{ version.checksum_sha256|slice:":12" }}{% if version.checksum_sha256 %}…{% endif %}</code></td>
+            <td class="small">{{ version.created_by.username|default:"—" }}</td>
+            <td class="small text-muted">{{ version.created_at|date:"Y-m-d H:i" }}</td>
+            <td class="text-end text-nowrap">
+              <div class="btn-group btn-group-sm">
+                {% if version.can_download %}
+                <a class="btn btn-outline-primary"
+                   href="{% url 'comments:dataset_version_download' project.id version.id %}"
+                   title="{% trans 'Tải file phiên bản này về máy' %}">
+                  <i class="bi bi-download"></i>
+                </a>
+                {% else %}
+                <button class="btn btn-outline-secondary" disabled
+                        title="{% trans 'Chưa có file để tải' %}">
+                  <i class="bi bi-download"></i>
+                </button>
+                {% endif %}
+
+                {% if is_owner %}
+                  {% if version.can_restore and not project.is_locked %}
+                  <button type="button" class="btn btn-outline-warning js-restore"
+                          data-version="{{ version.version }}"
+                          data-created="{{ version.created_at|date:'Y-m-d H:i' }}"
+                          data-comments="{{ version.comment_count }}"
+                          data-url="{% url 'comments:dataset_version_restore' project.id version.id %}"
+                          title="{% trans 'Đưa nhãn của dự án về đúng phiên bản này' %}">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                  </button>
+                  {% else %}
+                  <button class="btn btn-outline-secondary" disabled
+                          title="{% if project.is_locked %}{% trans 'Dự án đang bị khoá' %}{% else %}{% trans 'Phiên bản này không có ảnh chụp nên không phục hồi được' %}{% endif %}">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                  </button>
+                  {% endif %}
+
+                  {% if project.is_locked %}
+                  <button class="btn btn-outline-secondary" disabled
+                          title="{% trans 'Dự án đang bị khoá' %}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                  {% else %}
+                  <form method="post" class="d-inline"
+                        action="{% url 'comments:dataset_version_delete' project.id version.id %}"
+                        onsubmit="return confirm('{% blocktrans with name=version.version %}Xoá vĩnh viễn phiên bản {{ name }} và file của nó?{% endblocktrans %}')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger"
+                            title="{% trans 'Xoá phiên bản này' %}">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="10" class="text-center text-muted py-4">
+            {% trans "Chưa có phiên bản nào được chốt." %}
+          </td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+
+{% if is_owner %}
+<!-- Xác nhận phục hồi — dùng chung cho mọi dòng, JS điền nội dung theo nút được bấm -->
+<div class="modal fade" id="restoreModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" id="restoreForm">
+      {% csrf_token %}
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="bi bi-arrow-counterclockwise"></i> {% trans "Phục hồi dự án về phiên bản" %}
+          <span id="restoreVersion" class="text-warning"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2">{% trans "Thao tác này sẽ ghi đè nhãn hiện tại của dự án:" %}</p>
+        <ul class="small">
+          <li>{% trans "Nhãn đã chốt, nhãn thủ công, trạng thái phân xử và nhãn token quay về đúng thời điểm chốt phiên bản." %}</li>
+          <li>{% trans "Mọi thay đổi nhãn thực hiện sau thời điểm đó sẽ mất." %}</li>
+          <li>{% trans "Bình luận không bị xoá hay thêm; bình luận mới thêm về sau được giữ nguyên." %}</li>
+          <li>{% trans "Lịch sử ai đã gán nhãn gì được giữ nguyên để không làm sai lệch chỉ số đồng thuận." %}</li>
+        </ul>
+        <div class="alert alert-light border small mb-3">
+          <div><b>{% trans "Chốt lúc" %}:</b> <span id="restoreCreated"></span></div>
+          <div><b>{% trans "Bình luận trong phiên bản" %}:</b> <span id="restoreComments"></span></div>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="backup" id="restoreBackup" checked>
+          <label class="form-check-label" for="restoreBackup">
+            {% trans "Chốt một phiên bản dự phòng trước khi ghi đè (khuyến nghị)" %}
+          </label>
+          <div class="form-text">{% trans "Nhờ vậy có thể quay lại trạng thái hiện tại nếu phục hồi nhầm." %}</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Huỷ" %}</button>
+        <button type="submit" class="btn btn-warning">
+          <i class="bi bi-arrow-counterclockwise"></i> {% trans "Phục hồi" %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="newVersionModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{% trans "Chốt phiên bản dataset" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">{% trans "Tên phiên bản" %}</label>
+          <input id="verName" class="form-control" placeholder="v1.0">
+          <div class="form-text">{% trans "Để trống sẽ tự sinh theo thời điểm." %}</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{% trans "Định dạng" %}</label>
+          <select id="verFormat" class="form-select">
+            <option value="json_token">JSON — token level</option>
+            <option value="jsonl">JSONL — token level</option>
+            <option value="json_llm">JSONL — fine-tune LLM</option>
+            <option value="csv_token">CSV — token level</option>
+            <option value="csv_annotations">CSV — từng annotation (tính lại IAA)</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{% trans "Ghi chú" %}</label>
+          <textarea id="verNotes" class="form-control" rows="2"></textarea>
+        </div>
+        <div id="verResult" class="small"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">{% trans "Đóng" %}</button>
+        <button class="btn btn-primary" id="verSubmit">{% trans "Tạo phiên bản" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+"use strict";
+/*
+  Có phiên bản đang chốt thì hỏi lại tiến độ cho tới khi xong rồi tải lại trang
+  để hiện nút tải/phục hồi. Không có việc nào chạy thì không gọi API lần nào.
+*/
+(function watchVersions() {
+  const building = document.querySelectorAll('.js-version-status .progress-bar');
+  if (!building.length) return;
+  const URL = "{% url 'api:api_dataset_versions' project.id %}";
+
+  async function poll() {
+    let data;
+    try {
+      const response = await fetch(URL, { cache: 'no-store' });
+      if (!response.ok) return setTimeout(poll, 3000);
+      data = await response.json();
+    } catch (err) {
+      return setTimeout(poll, 3000);
+    }
+
+    let busy = false;
+    (data.versions || []).forEach(function(version) {
+      const cell = document.querySelector(`.js-version-status[data-version-id="${version.id}"]`);
+      if (!cell) return;
+      if (version.status === 'building') {
+        busy = true;
+        const bar = cell.querySelector('.progress-bar');
+        const label = cell.querySelector('.small');
+        if (bar) bar.style.width = Math.max(3, version.progress_percent) + '%';
+        if (label) label.textContent = (version.current_step || '') + ' · ' + version.progress_percent + '%';
+      }
+    });
+
+    if (busy) setTimeout(poll, 2000);
+    else window.location.reload();
+  }
+
+  setTimeout(poll, 2000);
+})();
+
+// Một modal xác nhận dùng chung: nút của dòng nào bấm thì điền dữ liệu dòng đó.
+const restoreModal = new bootstrap.Modal(document.getElementById('restoreModal'));
+document.querySelectorAll('.js-restore').forEach((button) => {
+  button.addEventListener('click', () => {
+    document.getElementById('restoreForm').action = button.dataset.url;
+    document.getElementById('restoreVersion').textContent = button.dataset.version;
+    document.getElementById('restoreCreated').textContent = button.dataset.created;
+    document.getElementById('restoreComments').textContent = button.dataset.comments;
+    restoreModal.show();
+  });
+});
+
+document.getElementById('verSubmit').addEventListener('click', async () => {
+  const result = document.getElementById('verResult');
+  result.className = 'small text-muted';
+  result.textContent = "{% trans 'Đang gửi…' %}";
+  try {
+    const response = await fetch("{% url 'api:api_dataset_versions' project.id %}", {
+      method: 'POST',
+      headers: { 'X-CSRFToken': "{{ csrf_token }}", 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        version: document.getElementById('verName').value.trim(),
+        format: document.getElementById('verFormat').value,
+        notes: document.getElementById('verNotes').value.trim(),
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'HTTP ' + response.status);
+    result.className = 'small text-success';
+    result.textContent = data.message || 'OK';
+    setTimeout(() => window.location.reload(), 800);
+  } catch (err) {
+    result.className = 'small text-danger';
+    result.textContent = err.message;
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

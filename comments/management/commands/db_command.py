@@ -33,7 +33,7 @@ class Command(BaseCommand):
             action="store_true",
             help="Drop và tạo lại database trước khi restore",
         )
-        
+
     def get_db_config(self):
         db = settings.DATABASES["default"]
 
@@ -63,16 +63,16 @@ class Command(BaseCommand):
                 stderr=subprocess.PIPE,
                 check=True,
             )
-        except FileNotFoundError:
+        except FileNotFoundError as exc:
             raise CommandError(
                 "Không tìm thấy PostgreSQL client. "
                 "Cài package postgresql-client trong container web."
-            )
+            ) from exc
         except subprocess.CalledProcessError as exc:
             error = exc.stderr.decode(errors="replace")
             raise CommandError(
                 f"PostgreSQL command thất bại ({exc.returncode}):\n{error}"
-            )
+            ) from exc
 
     def handle(self, *args, **options):
         db = self.get_db_config()

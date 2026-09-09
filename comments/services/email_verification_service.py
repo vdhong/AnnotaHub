@@ -3,6 +3,7 @@ Email verification service for AnnotaHub.
 Handles sending verification emails for new user registrations.
 """
 import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.urls import reverse
@@ -15,12 +16,12 @@ logger = logging.getLogger(__name__)
 def send_verification_email(email, token, language=None, site_url=None):
     """
     Send an email verification email to a newly registered user.
-    
+
     Args:
         email: The recipient's email address
         token: The verification token
         site_url: Base URL for the site (defaults to SITE_URL setting)
-    
+
     Returns:
         bool: True if email was sent successfully, False otherwise
     """
@@ -73,7 +74,7 @@ The AnnotaHub Team"""
         </body>
         </html>
         """
-    
+
 #     subject = 'Xác thực địa chỉ email - AnnotaHub'
 #     message = f"""Xin chào,
 
@@ -87,7 +88,7 @@ The AnnotaHub Team"""
 
 # Trân trọng,
 # Đội ngũ AnnotaHub"""
-    
+
 #     html_message = f"""
 #     <html>
 #     <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -95,8 +96,8 @@ The AnnotaHub Team"""
 #         <p>Cảm ơn bạn đã đăng ký tài khoản trên <strong>AnnotaHub</strong>.</p>
 #         <p>Vui lòng nhấn vào nút bên dưới để xác thực địa chỉ email của bạn:</p>
 #         <p>
-#             <a href="{verification_link}" 
-#                style="background-color: #007bff; color: white; padding: 12px 24px; 
+#             <a href="{verification_link}"
+#                style="background-color: #007bff; color: white; padding: 12px 24px;
 #                       text-decoration: none; border-radius: 4px; display: inline-block;">
 #                 Xác thực email
 #             </a>
@@ -109,8 +110,8 @@ The AnnotaHub Team"""
 #     </body>
 #     </html>
 #     """
-    
-    
+
+
     try:
         send_mail(
             subject=subject,
@@ -130,12 +131,12 @@ The AnnotaHub Team"""
 def resend_verification_email(email, token, site_url=None):
     """
     Resend a verification email.
-    
+
     Args:
         email: The recipient's email address
         token: The verification token
         site_url: Base URL for the site
-    
+
     Returns:
         bool: True if email was sent successfully, False otherwise
     """

@@ -1,24 +1,37 @@
 #!/bin/sh
+#
+# Entrypoint cho mọi service (web, worker, beat).
+#
+# Nguyên tắc:
+# - KHÔNG cài package lúc runtime (đã cài đầy đủ trong image lúc build).
+# - KHÔNG tự động restore backup (restore là thao tác thủ công, có chủ đích).
+# - KHÔNG nuốt lỗi migration: schema sai thì phải dừng ngay, không chạy tiếp.
+# - Chỉ service nào đặt RUN_MIGRATIONS=1 mới chạy migrate (tránh đua giữa 3 container).
 
 set -e
-pip install spacy==3.8.7 pyvi==0.1.1
-# Wait for database to be ready
-echo "Waiting for database to be ready..."
-while ! pg_isready -h db -U annotahub_user -d annotahub 2>/dev/null; do
+
+DB_HOST="${DB_HOST:-db}"
+DB_USER="${POSTGRES_USER:-annotahub_user}"
+DB_NAME="${POSTGRES_DB:-annotahub}"
+
+echo "[entrypoint] Chờ PostgreSQL tại ${DB_HOST}..."
+timeout=60
+while ! pg_isready -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; do
+    timeout=$((timeout - 1))
+    if [ "$timeout" -le 0 ]; then
+        echo "[entrypoint] LỖI: PostgreSQL không phản hồi sau 60 giây." >&2
+        exit 1
+    fi
     sleep 1
 done
-echo "Database is ready!"
-BACKUP_FILE="/app/backups/annotahub_backup.sql"
-if [ -f "$BACKUP_FILE" ]; then
-    echo "Found backup file: $BACKUP_FILE"
-    echo "Restoring from backup..."
-    python manage.py db_command restore "$BACKUP_FILE"
-    python manage.py migrate --noinput || true
-    exit 0
-fi
-# Run Django migrations (ignore errors if tables already exist)
-echo "Running Django migrations..."
-python manage.py migrate --noinput || true
+echo "[entrypoint] PostgreSQL đã sẵn sàng."
 
-# Execute the main command
+if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then
+    echo "[entrypoint] Chạy migration..."
+    python manage.py migrate --noinput
+    echo "[entrypoint] Migration hoàn tất."
+else
+    echo "[entrypoint] Bỏ qua migration (RUN_MIGRATIONS != 1)."
+fi
+
 exec "$@"

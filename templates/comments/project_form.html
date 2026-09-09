@@ -3,12 +3,25 @@
 {% block title %}{{ action }} {% trans "Project" %} - AnnotaHub{% endblock %}
 
 {% block content %}
+{% if project.id %}
+{% include "comments/_project_nav.html" with active='edit' is_owner=True %}
+
+<div class="page-head">
+    <div>
+        <h1 class="h4 mb-1"><i class="bi bi-gear"></i> {% trans "Project Settings" %}</h1>
+        <p class="text-muted mb-0">{% trans "Đổi tên và mô tả của dự án." %}</p>
+    </div>
+</div>
+{% endif %}
+
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
+            {% if not project.id %}
             <div class="card-header">
-                <h5 class="mb-0"><i class="bi bi-folder{% if action == 'Create' %}-plus{% endif %}"></i> {{ action }} {% trans "Project" %}</h5>
+                <h5 class="mb-0"><i class="bi bi-folder-plus"></i> {{ action }} {% trans "Project" %}</h5>
             </div>
+            {% endif %}
             <div class="card-body">
                 <form method="post">
                     {% csrf_token %}
@@ -22,7 +35,11 @@
                     </div>
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">{{ action }}</button>
-                        <a href="{% url 'comments:project_list' %}" class="btn btn-secondary">{% trans "Cancel" %}</a>
+                        {% if project.id %}
+                        <a href="{% url 'comments:project_detail' project.id %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                        {% else %}
+                        <a href="{% url 'comments:project_list' %}" class="btn btn-outline-secondary">{% trans "Cancel" %}</a>
+                        {% endif %}
                     </div>
                 </form>
             </div>

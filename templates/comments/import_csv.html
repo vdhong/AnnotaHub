@@ -1,0 +1,125 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Nhập dữ liệu từ CSV" %}{% endblock %}
+{% block content %}
+<div class="container-fluid p-0">
+  {% include "comments/_project_nav.html" with active='import' %}
+
+  <div class="page-head">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-filetype-csv"></i> {% trans "Nhập dữ liệu từ file CSV" %}</h1>
+      <p class="text-muted mb-0">
+        {% blocktrans %}File CSV phải mã hoá UTF-8 và có cột <code>text</code>. Các cột tuỳ chọn: <code>id</code>, <code>author</code>.{% endblocktrans %}
+      </p>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+
+  {% if watch_link %}
+  <div class="card mb-3" id="importProgressCard">
+    <div class="card-body">
+      <h2 class="h6 mb-2"><i class="bi bi-hourglass-split"></i> {% trans "Đang nhập dữ liệu" %}</h2>
+      <div class="progress progress-thin">
+        <div id="importBar" class="progress-bar progress-bar-striped progress-bar-animated bg-info"
+             style="width:3%"></div>
+      </div>
+      <div class="small text-muted mt-2" id="importStep">{% trans "Đang xếp hàng…" %}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label">{% trans "Tên bộ dữ liệu" %}</label>
+          <input type="text" name="name" class="form-control" placeholder="{% trans 'Ví dụ: Khảo sát tháng 9' %}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">{% trans "File CSV" %}</label>
+          <input type="file" name="file" accept=".csv,text/csv" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-upload"></i> {% trans "Nhập dữ liệu" %}
+        </button>
+        <a href="{% url 'comments:project_detail' project.id %}" class="btn btn-outline-secondary">{% trans "Huỷ" %}</a>
+      </form>
+    </div>
+  </div>
+
+  {% if recent_imports %}
+  <div class="card mt-3">
+    <div class="card-header"><i class="bi bi-clock-history"></i> {% trans "Đã nhập gần đây" %}</div>
+    <div class="list-group list-group-flush">
+      {% for item in recent_imports %}
+      <a class="list-group-item list-group-item-action d-flex align-items-center gap-2"
+         href="{% url 'comments:link_detail' item.id %}">
+        <span>{{ item.title|truncatechars:48 }}</span>
+        <span class="badge bg-secondary ms-auto">{{ item.comment_count }} {% trans "dòng" %}</span>
+        <span class="small text-muted">{{ item.added_at|date:"Y-m-d H:i" }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+    </div>
+  </div>
+</div>
+
+{% if watch_link %}
+{% trans "Đã nhập xong, đang tải lại trang…" as t_import_done %}
+{% trans "Nhập dữ liệu thất bại" as t_import_failed %}
+<script>
+"use strict";
+/*
+  Việc nhập chạy ở worker nên trang phải hỏi lại tiến độ. Xong thì tải lại
+  trang: bảng "Đã nhập gần đây" sẽ hiện bộ dữ liệu vừa tạo.
+*/
+(function watchImport() {
+  const LINK_ID = "{{ watch_link|escapejs }}";
+  const DONE = "{{ t_import_done|escapejs }}";
+  const FAILED = "{{ t_import_failed|escapejs }}";
+  const bar = document.getElementById('importBar');
+  const step = document.getElementById('importStep');
+
+  async function poll() {
+    let data;
+    try {
+      const response = await fetch(`/api/links/${LINK_ID}/status/`, { cache: 'no-store' });
+      if (!response.ok) return setTimeout(poll, 3000);
+      data = await response.json();
+    } catch (err) {
+      return setTimeout(poll, 3000);
+    }
+
+    const task = (data.tasks || []).find((t) => t.type === 'importing');
+    if (!task) return setTimeout(poll, 2000);
+
+    bar.style.width = Math.max(3, task.progress) + '%';
+    step.textContent = (task.step || '') + ' · ' + task.progress + '%';
+
+    if (task.status === 'completed') {
+      bar.classList.remove('progress-bar-animated');
+      step.textContent = DONE;
+      // Bỏ ?job= khỏi URL để lần tải lại sau không theo dõi một việc đã xong.
+      window.location = "{% url 'comments:import_csv' project.id %}";
+      return;
+    }
+    if (task.status === 'failed') {
+      bar.classList.remove('progress-bar-animated', 'bg-info');
+      bar.classList.add('bg-danger');
+      step.textContent = FAILED + (task.error_message ? ': ' + task.error_message : '');
+      return;
+    }
+    setTimeout(poll, 2000);
+  }
+
+  poll();
+})();
+</script>
+{% endif %}
+{% endblock %}

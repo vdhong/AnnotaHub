@@ -1,101 +1,168 @@
+x-app-env: &app-env
+  DEBUG: ${DEBUG:-0}
+  SECRET_KEY: ${SECRET_KEY:?SECRET_KEY chưa được đặt trong .env}
+  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+  CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-http://localhost:6868}
+  DATABASE_URL: postgres://${POSTGRES_USER:-annotahub_user}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD chưa được đặt trong .env}@db:5432/${POSTGRES_DB:-annotahub}
+  POSTGRES_USER: ${POSTGRES_USER:-annotahub_user}
+  POSTGRES_DB: ${POSTGRES_DB:-annotahub}
+  REDIS_URL: redis://redis:6379/0
+  SITE_URL: ${SITE_URL:-http://localhost:6868}
+  YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-}
+  OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-}
+  FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:-}
+  EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+  EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+  SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-0}
+  CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-0}
+  SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-0}
+  SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-0}
+  DJANGO_LOG_LEVEL: ${DJANGO_LOG_LEVEL:-WARNING}
+
+x-app-build: &app-build
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: annotahub-app:latest
+  restart: unless-stopped
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+
 services:
   db:
     image: postgres:17-alpine
     container_name: annotahub_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: annotahub
-      POSTGRES_USER: annotahub_user
-      POSTGRES_PASSWORD: annotahub_password
-    # ports:
-    #   - "127.0.0.1:5732:5432"
+      POSTGRES_DB: ${POSTGRES_DB:-annotahub}
+      POSTGRES_USER: ${POSTGRES_USER:-annotahub_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD chưa được đặt trong .env}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U annotahub_user -d annotahub"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-annotahub_user} -d ${POSTGRES_DB:-annotahub}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
     container_name: annotahub_redis
-    # ports:
-    #   - "127.0.0.1:6779:6379"
+    restart: unless-stopped
+    command: redis-server --save 60 1 --appendonly no --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 320m
 
-  web:
+  # Service chạy migration MỘT LẦN rồi thoát. Các service khác chờ nó xong.
+  # Trước đây cả 3 container cùng chạy `migrate || true` → đua nhau và nuốt lỗi.
+  migrate:
     build:
       context: .
       dockerfile: Dockerfile
+    image: annotahub-app:latest
+    container_name: annotahub_migrate
+    restart: "no"
+    environment:
+      <<: *app-env
+      RUN_MIGRATIONS: "1"
+    command: ["python", "-c", "print('[migrate] xong')"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    <<: *app-build
     container_name: annotahub_web
-    restart: unless-stopped
-    command: >
-      bash -c "
-      python manage.py runserver 0.0.0.0:8000
-      "
+    environment: *app-env
     volumes:
-      - .:/app
-      - ./media:/app/media
+      - media_data:/app/media
+      - export_data:/app/exports
       - ./backups:/app/backups
     ports:
       - "127.0.0.1:6868:8000"
-    environment:
-      - DEBUG=${DEBUG:-False}
-      - DATABASE_URL=postgres://annotahub_user:annotahub_password@db:5432/annotahub
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-django-insecure-change-me-in-production}
-      - EMAIL_HOST_USER=${EMAIL_HOST_USER:-}
-      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD:-}
-      - SITE_URL=${SITE_URL:-}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/health/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    <<: *app-build
     container_name: annotahub_celery_worker
-    restart: unless-stopped
-    command: celery -A annotahub worker -l info -c 4
+    environment: *app-env
+    command:
+      - celery
+      - -A
+      - annotahub
+      - worker
+      - -l
+      - info
+      - -c
+      - "4"
+      - --max-tasks-per-child
+      - "100"
     volumes:
-      - .:/app
+      - media_data:/app/media
+      - export_data:/app/exports
       - ./backups:/app/backups
-    environment:
-      - DATABASE_URL=postgres://annotahub_user:annotahub_password@db:5432/annotahub
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A annotahub inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
 
   celery_beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    <<: *app-build
     container_name: annotahub_celery_beat
-    restart: unless-stopped
-    command: celery -A annotahub beat -l info
+    environment: *app-env
+    command:
+      - celery
+      - -A
+      - annotahub
+      - beat
+      - -l
+      - info
+      - --scheduler
+      - django_celery_beat.schedulers:DatabaseScheduler
     volumes:
-      - .:/app
       - ./backups:/app/backups
-    environment:
-      - DATABASE_URL=postgres://annotahub_user:annotahub_password@db:5432/annotahub
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
 volumes:
   postgres_data:
+  redis_data:
+  media_data:
+  export_data:

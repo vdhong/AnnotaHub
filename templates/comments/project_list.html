@@ -12,7 +12,8 @@
 
 <!-- Owned Projects Section -->
 <div class="mb-5">
-    <h4 class="mb-3"><i class="bi bi-person-badge"></i> {% trans "Owned Projects" %}</h4>
+    <h4 class="mb-1"><i class="bi bi-person-badge"></i> {% trans "Owned Projects" %}</h4>
+    <p class="text-muted small">{% trans "Dự án do chính bạn tạo và sở hữu." %}</p>
     {% if owned_projects %}
     <div class="row g-4">
         {% for project in owned_projects %}
@@ -73,4 +74,42 @@
     </div>
     {% endif %}
 </div>
+
+{% comment %} Dự án của NGƯỜI KHÁC mà quản trị viên có quyền can thiệp.
+   Tách riêng khỏi mục "sở hữu": gộp chung khiến quản trị viên tưởng đó là dự án
+   của mình và có thể xoá nhầm dữ liệu người khác. {% endcomment %}
+{% if administered_projects %}
+<div class="mt-5">
+    <h4 class="mb-1"><i class="bi bi-shield-lock"></i> {% trans "Dự án của người khác (quyền quản trị)" %}</h4>
+    <p class="text-muted small">
+        {% blocktrans %}Bạn là quản trị viên hệ thống nên truy cập được các dự án dưới đây,
+        nhưng <b>không phải chủ sở hữu</b>. Hãy cân nhắc trước khi thay đổi dữ liệu của người khác.{% endblocktrans %}
+    </p>
+    <div class="row g-4">
+        {% for project in administered_projects %}
+        <div class="col-md-4">
+            <div class="card card-project h-100 border-warning"
+                 onclick="window.location.href='{% url 'comments:project_detail' project.id %}'">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title mb-2">{{ project.name }}</h5>
+                        <span class="badge bg-warning text-dark">{% trans "Quản trị" %}</span>
+                    </div>
+                    <p class="card-text text-muted">{{ project.description|default:"No description"|truncatewords:20 }}</p>
+                    <div class="d-flex justify-content-between small">
+                        <span><i class="bi bi-link"></i> {{ project.link_count }} {% trans "links" %}</span>
+                        <span><i class="bi bi-chat"></i> {{ project.comment_count }} {% trans "comments" %}</span>
+                    </div>
+                    <hr>
+                    <small class="text-muted">
+                        <i class="bi bi-person-fill"></i>
+                        {% trans "Chủ sở hữu" %}: <b>{{ project.owner.username }}</b>
+                    </small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

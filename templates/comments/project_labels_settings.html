@@ -2,15 +2,20 @@
 {% load i18n %}
 {% block title %}{% trans "Label Settings" %} - {{ project.name }} - AnnotaHub{% endblock %}
 {% block content %}
-<div class="container-fluid">
-  <div class="mb-4">
-    <a href="{% url 'comments:project_detail' project.id %}" class="btn btn-outline-secondary">
-      <i class="fas fa-arrow-left me-1"></i>{% trans "Back to Project" %}
-    </a>
-  </div>
+<div class="container-fluid p-0">
+  {% include "comments/_project_nav.html" with active='labels' %}
 
-  <h2><i class="fas fa-cog me-2"></i>{% blocktrans %}Label Settings for{% endblocktrans %} "{{ project.name }}"</h2>
-  <p class="text-muted">{% trans "Manage labels from your label list (project owner) to use in this project." %}</p>
+  <div class="page-head">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-tags"></i> {% trans "Label Settings" %}</h1>
+      <p class="text-muted mb-0">{% trans "Manage labels from your label list (project owner) to use in this project." %}</p>
+    </div>
+    <div class="page-head__actions">
+      <a href="{% url 'comments:label_list' %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-sliders"></i> {% trans "Your Labels" %}
+      </a>
+    </div>
+  </div>
 
   <!-- {% if messages %}
   <div class="mb-3">
@@ -47,7 +52,7 @@
                   <input type="hidden" name="project_label_id" value="{{ pl.id }}">
                   <button type="submit" class="btn btn-sm btn-outline-danger"
                           onclick="return confirm('{% trans "Remove label from this project?" %}')">
-                    <i class="fas fa-times"></i> {% trans "Remove from Project" %}
+                    <i class="bi bi-x-lg"></i> {% trans "Remove from Project" %}
                   </button>
                 </form>
               </div>
@@ -91,7 +96,7 @@
                 <input type="hidden" name="action" value="add_label">
                 <input type="hidden" name="label_id" value="{{ label.id }}">
                 <button type="submit" class="btn btn-sm btn-outline-success">
-                  <i class="fas fa-plus"></i> {% trans "Add" %}
+                  <i class="bi bi-plus-lg"></i> {% trans "Add" %}
                 </button>
               </form>
             </div>
@@ -128,7 +133,7 @@
                      value="#FF0000" id="customColor">
             </div>
             <button type="submit" class="btn btn-sm btn-primary w-100">
-              <i class="fas fa-plus me-1"></i>{% trans "Create label and add to project" %}
+              <i class="bi bi-plus-lg me-1"></i>{% trans "Create label and add to project" %}
             </button>
           </form>
         </div>
@@ -137,8 +142,49 @@
   </div>
 
   <div class="alert alert-info mt-3">
-    <i class="fas fa-info-circle me-2"></i>
+    <i class="bi bi-info-circle me-2"></i>
     <strong>{% trans "Note" %}:</strong> {% blocktrans %}Only labels created by the project owner are shown. When project labels change, AI auto-annotation will use the new label list.{% endblocktrans %}
   </div>
 </div>
+
+<!-- Cấu hình quy trình gán nhãn (Giai đoạn 3) -->
+<div class="card mt-4">
+  <div class="card-header">
+    <i class="bi bi-diagram-3"></i> {% trans "Quy trình gán nhãn" %}
+  </div>
+  <div class="card-body">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="update_workflow">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">{% trans "Số annotator mỗi bình luận" %}</label>
+          <input type="number" min="1" max="10" name="annotators_per_comment"
+                 class="form-control" value="{{ project.annotators_per_comment }}">
+          <div class="form-text">
+            {% trans "Đặt ≥ 2 để có thể tính độ đồng thuận (IAA) — bắt buộc nếu muốn công bố dataset." %}
+          </div>
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">{% trans "Hướng dẫn gán nhãn" %}</label>
+          <textarea name="guideline" rows="4" class="form-control"
+                    placeholder="{% trans 'Mô tả tiêu chí gán nhãn để các annotator hiểu thống nhất…' %}">{{ project.guideline }}</textarea>
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="auto_adjudicate"
+                   id="auto_adjudicate" {% if project.auto_adjudicate %}checked{% endif %}>
+            <label class="form-check-label" for="auto_adjudicate">
+              {% trans "Tự chốt nhãn khi có đa số tuyệt đối (vẫn đánh dấu là đã từng bất đồng)" %}
+            </label>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary mt-3">
+        <i class="bi bi-save"></i> {% trans "Lưu cấu hình" %}
+      </button>
+    </form>
+  </div>
+</div>
+
 {% endblock %}

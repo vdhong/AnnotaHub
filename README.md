@@ -1,521 +1,526 @@
-# AnnotaHub: Vietnamese YouTube Comment Annotation Platform
+# AnnotaHub
 
-An open-source platform for automatically collecting Vietnamese YouTube comments and annotating label text spans at both sentence-level and token-level. 
+AnnotaHub is a web platform for building annotated Vietnamese text datasets. It
+collects comments from YouTube videos, runs them through an LLM for a first pass
+of labelling, and then lets a team of human annotators correct and confirm those
+labels at both the sentence and the token level.
 
-##Online demo
+It was built for Vietnamese NLP research, where the bottleneck is rarely the
+model and almost always the lack of labelled data.
 
-Click here to try [online demo here](https://annotahub.duthu.net/).
-Demo account:
-- Username: vudinhhong
-- Password: demo@123
+**Live demo:** <https://annotahub.duthu.net/> — sign in as `vudinhhong` /
+`demo@123` to look around.
 
-## 🎯 Objectives
+## Contents
 
-- Collect comments from YouTube videos
-- Automatically annotate with custom labels at both sentence level and token/word level using AI
-- Create datasets for Vietnamese NLP research
-- Support manual label editing and override of AI annotations
-- Multi-user collaboration with owner/participant roles
+- [What it does](#what-it-does)
+- [Architecture](#architecture)
+- [Getting started](#getting-started)
+- [Annotating a dataset](#annotating-a-dataset)
+- [Export formats](#export-formats)
+- [Data model](#data-model)
+- [API reference](#api-reference)
+- [Development](#development)
+- [Known limitations](#known-limitations)
+- [License and contact](#license-and-contact)
 
-## 🏗️ Architecture
+## What it does
 
+- Fetches comments and replies from a YouTube video, or imports them from a CSV
+  file if your data comes from somewhere else.
+- Asks an Ollama-hosted LLM to propose a label for each comment and for the
+  spans inside it. The model's output is a starting point, never the final word.
+- Gives annotators a keyboard-driven workspace to confirm or replace those
+  labels, one comment per screen.
+- Routes the same comment to several annotators when you want redundancy, then
+  measures how much they agree and queues up the disagreements for the project
+  owner to settle.
+- Exports the result in 16 formats, from CoNLL-2003 to a HuggingFace-ready JSONL
+  to an Excel workbook for reviewers who do not use developer tooling.
+
+We use Ollama rather than a hosted API because Vietnamese comment data is often
+scraped from public but sensitive discussions, and keeping it on hardware we
+control avoids a whole category of questions. Each user can point at their own
+Ollama instance from the settings page.
+
+## Architecture
+
+```mermaid
+flowchart TB
+    Browser["Browser<br/>Bootstrap 5 + vanilla JS"]
+
+    subgraph web["web container — gunicorn with gevent workers"]
+        Pages["Page views<br/>server-rendered HTML"]
+        API["REST API<br/>Django REST Framework"]
+        SSE["/sse/progress/<br/>event stream"]
+    end
+
+    DB[("PostgreSQL")]
+    REDIS[("Redis<br/>Celery broker")]
+    WORKER["Celery worker"]
+    BEAT["Celery beat<br/>daily backup, cleanup"]
+    YT["YouTube Data API v3"]
+    LLM["Ollama"]
+
+    Browser -->|"page loads"| Pages
+    Browser -->|"labelling, task control"| API
+    Browser -.->|"progress updates"| SSE
+
+    Pages --> DB
+    API --> DB
+    SSE -->|"polls TaskProgress"| DB
+    Pages -->|"queue a task"| REDIS
+    API -->|"queue a task"| REDIS
+
+    BEAT -->|"schedule"| REDIS
+    REDIS --> WORKER
+    WORKER -->|"comments, labels,<br/>task progress"| DB
+    WORKER --> YT
+    WORKER --> LLM
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                   Web UI (Django + Bootstrap 5)                 │
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐   │
-│  │ Projects  │  │ Comments  │  │  Export   │  │  Labels   │   │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘   │
-└────────────────────────────────────────────────────────────────┘
-                            │
-             ┌──────────────┴──────────────┐
-             ▼                             ▼
-    ┌──────────────────┐          ┌──────────────────┐
-    │  Celery Worker   │          │   PostgreSQL      │
-    │  ┌────────────┐  │          │  (Database)       │
-    │  │ YouTube    │  │          └──────────────────┘
-    │  │ Service    │  │
-    │  └────────────┘  │
-    │  ┌────────────┐  │
-    │  │ Ollama     │  │─→ External AI Service
-    │  │ Service    │  │   (Configurable per user)
-    │  └────────────┘  │
-    └──────────────────┘
-             │
-             ▼
-    ┌──────────────────┐
-    │     Redis        │
-    │  (Broker)        │
-    └──────────────────┘
-```
 
-## 📋 Technology Stack
+The pages and the API live in the same process and share the same permission
+checks; the split in the diagram is about what the browser asks for, not about
+where the code runs. Server-rendered templates deliver the initial page, and
+from there the JavaScript talks to the REST API for everything interactive —
+applying a label, adjudicating a conflict, starting or stopping a task.
 
-| Component | Technology |
-|-----------|------------|
-| Framework | Django 4.2 |
+Nothing slow happens in a request. Fetching comments, calling the LLM, and
+writing an export are all Celery tasks. The worker records how far along it is
+in the `TaskProgress` table, and the browser holds open an SSE connection that
+polls that table and streams changes back, so the progress bar moves without
+anyone refreshing the page.
+
+| Component | Choice |
+|---|---|
+| Framework | Django 4.2, Django REST Framework |
 | Database | PostgreSQL 15 |
-| Task Queue | Celery + Redis |
-| YouTube API | YouTube Data API v3 |
-| AI Model | Ollama (configurable per user) |
-| Container | Docker + Docker Compose |
-| Frontend | Bootstrap 5 + Vanilla JS |
-| Real-time | Server-Sent Events (SSE) |
-| i18n | Django Localization (en, vi) |
+| Task queue | Celery with a Redis broker |
+| Comment source | YouTube Data API v3, or CSV import |
+| Annotation model | Ollama, configurable per user |
+| Server | gunicorn with gevent workers, WhiteNoise for static files |
+| Frontend | Bootstrap 5 and vanilla JavaScript |
+| Packaging | Docker Compose |
+| Languages | English and Vietnamese |
 
-## 🚀 Installation & Setup
+## Getting started
 
-### Prerequisites
-
-- Docker & Docker Compose installed on your system
-- A YouTube Data API v3 key
-- Access to an Ollama instance (optional, can be configured per user)
-
-### 1. Clone the repository
+You need Docker with Compose, a YouTube Data API v3 key, and an Ollama endpoint
+if you want AI pre-annotation.
 
 ```bash
 git clone https://github.com/vdhong/AnnotaHub.git
 cd AnnotaHub
-```
-
-### 2. Copy and configure environment variables
-
-```bash
 cp .env.example .env
 ```
 
-Edit the `.env` file and configure the following essential variables:
+Open `.env` and fill in at least:
 
-- `YOUTUBE_API_KEY` — Your YouTube Data API v3 key for fetching comments
-- `OLLAMA_BASE_URL` — URL of your Ollama AI service
-- `OLLAMA_API_KEY` — API key for Ollama authentication
-- `OLLAMA_MODEL` — Model name for annotation (e.g., `qwen3.6:27b`)
-- Database credentials (PostgreSQL)
-- Redis connection settings
-- Email configuration (SMTP settings for verification emails)
-- `SITE_URL` — Base URL of your deployment (for verification/invitation links)
+| Variable | Purpose |
+|---|---|
+| `SECRET_KEY` | Django signing key. The app refuses to start if you leave the sample value. |
+| `YOUTUBE_API_KEY` | Default key for fetching comments; users can override it in their own settings. |
+| `OLLAMA_BASE_URL` | Where your Ollama instance lives. |
+| `OLLAMA_API_KEY` | Auth token for that instance, if it needs one. |
+| `OLLAMA_MODEL` | Model used for annotation, e.g. `qwen3.6:27b`. |
+| `SITE_URL` | Public base URL, used to build verification and invitation links. |
+| Database and Redis | Connection settings for the bundled containers. |
+| SMTP settings | Needed for email verification and invitations. |
 
-> **Note:** Users can also configure their own API keys and Ollama settings via the User Settings page, which take priority over global settings.
-
-### 3. Build and start with Docker Compose
-
-```bash
-docker-compose up -d
-```
-
-This starts the following services:
-- **web**: Django application server (port 8000)
-- **worker**: Celery worker for async tasks
-- **db**: PostgreSQL database (port 5432)
-- **redis**: Redis message broker (port 6379)
-
-### 4. Create a superuser
+Then bring the stack up:
 
 ```bash
-docker-compose exec web python manage.py createsuperuser
+docker compose up -d
 ```
 
-### 5. Access the application
+Compose starts six services: `db`, `redis`, a one-shot `migrate` job that runs
+migrations before anything else touches the database, `web`, `celery_worker`,
+and `celery_beat` for scheduled backups and cleanup.
 
-| Service | URL |
-|---------|-----|
-| Web UI | http://localhost:8000 |
-| Admin Panel | http://localhost:8000/admin |
-| PostgreSQL | localhost:5432 |
-| Redis | localhost:6379 |
-| Health Check | http://localhost:8000/health/ |
-
-## 📱 Usage Guide
-
-### Getting Started
-
-#### Step 1: Register an Account
-
-1. Navigate to http://localhost:8000
-2. Click the **Register** link on the login page
-3. Fill in the following fields:
-   - **Username** (minimum 3 characters, maximum 150)
-   - **First Name** and **Last Name**
-   - **Email address** (must be unique)
-   - **Password** (minimum 8 characters) and confirmation
-4. Submit the registration form
-5. Check your email inbox for a verification link
-6. Click the verification link to activate your account (link expires after 7 days)
-7. If you don't receive the email, use the **Resend Email** button on the verification page
-8. Once verified, you will be automatically logged in
-
-#### Step 2: Log In
-
-1. Navigate to http://localhost:8000/login
-2. Enter your username and password
-3. Click **Login**
-4. You will be redirected to your Dashboard
-
-#### Step 3: Configure Your User Settings (Recommended)
-
-Before starting annotation work, configure your personal API settings:
-
-1. Click your username in the navigation bar
-2. Select **User Settings**
-3. Configure the following:
-   - **YouTube API Key**: Your personal YouTube Data API v3 key (falls back to global setting if empty)
-   - **Ollama Base URL**: Your Ollama service endpoint
-   - **Ollama API Key**: Authentication key for Ollama
-   - **Ollama Model**: Model name for annotation (e.g., `qwen3.6:27b`)
-4. Click **Save**
-
-> **Note:** User settings take priority over global settings. If a user setting is empty, the system falls back to the global configuration.
-
-#### Step 4: Manage Your Labels
-
-Labels are the categories used to annotate comments and tokens:
-
-1. Navigate to the **My Labels** page from the navigation menu
-2. Click **Create Label** to add a new label:
-   - **Name**: Label name (e.g., "Toxic", "Insult", "Hate Speech")
-   - **Description**: When to use this label
-   - **Color**: Hex color code for visual display (e.g., `#FF0000`)
-3. Edit existing labels by clicking the edit button
-4. Delete labels that are not in use (labels currently assigned to comments or tokens cannot be deleted)
-
-#### Step 5: Create a Project
-
-1. From the Dashboard or **Projects** list, click **New Project**
-2. Enter a project **name** (must be unique) and optional **description**
-3. Click **Create**
-4. The project will appear in your "Owned Projects" section
-
-#### Step 6: Configure Project Labels
-
-1. Navigate to your project detail page
-2. Go to the **Label Settings** tab
-3. Add labels to the project from your owned labels, or create new custom labels
-4. Optionally override label name, description, or color for project-specific usage
-5. Remove labels that are not needed for this project
-
-#### Step 7: Invite Participants (Optional)
-
-1. Navigate to your project detail page
-2. Go to the **Participants** tab (available only to project owners)
-3. Click **Invite Member** and enter the email address:
-   - If the email belongs to an existing user, they are added as a participant immediately
-   - If the email does not exist, an invitation email is sent with a registration link
-4. Participants can view and annotate comments but cannot modify project settings or add YouTube links
-5. You can remove participants at any time
-
-#### Step 8: Add a YouTube Link
-
-1. Open your project and click **Add YouTube Link**
-2. Paste a YouTube video URL
-3. The system will automatically:
-   - Validate the URL and extract the video ID
-   - Fetch video information (title, channel, thumbnail, view count, like count)
-   - Display the embedded video
-   - Start fetching comments via YouTube API (up to 1000 comments) — **async task**
-   - After fetching completes, start AI annotation — **async task**
-4. Monitor real-time progress via the progress indicator:
-   - **Fetching**: Comments being retrieved from YouTube
-   - **Annotating**: AI is labeling comments and tokens
-5. Task controls available:
-   - **Stop Fetch**: Cancel the current fetch task
-   - **Stop Annotate**: Cancel the current annotation task
-   - **Continue Annotate**: Resume annotation for unannotated comments
-   - **Retry**: Retry a failed fetch task
-   - **Clear & Refetch**: Delete existing comments and refetch
-   - **Reannotate**: Re-run AI annotation on all comments
-6. Once completed, the link status will change to **Fully Annotated**
-
-#### Step 9: View Comments and Tokens
-
-1. Click on a YouTube link to view its detail page
-2. Browse through the list of comments with their AI-generated labels
-3. Each comment displays:
-   - Author information and avatar
-   - Original comment text (and source text if translated)
-   - AI-assigned label (comment-level)
-   - Token-level annotations with highlighted spans
-   - Meaningful/skipped status
-   - Like count and publication date
-4. Use pagination to navigate through large comment sets
-
-#### Step 10: Edit Labels Manually
-
-The system uses a **dual-label system**: each comment and token has an AI label and a manual label. The manual label (if set) takes priority for display and export.
-
-**Edit token-level labels:**
-1. On the link detail page, find the comment you want to edit
-2. Click on individual words (tokens) to open the label selection
-3. Select a label from the dropdown (or choose "None" to clear)
-4. Changes are saved immediately via AJAX
-
-**Edit comment-level labels:**
-1. Use the label dropdown above each comment
-2. Select a label to override the AI classification
-3. Changes are saved immediately
-
-**Bulk operations:**
-- Use **Reannotate** to re-run AI annotation on all comments in a link
-- Use **Continue Annotate** to annotate remaining unannotated comments
-
-#### Step 11: Export Dataset
-
-1. Navigate to the **Export** page from your project
-2. Configure export options:
-   - Select a specific YouTube link or export all links
-   - Choose a filter: All Comments, Toxic Only, or Non-Toxic Only
-3. Select the export format:
-   - **JSON - Sentence Level**: Comment-level labels with comment text
-   - **JSON - Token Level**: Token-level labels with BIO-style format
-   - **JSON - LLM Training**: Instruction/input/output format for fine-tuning LLMs
-   - **XML - CoNLL Format**: XML structure similar to CoNLL corpus format
-   - **CSV - Sentence Level**: CSV for sentence-level data analysis
-   - **CSV - Token Level**: CSV for token-level data analysis
-4. Click **Export** to download the dataset file
-5. Export records are tracked in the system
-
-### Working Workflow
-
-```
-User adds YouTube URL
-        │
-        ▼
-┌──────────────────┐
-│ Validate URL     │──→ Invalid → Show error
-│ Extract video_id │
-└────────┬─────────┘
-         ▼
-┌──────────────────┐
-│ Get Video Info   │──→ Failed → Mark link as failed
-│ (title, channel) │
-└────────┬─────────┘
-         ▼
-┌──────────────────┐
-│ Fetch Comments   │ ← Celery Task (async)
-│ (YouTube API)    │    + Real-time SSE progress
-└────────┬─────────┘
-         ▼
-┌──────────────────┐
-│ Save to DB       │
-│ (deduplication)  │
-└────────┬─────────┘
-         ▼
-┌──────────────────┐
-│ AI Annotation    │ ← Celery Task (auto-trigger)
-│ (Ollama API)     │    + Comment-level label
-└────────┬─────────┘           + Token-level spans
-         ▼
-┌──────────────────┐
-│ Update Progress  │ → SSE → Real-time UI update
-│ Notify Complete  │
-└──────────────────┘
-```
-
-### Admin Panel
-
-1. Navigate to http://localhost:8000/admin
-2. Log in with superuser credentials
-3. Manage:
-   - **Users**: User accounts, groups, permissions
-   - **Projects**: Projects, participants, YouTube links
-   - **Labels**: Labels, project-label assignments
-   - **Comments**: Comments, tokens, annotations
-   - **System**: Email verifications, user invitations, task progress, export records, user settings
-
-### Database Backup & Restore
-
-The system provides management commands for database backup and restore:
+Create an administrator account:
 
 ```bash
-# Backup database
-docker-compose exec web python manage.py db_command restore <sql backup file>
-
-# Restore database
-docker-compose exec web python manage.py db_command restore <sql backup file>
+docker compose exec web python manage.py createsuperuser
 ```
 
-Backup files are stored in the `backups/` directory.
+The application is published on **<http://localhost:6868>** and the Django admin
+sits at `/admin`. PostgreSQL and Redis are not exposed to the host.
 
-## 📁 Project Structure
+### Backup and restore
 
-```
-AnnotaHub/
-├── docker-compose.yml              # Docker services configuration
-├── Dockerfile                      # Python application image
-├── entrypoint.sh                   # Container entrypoint script
-├── requirements.txt                # Python dependencies
-├── manage.py                       # Django CLI entry point
-├── .env.example                    # Environment variables template
-├── annotahub/                      # Django project settings
-│   ├── __init__.py                 # Celery auto-discovery import
-│   ├── celery.py                   # Celery application configuration
-│   ├── settings.py                 # Django settings (DB, email, i18n, etc.)
-│   ├── urls.py                     # Root URL configuration
-│   └── wsgi.py                     # WSGI application entry
-├── comments/                       # Main Django application
-│   ├── models.py                   # Data models (Project, YouTubeLink, Comment, Token, etc.)
-│   ├── views.py                    # Web views (HTML rendering, form handling)
-│   ├── api_views.py                # REST API views (JSON responses)
-│   ├── urls.py                     # App URL routing (web + API)
-│   ├── tasks.py                    # Celery async tasks (fetch, annotate)
-│   ├── admin.py                    # Django admin configuration
-│   ├── export_service.py           # Dataset export generators
-│   ├── tests.py                    # Test cases
-│   ├── apps.py                     # App configuration
-│   ├── services/                   # Business logic services
-│   │   ├── __init__.py
-│   │   ├── email_verification_service.py  # Email verification sending
-│   │   ├── invitation_service.py          # User invitation sending
-│   │   ├── ollama_service.py              # Ollama AI client
-│   │   └── youtube_service.py             # YouTube API client
-│   ├── migrations/                 # Database migrations
-│   └── management/                 # Custom management commands
-│       └── commands/
-│           └── db_command.py  # Database backup and restore command
-├── templates/comments/             # HTML templates (Bootstrap 5)
-│   ├── base.html                   # Base template with navigation
-│   ├── dashboard.html              # Project dashboard
-│   ├── login.html                  # Login page
-│   ├── register.html               # Registration page
-│   ├── verification_sent.html      # Email verification confirmation
-│   ├── accept_invitation.html      # Invitation acceptance form
-│   ├── project_list.html           # Projects listing
-│   ├── project_form.html           # Project create/edit form
-│   ├── project_detail.html         # Project detail with links
-│   ├── project_participants.html   # Participant management
-│   ├── project_labels_settings.html # Label assignment for projects
-│   ├── export.html                 # Dataset export page
-│   ├── link_detail.html            # YouTube link detail with comments
-│   ├── label_list.html             # User's label listing
-│   ├── label_form.html             # Label create/edit form
-│   └── user_settings.html          # Per-user API settings
-├── static/                         # Static assets
-│   ├── css/style.css               # Custom CSS styles
-│   └── js/main.js                  # JavaScript (AJAX, SSE, UI logic)
-├── locale/                         # Internationalization
-│   ├── en/LC_MESSAGES/django.{po,mo}  # English translations
-│   └── vi/LC_MESSAGES/django.{po,mo}  # Vietnamese translations
-└── backups/                        # Database backup storage
+```bash
+# Write a timestamped .sql dump into backups/
+docker compose exec web python manage.py db_command backup
+
+# Load one back in
+docker compose exec web python manage.py db_command restore backups/<file>.sql
 ```
 
-## 🔌 API Endpoints
+Pass `--clean-db` to `restore` to drop and recreate the database first, and
+`--output-dir` to `backup` if you want the dump somewhere other than
+`/app/backups`. Celery beat also takes a dump once a day on its own.
 
-### Web Views (HTML)
+## Annotating a dataset
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/login/` | Login page | Public |
-| POST | `/login/` | Submit login | Public |
-| GET | `/logout/` | Logout | Authenticated |
-| GET | `/register/` | Registration page | Public |
-| POST | `/register/` | Submit registration | Public |
-| GET | `/verify-email/<token>/` | Email verification | Public |
-| POST | `/resend-verification/` | Resend verification email | Public |
-| GET | `/invite/<token>/` | Accept invitation | Public |
-| GET | `/projects/` | Project list | Authenticated |
-| GET/POST | `/projects/create/` | Create project | Authenticated |
-| GET | `/projects/<id>/` | Project detail | Authenticated |
-| GET/POST | `/projects/<id>/edit/` | Edit project | Owner only |
-| POST | `/projects/<id>/delete/` | Delete project | Owner only |
-| GET/POST | `/projects/<id>/export/` | Export dataset | Authenticated |
-| GET/POST | `/projects/<id>/labels/` | Project label settings | Owner only |
-| GET/POST | `/projects/<id>/participants/` | Manage participants | Owner only |
-| GET | `/labels/` | My labels list | Authenticated |
-| GET/POST | `/labels/create/` | Create label | Authenticated |
-| GET/POST | `/labels/<id>/edit/` | Edit label | Owner only |
-| POST | `/labels/<id>/delete/` | Delete label | Owner only |
-| GET/POST | `/settings/` | User settings | Authenticated |
-| GET/POST | `.../links/add/` | Add YouTube link | Authenticated |
-| GET | `.../links/<id>/detail/` | Link detail (comments) | Authenticated |
-| POST | `.../comments/<id>/set-token-labels/<pos>/` | Set token label | Authenticated |
-| POST | `.../comments/<id>/set-comment-labels/` | Set comment label | Authenticated |
-| GET | `.../sse/progress/<id>/` | SSE progress stream | Authenticated |
-| GET | `/health/` | Health check | Public |
+**Set up your API keys.** Under *User Settings*, enter your own YouTube key and
+Ollama endpoint. These take priority over the values in `.env`, so several
+people can share one deployment without sharing a quota. API keys are encrypted
+before they are stored.
 
-### REST API (JSON)
+**Define labels, then attach them to a project.** Labels belong to you and can
+be reused across projects, where you may override the name, description, or
+colour for that project's purposes. A label that is currently applied to a
+comment or token cannot be deleted.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/projects/` | List all projects |
-| POST | `/api/projects/create/` | Create project |
-| GET | `/api/projects/<id>/` | Get project detail |
-| POST | `/api/projects/<id>/links/` | Add/manage YouTube link |
-| GET | `/api/projects/<id>/labels/` | Get project labels |
-| GET | `/api/links/<id>/status/` | Get task progress |
-| GET | `/api/links/<id>/comments/` | List comments |
-| POST | `/api/links/<id>/export/` | Export dataset |
-| GET | `/api/comments/<id>/tokens/` | Get comment tokens |
-| POST | `/api/comments/<id>/toggle-token/<pos>/` | Toggle token toxicity |
-| POST | `/api/comments/<id>/set-token-labels/<pos>/` | Set token labels |
-| POST | `/api/comments/<id>/set-comment-labels/` | Set comment labels |
-| POST | `/api/comments/<id>/manual-label/` | Manual label override |
-| POST | `/api/links/<id>/stop-fetch/` | Stop fetch task |
-| POST | `/api/links/<id>/stop-annotate/` | Stop annotation task |
-| POST | `/api/links/<id>/retry-fetch/` | Retry failed fetch |
-| POST | `/api/links/<id>/clear-refetch/` | Clear and refetch |
-| POST | `/api/links/<id>/continue-annotate/` | Continue annotation |
-| POST | `/api/links/<id>/reannotate/` | Reannotate all |
-| GET | `/api/labels/` | List labels |
-| POST | `/api/labels/create/` | Create label |
+**Add a data source.** Paste a YouTube URL and AnnotaHub validates it, pulls the
+video metadata, then queues two background tasks: one to fetch the comments and
+their replies, another to run the AI pass once fetching finishes. You can stop
+either task, retry a failed fetch, continue annotating only what was missed, or
+clear everything and start over. If your data is not from YouTube, import a CSV
+instead.
 
-## 📊 Data Models
+**Annotate.** The workspace shows one comment at a time. Keys `1`–`9` apply a
+label, `0` clears it, `S` skips a comment with no usable content, the arrow keys
+move between comments, and `Ctrl+Z` undoes. Drag across several words to label a
+whole phrase rather than clicking word by word. When the queue is set to active
+learning, comments the model was least confident about come first.
 
-### Core Models
+**Review.** Set `annotators_per_comment` above 1 and each comment waits for that
+many independent annotations before its label is settled. The quality page
+reports Krippendorff's alpha, pairwise Cohen's kappa, raw agreement, and
+per-annotator throughput. Comments where annotators disagreed go to the
+adjudication queue for the project owner. With `auto_adjudicate` on, a clear
+majority settles the label automatically but the comment stays flagged so you
+know there was an argument.
+
+**Export.** Pick a format and a review scope, and the file streams straight to
+your browser. Exports are recorded, and you can also freeze a dataset version,
+which stores a snapshot with a SHA-256 checksum and the agreement figures that
+applied at the time.
+
+## Export formats
+
+Sixteen formats, grouped by what you would do with them.
+
+**For training sequence-labelling models**
+
+| Key | File | Notes |
+|---|---|---|
+| `conll` | `.conll` | CoNLL-2003: token, tab, BIO tag, blank line between sentences. Read by spaCy, Flair, HuggingFace, and CRFsuite. |
+| `conll_full` | `.tsv` | The same plus character offsets and the sentence-level label. |
+| `hf_jsonl` | `.jsonl` | `{"tokens": [...], "ner_tags": [...]}` for the `datasets` library. The first line is metadata carrying `label_names`. |
+| `spacy_json` | `.json` | spaCy's `[[text, {"entities": [[start, end, label]]}]]`. |
+
+**For moving data between annotation tools**
+
+| Key | File | Notes |
+|---|---|---|
+| `doccano_jsonl` | `.jsonl` | Import back into Doccano for a second opinion. |
+| `label_studio_json` | `.json` | Label Studio pre-annotations. |
+
+**General purpose**
+
+| Key | File | Notes |
+|---|---|---|
+| `json_sentence` | `.json` | Sentence-level labels. |
+| `json_token` | `.json` | Token-level, with BIO tags and a list of spans. |
+| `jsonl` | `.jsonl` | The same, one record per line. |
+| `xml` | `.xml` | Tokens, BIO tags, and spans. The old key `xml_conll` still works. |
+
+**Spreadsheets**
+
+| Key | File | Notes |
+|---|---|---|
+| `csv_sentence` | `.csv` | One row per comment. |
+| `csv_token` | `.csv` | One row per token, with `bio` and `span_group` columns. |
+| `csv_spans` | `.csv` | Only the labelled phrases. The quickest thing to skim. |
+| `csv_annotations` | `.csv` | One row per individual annotation, so you can recompute agreement yourself. |
+| `xlsx` | `.xlsx` | Multi-sheet workbook for reviewers who want Excel. |
+
+**For fine-tuning an LLM**
+
+| Key | File | Notes |
+|---|---|---|
+| `json_llm` | `.jsonl` | Chat `messages` format. |
+
+Every CSV is written with a UTF-8 BOM so Excel renders Vietnamese correctly.
+
+### Choosing a review scope
+
+The `review` parameter decides which comments make it into the file, and it
+matters more than the format does.
+
+| Value | Contains | Use for |
+|---|---|---|
+| `all` | Every comment, including ones nobody has looked at | Backups |
+| `labelled` | Anything with an AI or human label | Exploring the data |
+| `human` | Only human-applied labels | Measuring how good the AI pass was |
+| `gold` | Only settled labels, agreed or adjudicated | Publishing a dataset, training a model |
+
+Exporting `all` as training data teaches the model that "nobody got to this yet"
+means the label `O`. The export page warns you in red if you pick that
+combination.
+
+### Span boundaries and BIO tags
+
+A flat label per token is not enough information to produce correct BIO tags.
+Two adjacent tokens carrying the same label might be one two-word phrase or two
+separate one-word phrases, and nothing in the labels themselves tells you which.
+
+AnnotaHub stores a `span_group` identifier on each token. Tokens an annotator
+selected together as a phrase share one value; tokens labelled individually
+each get their own. The BIO output follows from that rather than from a guess:
+
+```
+thằng     B-toxic     first phrase starts
+ngu       I-toxic     first phrase continues
+này       O
+đồ        B-toxic     second phrase starts again, not I-
+khốn nạn  I-toxic
+```
+
+The field records a human decision, so only human annotation writes to it. The
+model returns character spans, those are mapped onto tokens by overlap, and the
+span itself is then discarded. Where no `span_group` is set — AI labels, and
+data from before the field existed — the exporter joins runs of adjacent tokens
+carrying the same label. That loses the boundary between two same-labelled
+phrases sitting directly next to each other, which is a distinction the model's
+own segmentation was never reliable about anyway.
+
+## Data model
+
+**Core**
 
 | Model | Description |
-|-------|-------------|
-| **Project** | Organizes YouTube link collections; has an owner and participants |
-| **YouTubeLink** | Stores YouTube video info linked to a project |
-| **Comment** | Individual YouTube comment with dual-label annotation |
-| **Token** | Individual word within a comment with dual-label annotation |
-| **Label** | User-owned annotation category (name, color, description) |
-| **ProjectLabel** | Links a Label to a Project with optional overrides |
+|---|---|
+| `Project` | A collection of data sources with an owner and participants |
+| `YouTubeLink` | One data source; the `kind` field distinguishes `youtube`, `csv`, and `manual` |
+| `Comment` | A single comment, with its labels and review status |
+| `Token` | A word inside a comment |
+| `Label` | An annotation category owned by a user |
+| `ProjectLabel` | Attaches a label to a project, optionally overriding its display |
 
-### System Models
+**Annotation**
 
 | Model | Description |
-|-------|-------------|
-| **EmailVerification** | One-time tokens for user email verification |
-| **UserInvitation** | Invitation tokens for adding users to projects |
-| **UserSettings** | Per-user API configuration (YouTube key, Ollama settings) |
-| **TaskProgress** | Async task tracking (fetch/annotate progress) |
-| **ExportRecord** | Export history tracking |
+|---|---|
+| `CommentAnnotation` | One annotator's sentence-level label, unique per `(comment, annotator, source)` |
+| `TokenAnnotation` | One annotator's token-level label |
+| `AnnotationAssignment` | Which comments are assigned to which annotator |
+| `AnnotationEvent` | Append-only audit log of every label change |
+| `DatasetVersion` | A snapshot with a SHA-256 checksum and agreement metrics |
 
-### Dual-Label System
+**Supporting**
 
-Each **Comment** and **Token** supports two labels:
-- **AI Label**: Automatically assigned by the Ollama model
-- **Manual Label**: User-assigned override (takes priority for display and export)
+| Model | Description |
+|---|---|
+| `EmailVerification` | Single-use email verification token |
+| `UserInvitation` | Project invitation token |
+| `UserSettings` | Per-user API configuration, with keys encrypted at rest |
+| `TaskProgress` | Background task state, streamed to the UI over SSE |
+| `ExportRecord` | Export history |
 
-Effective label = `manual_label` if set, otherwise `ai_label`
+### Three layers of labels
 
-## ⚙️ Additional Features
+Every comment and token carries three label fields, checked in order:
 
-- ✅ User authentication with email verification
-- ✅ User invitation system for project collaboration
-- ✅ Dual-role permission system (Owner: full access, Participant: label-only)
-- ✅ Per-user API key and Ollama configuration
-- ✅ User-owned label management with project assignment
-- ✅ Dual-label system (AI + Manual) for both comments and tokens
-- ✅ Project-specific label overrides (name, description, color)
-- ✅ Real-time progress tracking via Server-Sent Events
-- ✅ Full task control (stop, retry, clear-refetch, continue, reannotate)
-- ✅ Comment deduplication
-- ✅ Pagination for large datasets
-- ✅ Non-Vietnamese comment support (original text preservation)
-- ✅ Meaningful/skipped comment filtering
-- ✅ Multiple export formats (6 formats)
-- ✅ Complete RESTful API
-- ✅ Database backup and restore commands
-- ✅ Multi-language support (English & Vietnamese)
-- ✅ System health monitoring endpoint
+```
+effective_label = gold_label or manual_label or ai_label
+```
 
-## 📄 License
+`gold_label` is the settled answer, from consensus or adjudication.
+`manual_label` mirrors the most recent human annotation. `ai_label` is the
+model's suggestion.
 
-MIT License
+These three columns are denormalised copies kept for query speed. The source of
+truth is `CommentAnnotation` and `TokenAnnotation`; `recompute_comment_gold()`
+brings the copies back in line after every change.
 
-## 👥 Contributing
+### Review status
 
-Contributions are welcome! Please open an issue or pull request on [GitHub](https://github.com/vdhong/AnnotaHub.git).
+`Project.annotators_per_comment` sets how many people must label a comment
+before it can be settled.
 
-## 📧 Contact
+| Status | Meaning |
+|---|---|
+| `pending` | Fewer annotations than required so far |
+| `agreed` | Enough annotations and they all match, so `gold_label` is set |
+| `conflict` | Enough annotations but they differ; waiting on the owner |
+| `adjudicated` | The owner has chosen the final label |
 
-For questions, please open an issue on [GitHub](https://github.com/vdhong/AnnotaHub.git).
+Two smaller distinctions are worth knowing about. `Comment.ai_processed` records
+that the model has seen a comment, which is not the same thing as the model
+having assigned it a label — without that flag, a comment the model deliberately
+left blank looks identical to one it never saw, and gets sent back to the LLM
+forever. And `Comment.source_text` holds the text exactly as it arrived and is
+never written to; `Comment.text` is the normalised, possibly translated version
+used for display and annotation.
+
+## API reference
+
+Every endpoint requires authentication and checks project membership. Requests
+for a resource you cannot see return `404` rather than `403`, so the API does not
+confirm that a project exists to people who have no business knowing.
+
+### Pages
+
+| Method | Path | Description | Access |
+|---|---|---|---|
+| GET, POST | `/login/`, `/register/` | Sign in and sign up | Public |
+| GET | `/verify-email/<token>/` | Confirm an email address | Public |
+| POST | `/resend-verification/` | Send the verification email again | Public |
+| GET | `/invite/<token>/` | Accept a project invitation | Public |
+| GET | `/projects/` | Your projects | Member |
+| GET, POST | `/projects/create/` | Create a project | Authenticated |
+| GET | `/projects/<id>/` | Project detail | Member |
+| GET, POST | `/projects/<id>/edit/` | Edit a project | Owner |
+| POST | `/projects/<id>/delete/` | Delete a project | Owner |
+| POST | `/projects/<id>/lock/` | Lock a project against further changes | Owner |
+| GET, POST | `/projects/<id>/labels/` | Project label settings | Owner |
+| GET, POST | `/projects/<id>/participants/` | Manage participants | Owner |
+| GET, POST | `/projects/<id>/import/` | Import comments from CSV | Owner |
+| GET, POST | `/projects/<id>/export/` | Export a dataset | Member |
+| GET | `/projects/<id>/quality/` | Agreement and throughput | Owner |
+| GET | `/projects/<id>/adjudicate/` | Resolve disagreements | Owner |
+| GET | `/projects/<id>/versions/` | Dataset versions | Member |
+| POST | `/projects/<id>/links/add/` | Add a YouTube source | Owner |
+| GET | `/links/<id>/detail/` | Comments, with filters and search | Member |
+| GET | `/links/<id>/annotate/` | Keyboard annotation workspace | Member |
+| GET, POST | `/labels/` and `/labels/create/` | Your labels | Authenticated |
+| GET, POST | `/settings/` | Your API settings | Authenticated |
+| GET | `/sse/progress/<link_id>/` | Task progress stream | Member |
+| GET | `/health/` | Health check, outside i18n routing | Public |
+
+### Projects and sources
+
+| Method | Path | Description | Access |
+|---|---|---|---|
+| GET | `/api/projects/` | Your projects | Authenticated |
+| POST | `/api/projects/create/` | Create a project | Authenticated |
+| GET, PUT, DELETE | `/api/projects/<id>/` | Read, edit, delete | GET member, rest owner |
+| GET, POST | `/api/projects/<id>/links/` | List or add data sources | GET member, POST owner |
+| GET | `/api/projects/<id>/labels/` | Labels attached to the project | Member |
+| GET | `/api/links/<id>/status/` | Task state and label counts | Member |
+| GET | `/api/links/<id>/comments/` | Comments, paginated and filterable | Member |
+| POST | `/api/links/<id>/export/` | Export; body takes `format`, `review`, `filter` | Member |
+| GET | `/api/export-formats/` | Available formats | Authenticated |
+
+### Annotation
+
+| Method | Path | Description | Access |
+|---|---|---|---|
+| GET | `/api/comments/<id>/tokens/` | Tokens of one comment | Member |
+| POST | `/api/comments/<id>/set-comment-labels/` | Label a comment | Member |
+| POST | `/api/comments/<id>/set-token-labels/<pos>/` | Label one token | Member |
+| POST | `/api/comments/<id>/set-token-span/` | Label a span of tokens | Member |
+| POST | `/api/comments/<id>/skip/` | Mark a comment as having no usable content | Member |
+| POST | `/api/comments/<id>/accept-ai/` | Accept the model's suggestion as-is | Member |
+| GET | `/api/comments/<id>/annotations/` | Who labelled this, and what they chose | Member |
+| GET | `/api/links/<id>/queue/` | Your annotation queue | Member |
+| GET, POST | `/api/projects/<id>/assign/` | Assign work to annotators | Owner |
+
+### Quality and adjudication
+
+| Method | Path | Description | Access |
+|---|---|---|---|
+| GET | `/api/projects/<id>/agreement/` | Krippendorff's alpha, Cohen's kappa, raw agreement | Owner |
+| GET | `/api/projects/<id>/conflicts/` | Comments with disagreement | Owner |
+| POST | `/api/comments/<id>/adjudicate/` | Set the final label | Owner |
+| GET | `/api/projects/<id>/progress/` | Annotator throughput | Owner sees all, annotators see their own |
+
+### Tasks and versions
+
+| Method | Path | Description | Access |
+|---|---|---|---|
+| POST | `/api/links/<id>/stop-fetch/` | Stop fetching comments | Owner |
+| POST | `/api/links/<id>/stop-annotate/` | Stop the AI pass | Owner |
+| POST | `/api/links/<id>/retry-fetch/` | Retry a failed fetch, keeping existing data | Owner |
+| POST | `/api/links/<id>/clear-refetch/` | Delete the comments and fetch again | Owner |
+| POST | `/api/links/<id>/continue-annotate/` | Annotate whatever was missed | Owner |
+| POST | `/api/links/<id>/reannotate/` | Re-run the AI pass | Owner |
+| GET, POST | `/api/projects/<id>/versions/` | Dataset versions | GET member, POST owner |
+| GET, POST | `/api/projects/<id>/exports/` | Export jobs | Member |
+| GET, POST | `/api/labels/`, `/api/labels/create/` | Your labels | Authenticated |
+
+`reannotate` and `continue-annotate` touch only what the model produced. Human
+labels at both the comment and the token level survive, as do the span
+groupings an annotator made by dragging across several words. To wipe human
+work as well you have to say so explicitly with `{"reset_manual": true}`.
+
+Neither call clears anything up front. Each comment is overwritten as the
+worker reaches it, so stopping a run half way leaves the remaining comments
+with the labels they already had rather than blank.
+
+## Development
+
+Source layout:
+
+```
+annotahub/          Django settings, Celery app, root URLs
+comments/           The application
+  models.py         All models
+  views.py          Page views
+  api_views.py      REST API
+  tasks.py          Celery tasks: fetching, annotating, exporting, maintenance
+  export_service.py The 16 export formats
+  permissions.py    Project access rules
+  fields.py         Encrypted field for stored API keys
+  services/         Business logic, one module per concern:
+                    youtube, ollama, tokenization, annotation,
+                    agreement, ai_review, versioning, stats
+  tests/            Test suite, split by area
+  management/commands/db_command.py
+templates/comments/ Bootstrap 5 templates
+static/             CSS and JavaScript
+locale/             English and Vietnamese translations
+```
+
+Run the tests:
+
+```bash
+docker compose exec web python manage.py test comments --settings=annotahub.settings_test
+```
+
+CI runs on every push: ruff for linting, a check that no migration is missing,
+the full test suite, `manage.py check --deploy`, and a Docker image build with a
+smoke test inside the image.
+
+On the security side, API keys are encrypted with Fernet before they reach the
+database, so a SQL dump does not leak them. The app refuses to boot if
+`SECRET_KEY` still holds the sample value. Login, registration, and
+verification-resend are rate limited. Data reaches JavaScript through
+`json_script` and the DOM is built with DOM APIs rather than `innerHTML`. The
+`next` parameter on login is validated against open redirects, and the usual
+headers — HSTS, secure cookies, `X-Frame-Options`, `nosniff` — are set.
+
+## Known limitations
+
+- Comment collection is bounded by your YouTube Data API quota. A busy video can
+  exhaust a day's quota on its own, which is part of why each user brings their
+  own key.
+- Agreement metrics are computed on sentence-level labels. Token-level agreement
+  is not reported yet.
+- The quality of the AI pass depends entirely on the model you point Ollama at.
+  Treat its output as a draft to correct, not as a second annotator.
+- Only PostgreSQL is supported. The backup command shells out to `pg_dump`.
+
+## License and contact
+
+The software is licensed under the Apache License 2.0. The full text is in
+[LICENSE](LICENSE), and [NOTICE](NOTICE) carries the copyright line that
+redistributions need to keep.
+
+**The licence covers the code, not the data you collect with it.** Comments
+pulled from YouTube stay subject to YouTube's terms of service, and they carry
+personal data — display names, avatars, channel identifiers — which in Vietnam
+falls under Decree 13/2023/ND-CP, and under the GDPR if you publish
+internationally. 
+
+Issues and pull requests are welcome at
+<https://github.com/vdhong/AnnotaHub>. Contributions are taken under Apache 2.0,
+as set out in section 5 of the licence, so there is no separate agreement to
+sign. If you are adding an export format, put it in
+`comments/export_service.py` and add a test next to the existing ones in
+`comments/tests/test_export.py`.
+
+Maintained by Dinh-Hong Vu.

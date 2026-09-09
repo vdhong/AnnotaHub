@@ -1,8 +1,13 @@
 /* AnnotaHub Main JavaScript */
 
-// Auto-dismiss alerts after 5 seconds
+// Tự đóng THÔNG BÁO CHỚP (django messages) sau 5 giây.
+//
+// Chỉ nhắm vào .alert-dismissible — đó là khuôn mà base.html dùng cho messages.
+// Trước đây quét toàn bộ .alert nên xoá luôn những khung thông tin cố định:
+// banner "dự án đang khoá", ô "AI đề xuất … Đồng ý với AI", các gợi ý ở trang
+// danh sách… Người dùng thấy chúng hiện ra rồi biến mất sau vài giây.
 document.addEventListener('DOMContentLoaded', function() {
-    const alerts = document.querySelectorAll('.alert');
+    const alerts = document.querySelectorAll('.alert-dismissible');
     alerts.forEach(function(alert) {
         setTimeout(function() {
             const bsAlert = new bootstrap.Alert(alert);

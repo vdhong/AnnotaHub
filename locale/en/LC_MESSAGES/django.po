@@ -3,12 +3,11 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-31 12:04+0700\n"
+"POT-Creation-Date: 2026-09-09 18:01+0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,11 +17,407 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: comments/services/email_verification_service.py:37
+#: comments/api_views.py:124 comments/api_views.py:174 comments/views.py:708
+#: comments/views.py:766
+msgid "Tên dự án là bắt buộc."
+msgstr "Project name is required."
+
+#: comments/api_views.py:127 comments/api_views.py:177
+msgid "Tên dự án đã tồn tại."
+msgstr "A project with this name already exists."
+
+#: comments/api_views.py:190
+msgid "annotators_per_comment không hợp lệ."
+msgstr "Invalid value for annotators_per_comment."
+
+#: comments/api_views.py:200
+msgid "Đã xoá dự án."
+msgstr "Project deleted."
+
+#: comments/api_views.py:227
+msgid "URL là bắt buộc."
+msgstr "URL is required."
+
+#: comments/api_views.py:232 comments/views.py:1250
+msgid "URL YouTube không hợp lệ."
+msgstr "Invalid YouTube URL."
+
+#: comments/api_views.py:235 comments/views.py:1254
+msgid "Video này đã có trong dự án."
+msgstr "This video is already in the project."
+
+#: comments/api_views.py:246
+msgid "Không lấy được thông tin video. Kiểm tra link hoặc YouTube API key."
+msgstr "Could not fetch video info. Check the link or your YouTube API key."
+
+#: comments/api_views.py:265
+msgid "Đã bắt đầu tải bình luận."
+msgstr "Started fetching comments."
+
+#: comments/api_views.py:319
+msgid "page/per_page phải là số nguyên."
+msgstr "page/per_page must be integers."
+
+#: comments/api_views.py:438 comments/api_views.py:476
+#: comments/api_views.py:516 comments/api_views.py:943
+msgid "Nhãn không thuộc dự án này."
+msgstr "That label does not belong to this project."
+
+#: comments/api_views.py:483
+msgid "Không tìm thấy token."
+msgstr "Token not found."
+
+#: comments/api_views.py:511
+msgid "Cần có start và end là số nguyên."
+msgstr "start and end must be integers."
+
+#: comments/api_views.py:549
+msgid "Bình luận này không có đề xuất của AI."
+msgstr "This comment has no AI suggestion."
+
+#: comments/api_views.py:838
+msgid "per_annotator không hợp lệ."
+msgstr "Invalid value for per_annotator."
+
+#: comments/api_views.py:850
+msgid "Không có annotator hợp lệ nào được chọn."
+msgstr "No valid annotator was selected."
+
+#: comments/api_views.py:983
+msgid "Đã yêu cầu dừng tải bình luận."
+msgstr "Requested to stop fetching comments."
+
+#: comments/api_views.py:990
+msgid "Đã yêu cầu dừng gán nhãn AI."
+msgstr "Requested to stop AI annotation."
+
+#: comments/api_views.py:1005
+msgid "Đang tải lại bình luận. Dữ liệu hiện có được giữ nguyên."
+msgstr "Refetching comments. Existing data is kept."
+
+#: comments/api_views.py:1022
+#, python-format
+msgid "Đã xoá %(n)d bình luận và bắt đầu tải lại."
+msgstr "Cleared %(n)d comments and started refetching."
+
+#: comments/api_views.py:1039
+msgid "Không còn bình luận nào chưa gán nhãn."
+msgstr "No unannotated comments left."
+
+#: comments/api_views.py:1047
+msgid "Tác vụ gán nhãn đang chạy."
+msgstr "An annotation task is already running."
+
+#: comments/api_views.py:1054
+#, python-format
+msgid "Đang gán nhãn tiếp %(n)d bình luận."
+msgstr "Continuing annotation for %(n)d comments."
+
+#: comments/api_views.py:1119
+msgid "Đã đặt lại toàn bộ nhãn (kể cả nhãn thủ công) và bắt đầu gán nhãn lại."
+msgstr "Reset all labels (including manual ones) and restarted annotation."
+
+#: comments/api_views.py:1121
+msgid "Đã bắt đầu gán nhãn lại. Nhãn thủ công được giữ nguyên."
+msgstr "Annotation restarted. Manual labels are kept."
+
+#: comments/api_views.py:1153 comments/views.py:439 comments/views.py:465
+#: comments/views.py:549
+msgid "Tên nhãn là bắt buộc."
+msgstr "Label name is required."
+
+#: comments/api_views.py:1157
+msgid "Bạn đã có nhãn trùng tên."
+msgstr "You already have a label with that name."
+
+#: comments/api_views.py:1203
+msgid "Nhãn không tồn tại hoặc không thuộc chủ dự án."
+msgstr "Label does not exist or does not belong to the project owner."
+
+#: comments/api_views.py:1212 comments/api_views.py:1221
+msgid "Không tìm thấy nhãn trong dự án."
+msgstr "Label not found in this project."
+
+#: comments/api_views.py:1245
+msgid "Hành động không hợp lệ."
+msgstr "Invalid action."
+
+#: comments/api_views.py:1265 templates/comments/export.html:43
+msgid "Tất cả bình luận (kể cả chưa gán nhãn)"
+msgstr "All comments (including unannotated)"
+
+#: comments/api_views.py:1266 templates/comments/export.html:44
+msgid "Đã có nhãn (AI hoặc người)"
+msgstr "Has a label (AI or human)"
+
+#: comments/api_views.py:1267 templates/comments/export.html:45
+msgid "Có nhãn do người gán"
+msgstr "Has a human-assigned label"
+
+#: comments/api_views.py:1268
+msgid "Chỉ nhãn đã chốt — dùng để công bố"
+msgstr "Settled labels only — for publication"
+
+#: comments/api_views.py:1344
+msgid "Phiên bản này đã tồn tại."
+msgstr "This version already exists."
+
+#: comments/api_views.py:1366
+msgid "Đang tạo phiên bản dataset ở chế độ nền."
+msgstr "Building the dataset version in the background."
+
+#: comments/export_service.py:809
+msgid "Chuẩn NLP"
+msgstr "NLP standards"
+
+#: comments/export_service.py:810
+msgid "Công cụ gán nhãn khác"
+msgstr "Other annotation tools"
+
+#: comments/export_service.py:811
+msgid "Tổng quát"
+msgstr "General purpose"
+
+#: comments/export_service.py:812
+msgid "Bảng tính"
+msgstr "Spreadsheets"
+
+#: comments/export_service.py:813
+msgid "Huấn luyện mô hình"
+msgstr "Model training"
+
+#: comments/export_service.py:820
+msgid "CoNLL-2003 — token + nhãn BIO"
+msgstr "CoNLL-2003 — token + BIO tag"
+
+#: comments/export_service.py:821
+msgid ""
+"Định dạng chuẩn của bài toán gán nhãn chuỗi (NER, chunking): mỗi dòng một "
+"token, phân tách bằng TAB, dòng trống ngăn câu. spaCy, Flair, HuggingFace và "
+"CRFsuite đều đọc trực tiếp được."
+msgstr ""
+"The standard format for sequence labelling (NER, chunking): one token per "
+"line, TAB-separated, blank line between sentences. spaCy, Flair, HuggingFace "
+"and CRFsuite all read it directly."
+
+#: comments/export_service.py:832
+msgid "CoNLL mở rộng — kèm offset và nhãn câu"
+msgstr "CoNLL extended — with offsets and sentence label"
+
+#: comments/export_service.py:833
+msgid ""
+"Như CoNLL nhưng thêm vị trí ký tự đầu/cuối của token và nhãn cấp câu. Dùng "
+"khi pipeline cần ánh xạ ngược về văn bản gốc."
+msgstr ""
+"Same as CoNLL but adds each token's start/end character offset and the "
+"sentence-level label. Use it when your pipeline needs to map back to the "
+"original text."
+
+#: comments/export_service.py:841
+msgid "HuggingFace datasets — tokens + ner_tags"
+msgstr "HuggingFace datasets — tokens + ner_tags"
+
+#: comments/export_service.py:842
+msgid ""
+"Nạp trực tiếp bằng datasets.load_dataset(\"json\", ...). Dòng đầu tiên là "
+"metadata chứa label_names để ánh xạ ner_tags (số) sang tên nhãn."
+msgstr ""
+"Load directly with datasets.load_dataset(\"json\", ...). The first line is "
+"metadata holding label_names, which maps the numeric ner_tags back to label "
+"names."
+
+#: comments/export_service.py:850
+msgid "spaCy training — text + entities"
+msgstr "spaCy training — text + entities"
+
+#: comments/export_service.py:851
+msgid ""
+"Định dạng huấn luyện của spaCy. Nạp bằng Example.from_dict hoặc chuyển sang "
+"DocBin (.spacy). Cụm từ được mô tả bằng offset ký tự."
+msgstr ""
+"spaCy's training format. Load with Example.from_dict or convert to DocBin "
+"(.spacy). Spans are described by character offsets."
+
+#: comments/export_service.py:862
+msgid "Doccano JSONL"
+msgstr ""
+
+#: comments/export_service.py:863
+msgid ""
+"Nhập ngược vào Doccano để đối chiếu chéo hoặc gán nhãn bổ sung. Nhãn cụm ở "
+"dạng [start, end, \"tên nhãn\"]."
+msgstr ""
+"Import back into Doccano for cross-checking or additional annotation. Spans "
+"use the form [start, end, \"label name\"]."
+
+#: comments/export_service.py:870
+msgid "Label Studio — pre-annotation"
+msgstr "Label Studio — pre-annotation"
+
+#: comments/export_service.py:871
+msgid ""
+"Nạp vào Label Studio dưới dạng dự đoán sẵn (predictions) để người gán nhãn "
+"chỉ cần xác nhận hoặc sửa."
+msgstr ""
+"Load into Label Studio as predictions so annotators only need to confirm or "
+"correct."
+
+#: comments/export_service.py:882
+msgid "JSON — cấp câu"
+msgstr "JSON — sentence level"
+
+#: comments/export_service.py:883
+msgid ""
+"Mỗi bình luận một đối tượng, không có dữ liệu token. Phù hợp cho bài toán "
+"phân loại cả câu."
+msgstr ""
+"One object per comment, no token data. Suitable for whole-sentence "
+"classification."
+
+#: comments/export_service.py:894
+msgid "JSON — cấp token (kèm BIO và cụm)"
+msgstr "JSON — token level (with BIO and spans)"
+
+#: comments/export_service.py:895
+msgid ""
+"Đầy đủ nhất: nhãn câu, từng token kèm thẻ BIO và offset, cùng danh sách cụm "
+"đã gán nhãn."
+msgstr ""
+"The most complete option: sentence label, every token with its BIO tag and "
+"offsets, plus the list of labelled spans."
+
+#: comments/export_service.py:907
+msgid "JSONL — cấp token (mỗi dòng một bản ghi)"
+msgstr "JSONL — token level (one record per line)"
+
+#: comments/export_service.py:908
+msgid ""
+"Cùng nội dung với JSON cấp token nhưng mỗi dòng là một bản ghi độc lập — đọc "
+"theo luồng được, không cần nạp cả tệp vào bộ nhớ."
+msgstr ""
+"Same content as token-level JSON but each line is an independent record — it "
+"can be streamed without loading the whole file into memory."
+
+#: comments/export_service.py:916
+msgid "XML — cấu trúc đầy đủ"
+msgstr "XML — full structure"
+
+#: comments/export_service.py:917
+msgid ""
+"Cây XML gồm văn bản, token kèm thẻ BIO và danh sách cụm. Tên cũ "
+"\"xml_conll\" vẫn dùng được nhưng đây KHÔNG phải định dạng CoNLL — chọn "
+"\"CoNLL-2003\" nếu cần chuẩn đó."
+msgstr ""
+"An XML tree with the text, tokens with BIO tags, and the span list. The old "
+"name \"xml_conll\" still works, but this is NOT the CoNLL format — pick "
+"\"CoNLL-2003\" if you need that standard."
+
+#: comments/export_service.py:935
+msgid "CSV — cấp câu"
+msgstr "CSV — sentence level"
+
+#: comments/export_service.py:936
+msgid "Một dòng một bình luận. Có BOM UTF-8 nên Excel mở đúng tiếng Việt."
+msgstr "One row per comment. Carries a UTF-8 BOM so Excel renders Vietnamese correctly."
+
+#: comments/export_service.py:943
+msgid "CSV — cấp token (kèm BIO)"
+msgstr "CSV — token level (with BIO)"
+
+#: comments/export_service.py:944
+msgid ""
+"Một dòng một token, có cột bio và span_group để biết token nào thuộc cùng "
+"một cụm."
+msgstr ""
+"One row per token, with bio and span_group columns so you can tell which "
+"tokens belong to the same span."
+
+#: comments/export_service.py:952
+msgid "CSV — chỉ các cụm đã gán nhãn"
+msgstr "CSV — labelled spans only"
+
+#: comments/export_service.py:953
+msgid ""
+"Gọn nhất để rà soát thủ công: chỉ liệt kê những cụm từ thực sự mang nhãn, bỏ "
+"qua toàn bộ token trung tính."
+msgstr ""
+"The most compact option for manual review: lists only the spans that "
+"actually carry a label, skipping every neutral token."
+
+#: comments/export_service.py:960
+msgid "CSV — từng annotation (để tính lại IAA)"
+msgstr "CSV — one row per annotation (to recompute IAA)"
+
+#: comments/export_service.py:961
+msgid ""
+"Mỗi dòng là quyết định của MỘT người trên MỘT bình luận. Đây là dữ liệu thô "
+"cần thiết để tính lại độ đồng thuận (Cohen κ, Krippendorff α) một cách độc "
+"lập."
+msgstr ""
+"Each row is ONE person's decision on ONE comment. This is the raw data "
+"needed to recompute agreement (Cohen's κ, Krippendorff's α) independently."
+
+#: comments/export_service.py:971
+msgid "Excel — nhiều sheet, cho người rà soát"
+msgstr "Excel — multi-sheet, for reviewers"
+
+#: comments/export_service.py:972
+msgid ""
+"Sổ Excel gồm 3 sheet: Câu, Cụm đã gán nhãn, Thông tin. Dành cho chuyên gia "
+"lĩnh vực không dùng công cụ kỹ thuật. Giới hạn 100.000 dòng — dữ liệu lớn "
+"hơn nên dùng CSV."
+msgstr ""
+"An Excel workbook with 3 sheets: Sentences, Labelled spans, Info. Intended "
+"for domain experts who do not use technical tooling. Limited to 100,000 rows "
+"— use CSV for larger datasets."
+
+#: comments/export_service.py:975
+msgid ""
+"Sheet \"Câu\"            : mỗi dòng một bình luận\n"
+"Sheet \"Cụm đã gán nhãn\": mỗi dòng một cụm\n"
+"Sheet \"Thông tin\"      : tên dự án, thời điểm xuất, số lượng"
+msgstr ""
+"Sheet \"Sentences\"    : one row per comment\n"
+"Sheet \"Labelled spans\": one row per span\n"
+"Sheet \"Info\"         : project name, export time, counts"
+
+#: comments/export_service.py:983
+msgid "JSONL hội thoại — fine-tune LLM"
+msgstr "JSONL chat format — LLM fine-tuning"
+
+#: comments/export_service.py:984
+msgid ""
+"Dạng messages (system/user/assistant) để fine-tune mô hình ngôn ngữ. NÊN "
+"dùng cùng phạm vi \"chỉ nhãn đã chốt\" — xuất cả bình luận chưa gán nhãn sẽ "
+"dạy mô hình rằng \"chưa gán nhãn\" nghĩa là \"O\"."
+msgstr ""
+"The messages format (system/user/assistant) for fine-tuning a language "
+"model. You SHOULD pair it with the \"settled labels only\" scope — exporting "
+"unannotated comments teaches the model that \"not yet labelled\" means \"O\"."
+
+#: comments/export_service.py:1107
+msgid "Đang chuẩn bị dữ liệu"
+msgstr "Preparing data"
+
+#: comments/export_service.py:1111
+#, python-format
+msgid "Đang ghi %(done)s/%(total)s bình luận"
+msgstr "Writing %(done)s/%(total)s comments"
+
+#: comments/export_service.py:1134
+#, python-format
+msgid "Đang kiểm đếm %(done)s/%(total)s bình luận"
+msgstr "Counting %(done)s/%(total)s comments"
+
+#: comments/export_service.py:1139 comments/tasks.py:1072
+msgid "Hoàn tất"
+msgstr "Done"
+
+#: comments/services/email_verification_service.py:38
 msgid "Email Verification - AnnotaHub"
 msgstr ""
 
-#: comments/services/email_verification_service.py:39
+#: comments/services/email_verification_service.py:40
 #, python-brace-format
 msgid ""
 "Hello,\n"
@@ -40,412 +435,607 @@ msgid ""
 "The AnnotaHub Team"
 msgstr ""
 
-#: comments/services/email_verification_service.py:58
+#: comments/services/email_verification_service.py:59
 msgid "Hello,"
 msgstr ""
 
-#: comments/services/email_verification_service.py:59
+#: comments/services/email_verification_service.py:60
 msgid "Thank you for registering an account on"
 msgstr ""
 
-#: comments/services/email_verification_service.py:60
+#: comments/services/email_verification_service.py:61
 msgid "Please click the button below to verify your email address:"
 msgstr ""
 
-#: comments/services/email_verification_service.py:65
+#: comments/services/email_verification_service.py:66
 msgid "Verify Email"
 msgstr ""
 
-#: comments/services/email_verification_service.py:68
+#: comments/services/email_verification_service.py:69
 msgid "Or copy and paste this link into your browser:"
 msgstr ""
 
-#: comments/services/email_verification_service.py:70
+#: comments/services/email_verification_service.py:71
 msgid "This link will expire in 7 days."
 msgstr ""
 
-#: comments/services/email_verification_service.py:72
+#: comments/services/email_verification_service.py:73
 msgid "Best regards,"
 msgstr ""
 
-#: comments/services/email_verification_service.py:72
+#: comments/services/email_verification_service.py:73
 msgid "The AnnotaHub Team"
 msgstr ""
 
-#: comments/views.py:66
+#: comments/task_messages.py:36
+msgid "Đang chuẩn bị"
+msgstr "Preparing"
+
+#: comments/task_messages.py:37
+msgid "Đã xếp hàng chờ tải bình luận"
+msgstr "Queued for comment fetching"
+
+#: comments/task_messages.py:38
+#, python-format
+msgid "Đã tải %(processed)s bình luận"
+msgstr "Fetched %(processed)s comments"
+
+#: comments/task_messages.py:39
+#, python-format
+msgid "Đã thêm %(created)s bình luận mới, cập nhật %(updated)s"
+msgstr "Added %(created)s new comments, updated %(updated)s"
+
+#: comments/task_messages.py:40
+msgid "Nguồn không phải YouTube, bỏ qua bước tải"
+msgstr "Source is not YouTube, fetching skipped"
+
+#: comments/task_messages.py:41
+msgid "Đã xếp hàng chờ gán nhãn"
+msgstr "Queued for annotation"
+
+#: comments/task_messages.py:42
+#, python-format
+msgid "Đã gán nhãn %(processed)s/%(total)s bình luận"
+msgstr "Annotated %(processed)s/%(total)s comments"
+
+#: comments/task_messages.py:43
+msgid "Không có bình luận nào cần gán nhãn"
+msgstr "No comments need annotating"
+
+#: comments/task_messages.py:44
+msgid "Đã dừng theo yêu cầu"
+msgstr "Stopped on request"
+
+#: comments/task_messages.py:45
+#, python-format
+msgid "Đã nhập %(rows)s dòng"
+msgstr "Imported %(rows)s rows"
+
+#: comments/task_messages.py:46 comments/tasks.py:880
+#: templates/comments/export.html:140 templates/comments/export.html:207
+msgid "Thất bại"
+msgstr "Failed"
+
+#: comments/task_messages.py:47 comments/views.py:502
+msgid "Dự án đã bị khoá."
+msgstr "This project is locked."
+
+#: comments/task_messages.py:48
+msgid "Chưa thiết lập nhãn cho dự án này."
+msgstr "No labels configured for this project."
+
+#: comments/task_messages.py:49
+msgid ""
+"Chưa thiết lập OLLAMA URL, API KEY và MODEL (trong Cài đặt cá nhân hoặc biến "
+"môi trường)."
+msgstr "OLLAMA URL, API KEY and MODEL are not configured (in personal Settings or environment variables)."
+
+#: comments/tasks.py:837
+msgid "Đang bắt đầu"
+msgstr "Starting"
+
+#: comments/tasks.py:868
+msgid "Sẵn sàng tải về"
+msgstr "Ready to download"
+
+#: comments/tasks.py:911
+msgid "Đang đọc file"
+msgstr "Reading the file"
+
+#: comments/tasks.py:986
+#, python-format
+msgid "Đã nhập %(done)s/%(total)s dòng"
+msgstr "Imported %(done)s/%(total)s rows"
+
+#: comments/tasks.py:1052
+msgid "Đang ghi ảnh chụp để phục hồi"
+msgstr "Writing the restore snapshot"
+
+#: comments/tasks.py:1054
+msgid "Đang tính checksum và độ đồng thuận"
+msgstr "Computing checksum and agreement"
+
+#: comments/views.py:91
+msgid "Không có quyền truy cập"
+msgstr "Access denied"
+
+#: comments/views.py:92
+msgid "Bạn không có quyền thực hiện hành động này."
+msgstr "You do not have permission to perform this action."
+
+#: comments/views.py:99
+msgid "Không tìm thấy"
+msgstr "Not found"
+
+#: comments/views.py:100
+msgid "Trang hoặc tài nguyên bạn yêu cầu không tồn tại."
+msgstr "The page or resource you requested does not exist."
+
+#: comments/views.py:107
+msgid "Lỗi hệ thống"
+msgstr "Server error"
+
+#: comments/views.py:108
+msgid "Đã có lỗi xảy ra. Quản trị viên đã được thông báo."
+msgstr "Something went wrong. The administrators have been notified."
+
+#: comments/views.py:154
+msgid "Bạn đã thử đăng nhập quá nhiều lần. Vui lòng đợi vài phút rồi thử lại."
+msgstr "Too many login attempts. Please wait a few minutes and try again."
+
+#: comments/views.py:168
 msgid "Tên đăng nhập hoặc mật khẩu không đúng."
 msgstr "Username or password is incorrect."
 
-#: comments/views.py:76
+#: comments/views.py:177
 msgid "Bạn đã đăng xuất thành công."
 msgstr "You have logged out successfully."
 
-#: comments/views.py:107 comments/views.py:317
+#: comments/views.py:187
+msgid "Bạn đã đăng ký quá nhiều lần. Vui lòng thử lại sau."
+msgstr "Too many registration attempts. Please try again later."
+
+#: comments/views.py:199 comments/views.py:341
 msgid "Tên đăng nhập là bắt buộc."
 msgstr "Username is required."
 
-#: comments/views.py:109
+#: comments/views.py:201
 msgid "Tên đăng nhập phải có ít nhất 3 ký tự."
 msgstr "Username must be at least 3 characters."
 
-#: comments/views.py:111
+#: comments/views.py:203
 msgid "Tên đăng nhập phải có tối đa 150 ký tự."
 msgstr "Username must be at most 150 characters."
 
-#: comments/views.py:113 comments/views.py:319
+#: comments/views.py:205 comments/views.py:343
 #, python-format
 msgid "Tên đăng nhập \"%(username)s\" đã được sử dụng."
 msgstr "Username \"%(username)s\" is already in use."
 
-#: comments/views.py:118
+#: comments/views.py:208
 msgid "Họ và tên là bắt buộc."
 msgstr "Full name is required."
 
-#: comments/views.py:122
+#: comments/views.py:211
 msgid "Địa chỉ email là bắt buộc."
 msgstr "Email address is required."
 
-#: comments/views.py:124
+#: comments/views.py:213
 #, python-format
 msgid "Địa chỉ email \"%(email)s\" đã được đăng ký."
 msgstr "Email address \"%(email)s\" is already registered."
 
-#: comments/views.py:128 comments/views.py:322
+#: comments/views.py:216 comments/views.py:345
 msgid "Mật khẩu là bắt buộc."
 msgstr "Password is required."
 
-#: comments/views.py:130 comments/views.py:326
+#: comments/views.py:218 comments/views.py:349
 msgid "Mật khẩu phải có ít nhất 8 ký tự."
 msgstr "Password must be at least 8 characters."
 
-#: comments/views.py:132
+#: comments/views.py:220
 msgid "Hai mật khẩu nhập lại không khớp."
 msgstr "Passwords do not match."
 
-#: comments/views.py:164
+#: comments/views.py:239
 #, python-format
 msgid ""
-"Dăng kư̛ tai khoản thành công! Vui lòng kiểm tra hộp thư %(email)s để xác "
+"Đăng ký tài khoản thành công! Vui lòng kiểm tra hộp thư %(email)s để xác "
 "thực địa chỉ email. Liên kết xác thực sẽ hết hạn sau 7 ngày."
 msgstr ""
-"Registration successful! Please check your inbox at %(email)s to verify your "
-"email address. The verification link will expire in 7 days."
+"Registration successful! Please check %(email)s to verify your email "
+"address. The verification link expires in 7 days."
 
-#: comments/views.py:170
+#: comments/views.py:244
 msgid ""
-"Dăng kư̛ tai khoản thành công nhưng không thể gửi email xác thực. Vui lòng "
+"Đăng ký tài khoản thành công nhưng không thể gửi email xác thực. Vui lòng "
 "nhấn nút \"Gửi lại email\" bên dưới hoặc liên hệ quản trị viên."
 msgstr ""
-"Registration successful but could not send verification email. Please click "
-"the \"Resend email\" button below or contact the administrator."
+"Registration succeeded but the verification email could not be sent. Please "
+"use the \"Resend email\" button below or contact an administrator."
 
-#: comments/views.py:198
+#: comments/views.py:259
 msgid "Liên kết xác thực không hợp lệ."
 msgstr "Verification link is invalid."
 
-#: comments/views.py:203
+#: comments/views.py:263
 msgid "Email đã được xác thực. Vui lòng đăng nhập."
 msgstr "Email has been verified. Please log in."
 
-#: comments/views.py:208
+#: comments/views.py:268
 msgid ""
 "Liên kết xác thực đã hết hạn. Vui lòng đăng ký lại hoặc liên hệ quản trị "
 "viên."
 msgstr ""
-"Verification link has expired. Please register again or contact the "
+"The verification link has expired. Please register again or contact an "
 "administrator."
 
-#: comments/views.py:222
+#: comments/views.py:279
 msgid "Xác thực email thành công! Chào mừng bạn đến với AnnotaHub."
 msgstr "Email verification successful! Welcome to AnnotaHub."
 
-#: comments/views.py:234
+#: comments/views.py:288
+msgid "Bạn đã yêu cầu gửi lại quá nhiều lần. Vui lòng thử lại sau."
+msgstr "Too many resend requests. Please try again later."
+
+#: comments/views.py:293
 msgid "Vui lòng nhập địa chỉ email."
 msgstr "Please enter your email address."
 
-#: comments/views.py:241
+#: comments/views.py:298
 #, python-format
-msgid "Không tìm thấy tài khoản với email \"%(email)s\"."
-msgstr "No account found with email \"%(email)s\"."
-
-#: comments/views.py:245
-#, python-format
-msgid "Tài khoản với email \"%(email)s\" đã được xác thực. Vui lòng đăng nhập."
-msgstr "Account with email \"%(email)s\" has been verified. Please log in."
-
-#: comments/views.py:262
-#, python-format
-msgid "Email xác thực đã được gửi lại đến %(email)s."
-msgstr "Verification email has been resent to %(email)s."
-
-#: comments/views.py:264
 msgid ""
-"Không thể gửi email xác thực. Vui lòng thử lại sau hoặc liên hệ quản trị "
-"viên."
+"Nếu địa chỉ %(email)s tồn tại và chưa xác thực, email xác thực đã được gửi "
+"lại."
 msgstr ""
-"Could not send verification email. Please try again later or contact the "
-"administrator."
+"If %(email)s exists and is unverified, a verification email has been resent."
 
-#: comments/views.py:287
+#: comments/views.py:317
 msgid "Liên kết mời không hợp lệ hoặc đã hết hạn."
 msgstr "Invitation link is invalid or has expired."
 
-#: comments/views.py:292
+#: comments/views.py:320
 msgid "Liên kết mời này đã được sử dụng."
 msgstr "This invitation link has already been used."
 
-#: comments/views.py:297
+#: comments/views.py:324
 msgid "Liên kết mời đã hết hạn. Vui lòng liên hệ chủ dự án để gửi lại lời mời."
-msgstr ""
-"Invitation link has expired. Please contact the project owner to resend the "
-"invitation."
+msgstr "This invitation link has expired. Ask the project owner to send a new one."
 
-#: comments/views.py:302
+#: comments/views.py:328
 msgid "Không tìm thấy tài khoản liên kết với lời mời này."
 msgstr "No account found associated with this invitation."
 
-#: comments/views.py:324
+#: comments/views.py:347
 msgid "Hai mật khẩu không khớp."
 msgstr "Passwords do not match."
 
-#: comments/views.py:348
+#: comments/views.py:368
 msgid "Tài khoản đã được kích hoạt thành công! Bạn đã được thêm vào dự án."
 msgstr "Account activated successfully! You have been added to the project."
 
-#: comments/views.py:377
-msgid ""
-"Bạn không có quyền thực hiện hành động này. Chỉ chủ sở hữu dự án mới có thể "
-"thực hiện."
-msgstr ""
-"You do not have permission to perform this action. Only the project owner "
-"can perform this action."
-
-#: comments/views.py:381
-msgid "Bạn không có quyền truy cập dự án này."
-msgstr "You do not have access to this project."
-
-#: comments/views.py:411
+#: comments/views.py:401
 msgid "Cài đặt đã được lưu thành công."
 msgstr "Settings saved successfully."
 
-#: comments/views.py:449 comments/views.py:485 comments/views.py:588
-msgid "Tên nhãn là bắt buộc."
-msgstr "Label name is required."
-
-#: comments/views.py:453 comments/views.py:487
+#: comments/views.py:441 comments/views.py:467
 #, python-format
 msgid "Bạn đã có nhãn \"%(name)s\"."
 msgstr "You already have a label \"%(name)s\"."
 
-#: comments/views.py:462
+#: comments/views.py:446
 #, python-format
 msgid "Nhãn \"%(name)s\" đã được tạo."
 msgstr "Label \"%(name)s\" has been created."
 
-#: comments/views.py:475
-msgid "Bạn không có quyền chỉnh sửa nhãn này."
-msgstr "You do not have permission to edit this label."
-
-#: comments/views.py:494
+#: comments/views.py:474
 #, python-format
 msgid "Nhãn \"%(name)s\" đã được cập nhật."
 msgstr "Label \"%(name)s\" has been updated."
 
-#: comments/views.py:508
-msgid "Bạn không có quyền xoá nhãn này."
-msgstr "You do not have permission to delete this label."
-
-#: comments/views.py:513
+#: comments/views.py:486
 #, python-format
 msgid ""
 "Không thể xoá nhãn \"%(name)s\" vì đang được sử dụng trong các bình luận "
 "hoặc token."
 msgstr ""
-"Cannot delete label \"%(name)s\" because it is being used in comments or "
-"tokens."
+"Cannot delete label \"%(name)s\" because it is in use in comments or tokens."
 
-#: comments/views.py:518
+#: comments/views.py:492
 #, python-format
 msgid "Nhãn \"%(name)s\" đã được xoá."
 msgstr "Label \"%(name)s\" has been deleted."
 
-#: comments/views.py:537
-msgid "Chỉ chủ sở hữu dự án mới có thể quản lý nhãn."
-msgstr "Only the project owner can manage labels."
-
-#: comments/views.py:551 comments/views.py:586
+#: comments/views.py:512 comments/views.py:547
 #, python-format
 msgid "Đã thêm nhãn \"%(name)s\" vào dự án."
 msgstr "Label \"%(name)s\" has been added to the project."
 
-#: comments/views.py:558
+#: comments/views.py:521
 msgid "Đã bỏ nhãn khỏi dự án."
 msgstr "Label removed from the project."
 
-#: comments/views.py:568
+#: comments/views.py:533
 msgid "Đã cập nhật nhãn."
 msgstr "Label updated."
 
-#: comments/views.py:829 comments/views.py:894
-msgid "Project name is required."
-msgstr ""
+#: comments/views.py:557
+msgid "Số annotator phải là số nguyên từ 1 đến 10."
+msgstr "Number of annotators must be an integer between 1 and 10."
 
-#: comments/views.py:834 comments/views.py:896
+#: comments/views.py:564
+msgid "Đã cập nhật cấu hình quy trình gán nhãn."
+msgstr "Annotation workflow settings updated."
+
+#: comments/views.py:712 comments/views.py:769
 #, python-format
-msgid ""
-"A project with the name \"%(name)s\" already exists. Please choose a "
-"different name."
-msgstr ""
+msgid "Dự án tên \"%(name)s\" đã tồn tại. Vui lòng chọn tên khác."
+msgstr "A project named \"%(name)s\" already exists. Please choose another name."
 
-#: comments/views.py:843
-msgid "Project \"%(name)s\" created successfully."
-msgstr ""
-
-#: comments/views.py:901
-msgid "Project \"%(name)s\" updated successfully."
-msgstr ""
-
-#: comments/views.py:923
+#: comments/views.py:719
 #, python-format
-msgid "Project \"%(name)s\" deleted."
-msgstr ""
+msgid "Đã tạo dự án \"%(name)s\"."
+msgstr "Project \"%(name)s\" created."
 
-#: comments/views.py:948
+#: comments/views.py:775
+#, python-format
+msgid "Đã cập nhật dự án \"%(name)s\"."
+msgstr "Project \"%(name)s\" updated."
+
+#: comments/views.py:792
+#, python-format
+msgid "Đã xoá dự án \"%(name)s\"."
+msgstr "Project \"%(name)s\" deleted."
+
+#: comments/views.py:802
+msgid "Đã khoá dự án."
+msgstr "Project locked."
+
+#: comments/views.py:803
+msgid "Đã mở khoá dự án."
+msgstr "Project unlocked."
+
+#: comments/views.py:817
+msgid "Vui lòng nhập email."
+msgstr "Please enter an email address."
+
+#: comments/views.py:822
 msgid "Bạn không thể thêm chính mình vào danh sách tham gia."
 msgstr "You cannot add yourself to the participants list."
 
-#: comments/views.py:950
+#: comments/views.py:825
 #, python-format
 msgid "User \"%(username)s\" đã là thành viên tham gia."
 msgstr "User \"%(username)s\" is already a participant."
 
-#: comments/views.py:952
+#: comments/views.py:829
 #, python-format
 msgid "User \"%(username)s\" là chủ sở hữu dự án, không cần thêm."
 msgstr "User \"%(username)s\" is the project owner, no need to add."
 
-#: comments/views.py:955
+#: comments/views.py:834
 #, python-format
-msgid ""
-"User \"%(username)s\" (email: %(email)s) đã được thêm vào danh sách tham gia."
-msgstr ""
-"User \"%(username)s\" (email: %(email)s) has been added to the participants "
-"list."
+msgid "Đã thêm \"%(username)s\" (%(email)s) vào danh sách tham gia."
+msgstr "Added \"%(username)s\" (%(email)s) to the participant list."
 
-#: comments/views.py:989
+#: comments/views.py:840
 #, python-format
-msgid ""
-"Email mời đã được gửi đến %(email)s. User sẽ được thêm vào dự án sau khi xác "
-"nhận email."
-msgstr ""
-"Invitation email has been sent to %(email)s. User will be added to the "
-"project after confirming email."
+msgid "Email mời đã được gửi đến %(email)s."
+msgstr "An invitation email was sent to %(email)s."
 
-#: comments/views.py:998
+#: comments/views.py:845
 #, python-format
-msgid "Không thể gửi email mời. Vui lòng gửi liên kết này manually: %(link)s"
-msgstr ""
-"Could not send invitation email. Please send this link manually: %(link)s"
+msgid "Không gửi được email mời. Vui lòng gửi liên kết này thủ công: %(link)s"
+msgstr "The invitation email could not be sent. Share this link manually: %(link)s"
 
-#: comments/views.py:1001
-msgid "Vui lòng nhập email."
-msgstr "Please enter an email address."
-
-#: comments/views.py:1009
+#: comments/views.py:854
 #, python-format
-msgid "User \"%(username)s\" đã được xóa khỏi danh sách tham gia."
-msgstr "User \"%(username)s\" has been removed from the participants list."
+msgid "Đã xoá \"%(username)s\" khỏi danh sách tham gia."
+msgstr "Removed \"%(username)s\" from the participant list."
 
-#: comments/views.py:1011
+#: comments/views.py:857
 msgid "User không tồn tại trong danh sách tham gia."
 msgstr "User does not exist in the participants list."
 
-#: comments/views.py:1013
-msgid "Thiếu user_id."
-msgstr "Missing user_id."
-
-#: comments/views.py:1026
-#, python-format
-msgid "Đã xóa lời mời cho %(email)s."
-msgstr "Invitation for %(email)s has been deleted."
-
-#: comments/views.py:1028 comments/views.py:1052
+#: comments/views.py:866
 msgid "Không tìm thấy lời mời hoặc đã được sử dụng."
 msgstr "Invitation not found or already used."
 
-#: comments/views.py:1030 comments/views.py:1054
-msgid "Thiếu invitation_id."
-msgstr "Missing invitation_id."
+#: comments/views.py:870
+#, python-format
+msgid "Đã xoá lời mời cho %(email)s."
+msgstr "Deleted the invitation for %(email)s."
 
-#: comments/views.py:1048
+#: comments/views.py:877
 #, python-format
 msgid "Email mời đã được gửi lại đến %(email)s."
 msgstr "Invitation email has been resent to %(email)s."
 
-#: comments/views.py:1050
+#: comments/views.py:881
 #, python-format
-msgid "Không thể gửi lại email mời đến %(email)s."
-msgstr "Could not resend invitation email to %(email)s."
+msgid "Không gửi lại được email mời đến %(email)s."
+msgstr "Could not resend the invitation email to %(email)s."
 
-#: comments/views.py:1119
-msgid "YouTube URL is required."
-msgstr "YouTube URL is required."
+#: comments/views.py:1021
+msgid ""
+"Không tìm thấy file của phiên bản này. File có thể đã bị xoá khỏi máy chủ."
+msgstr ""
+"The file for this version was not found. It may have been removed from the "
+"server."
 
-#: comments/views.py:1124
-msgid "Invalid YouTube URL. Please provide a valid YouTube video link."
-msgstr "Invalid YouTube URL. Please provide a valid YouTube video link."
+#: comments/views.py:1043
+msgid "Dự án đang bị khoá nên không thể phục hồi."
+msgstr "The project is locked, so it cannot be restored."
 
-#: comments/views.py:1129
-msgid "This video is already in the project."
-msgstr "This video is already in the project."
+#: comments/views.py:1049
+msgid ""
+"Phiên bản này không có ảnh chụp nên không phục hồi được. Chỉ những phiên bản "
+"chốt sau khi có tính năng phục hồi mới dùng được."
+msgstr ""
+"This version has no snapshot, so it cannot be restored. Only versions "
+"created after the restore feature was added can be used."
 
-#: comments/views.py:1159
+#: comments/views.py:1062
 #, python-format
-msgid "Started fetching comments for \"%(title)s\"."
+msgid "Tự động chốt trước khi phục hồi về \"%(version)s\"."
+msgstr "Created automatically before restoring to \"%(version)s\"."
+
+#: comments/views.py:1071
+msgid "Không chốt được phiên bản dự phòng nên đã dừng, chưa phục hồi gì cả."
+msgstr "The backup version could not be created, so nothing was restored."
+
+#: comments/views.py:1078
+#, python-format
+msgid "Không phục hồi được: %(reason)s"
+msgstr "Cannot restore: %(reason)s"
+
+#: comments/views.py:1082
+#, python-format
+msgid ""
+"Đã phục hồi dự án về phiên bản \"%(version)s\": %(comments)s bình luận, "
+"%(tokens)s token."
+msgstr ""
+"Restored the project to version \"%(version)s\": %(comments)s comments, "
+"%(tokens)s tokens."
+
+#: comments/views.py:1091
+#, python-format
+msgid ""
+"Trạng thái trước khi phục hồi đã được chốt thành phiên bản \"%(name)s\"."
+msgstr "The state before restoring was saved as version \"%(name)s\"."
+
+#: comments/views.py:1095
+#, python-format
+msgid "%(n)s bình luận được thêm sau khi chốt phiên bản nên được giữ nguyên."
+msgstr "%(n)s comments were added after this version was frozen, so they were left untouched."
+
+#: comments/views.py:1099
+#, python-format
+msgid "Các nhãn sau không còn trong dự án nên đã bị bỏ qua: %(labels)s"
+msgstr "These labels are no longer in the project and were skipped: %(labels)s"
+
+#: comments/views.py:1118
+msgid "Dự án đang bị khoá nên không thể xoá phiên bản."
+msgstr "The project is locked, so versions cannot be deleted."
+
+#: comments/views.py:1131
+#, python-format
+msgid "Đã xoá phiên bản \"%(name)s\"."
+msgstr "Deleted version \"%(name)s\"."
+
+#: comments/views.py:1167
+msgid "Đang xếp hàng"
+msgstr "Queued"
+
+#: comments/views.py:1210
+msgid ""
+"Không tìm thấy file của lần xuất này. File có thể đã bị xoá khỏi máy chủ."
+msgstr ""
+"The file for this export was not found. It may have been removed from the "
+"server."
+
+#: comments/views.py:1245
+msgid "URL YouTube là bắt buộc."
+msgstr "A YouTube URL is required."
+
+#: comments/views.py:1264
+msgid ""
+"Không lấy được thông tin video từ YouTube API. Vui lòng kiểm tra link hoặc "
+"YouTube API key trong phần Cài đặt."
+msgstr ""
+"Could not fetch video info from the YouTube API. Check the link or your "
+"YouTube API key in Settings."
+
+#: comments/views.py:1282
+#, python-format
+msgid "Đã bắt đầu tải bình luận cho \"%(title)s\"."
 msgstr "Started fetching comments for \"%(title)s\"."
 
-#: comments/views.py:1287
-msgid "YouTube link and all its data deleted."
-msgstr "YouTube link and all its data deleted."
+#: comments/views.py:1310
+msgid "Vui lòng chọn một file CSV."
+msgstr "Please choose a CSV file."
 
-#: comments/views.py:1316
-msgid "Re-annotation started in background. All labels have been reset."
-msgstr "Re-annotation started in background. All labels have been reset."
+#: comments/views.py:1318
+msgid "File phải được mã hoá UTF-8."
+msgstr "The file must be UTF-8 encoded."
 
-#: comments/views.py:1337
-#, python-format
-msgid "Refetching comments for \"%(title)s\". Existing comments will be kept."
-msgstr "Refetching comments for \"%(title)s\". Existing comments will be kept."
+#: comments/views.py:1323
+msgid "File CSV phải có cột \"text\"."
+msgstr "The CSV file must have a \"text\" column."
 
-#: comments/views.py:1350
-msgid "Failed to clear link data."
-msgstr "Failed to clear link data."
+#: comments/views.py:1349
+msgid "Đang nhập dữ liệu ở chế độ nền. Trang sẽ tự cập nhật khi xong."
+msgstr "Importing in the background. This page updates itself when it finishes."
 
-#: comments/views.py:1356
-#, python-format
-msgid "Cleared %(count)s comments and started refetching for \"%(title)s\"."
-msgstr "Cleared %(count)s comments and started refetching for \"%(title)s\"."
+#: comments/views.py:1506
+msgid "Đã xoá nguồn dữ liệu và toàn bộ dữ liệu liên quan."
+msgstr "Data source and all related data deleted."
 
-#: comments/views.py:1369
-msgid "Fetch task has been stopped."
-msgstr "Fetch task has been stopped."
+#: templates/comments/_project_nav.html:21
+msgid "Project navigation"
+msgstr "Project navigation"
 
-#: comments/views.py:1381
-msgid "Annotation task has been stopped."
-msgstr "Annotation task has been stopped."
+#: templates/comments/_project_nav.html:24 templates/comments/base.html:221
+#: templates/comments/project_list.html:3
+msgid "Projects"
+msgstr "Projects"
 
-#: comments/views.py:1394
-msgid "No unannotated comments found."
-msgstr "No unannotated comments found."
+#: templates/comments/_project_nav.html:41
+#: templates/comments/annotate_workspace.html:3
+#: templates/comments/annotate_workspace.html:62
+msgid "Gán nhãn"
+msgstr "Annotate"
 
-#: comments/views.py:1400
-msgid "Annotation task is already running. Progress is being updated."
-msgstr "Annotation task is already running. Progress is being updated."
+#: templates/comments/_project_nav.html:50
+#: templates/comments/_project_nav.html:84 templates/comments/base.html:228
+msgid "Labels"
+msgstr "Labels"
 
-#: comments/views.py:1405
-#, python-format
-msgid "Continuing annotation for %(count)s unannotated comments."
-msgstr "Continuing annotation for %(count)s unannotated comments."
+#: templates/comments/_project_nav.html:51
+#: templates/comments/_project_nav.html:89
+#: templates/comments/project_participants.html:41
+msgid "Participants"
+msgstr "Participants"
+
+#: templates/comments/_project_nav.html:52
+#: templates/comments/_project_nav.html:93
+msgid "Chất lượng"
+msgstr "Quality"
+
+#: templates/comments/_project_nav.html:53
+#: templates/comments/_project_nav.html:98
+msgid "Phân xử"
+msgstr "Adjudicate"
+
+#: templates/comments/_project_nav.html:54
+#: templates/comments/_project_nav.html:104
+#: templates/comments/project_versions.html:28
+msgid "Phiên bản"
+msgstr "Versions"
+
+#: templates/comments/_project_nav.html:55
+#: templates/comments/_project_nav.html:109
+msgid "Nhập CSV"
+msgstr "Import CSV"
+
+#: templates/comments/_project_nav.html:56
+#: templates/comments/_project_nav.html:114 templates/comments/export.html:3
+msgid "Export"
+msgstr "Export"
+
+#: templates/comments/_project_nav.html:57
+#: templates/comments/_project_nav.html:119 templates/comments/base.html:231
+msgid "Settings"
+msgstr "Settings"
+
+#: templates/comments/_project_nav.html:70
+msgid "Locked"
+msgstr ""
+
+#: templates/comments/_project_nav.html:78
+#: templates/comments/project_detail.html:11
+msgid "Overview"
+msgstr "Overview"
 
 #: templates/comments/accept_invitation.html:3
 #: templates/comments/accept_invitation.html:10
@@ -478,7 +1068,7 @@ msgid "Username must be unique."
 msgstr "Username must be unique."
 
 #: templates/comments/accept_invitation.html:39
-#: templates/comments/project_participants.html:52
+#: templates/comments/project_participants.html:51
 #: templates/comments/register.html:491
 msgid "Email"
 msgstr "Email"
@@ -503,7 +1093,7 @@ msgid "Password"
 msgstr "Password"
 
 #: templates/comments/accept_invitation.html:60
-#: templates/comments/accept_invitation.html:98
+#: templates/comments/accept_invitation.html:99
 msgid "Password must be at least 8 characters."
 msgstr "Password must be at least 8 characters."
 
@@ -524,40 +1114,264 @@ msgstr ""
 "After completing registration, please refresh the page or navigate to "
 "another page to ensure successful login."
 
-#: templates/comments/accept_invitation.html:93
+#: templates/comments/accept_invitation.html:94
 msgid "Passwords do not match. Please check again."
 msgstr "Passwords do not match. Please check again."
 
-#: templates/comments/base.html:139 templates/comments/login.html:488
+#: templates/comments/annotate_workspace.html:67
+#: templates/comments/annotate_workspace.html:138
+msgid "Về danh sách"
+msgstr "Back to list"
+
+#: templates/comments/annotate_workspace.html:70
+#: templates/comments/annotate_workspace.html:213
+msgid "Phím tắt"
+msgstr "Keyboard shortcuts"
+
+#: templates/comments/annotate_workspace.html:77
+msgid "Hướng dẫn gán nhãn của dự án"
+msgstr "Project annotation guideline"
+
+#: templates/comments/annotate_workspace.html:86
+msgid "bạn đã gán ở nguồn này"
+msgstr "you annotated in this source"
+
+#: templates/comments/annotate_workspace.html:90
+msgid "hoàn thành"
+msgstr "complete"
+
+#: templates/comments/annotate_workspace.html:94
+msgid "còn lại chờ bạn"
+msgstr "left for you"
+
+#: templates/comments/annotate_workspace.html:98
+msgid "trong phiên này"
+msgstr "this session"
+
+#: templates/comments/annotate_workspace.html:102
+msgid "tổng trong dự án"
+msgstr "total in project"
+
+#: templates/comments/annotate_workspace.html:113
+msgid "Cần gán"
+msgstr "To label"
+
+#: templates/comments/annotate_workspace.html:116
+#: templates/comments/annotate_workspace.html:254
+#: templates/comments/link_detail.html:162
+#: templates/comments/link_detail.html:236
+msgid "Bạn đã gán"
+msgstr "You labelled"
+
+#: templates/comments/annotate_workspace.html:119
+msgid "Tất cả"
+msgstr "All"
+
+#: templates/comments/annotate_workspace.html:127
+msgid "Chế độ xem lại: sửa nhãn xong màn hình đứng yên, không tự chuyển câu."
+msgstr "Review mode: the screen stays where it is after you change a label instead of moving on."
+
+#: templates/comments/annotate_workspace.html:132
+#: templates/comments/annotate_workspace.html:262
+msgid "Đã xong!"
+msgstr "All done!"
+
+#: templates/comments/annotate_workspace.html:133
+#: templates/comments/annotate_workspace.html:263
+msgid "Không còn bình luận nào cần bạn gán nhãn ở nguồn dữ liệu này."
+msgstr "No comments left for you to annotate in this data source."
+
+#: templates/comments/annotate_workspace.html:136
+msgid "Xem lại nhãn đã gán"
+msgstr "Review your labels"
+
+#: templates/comments/annotate_workspace.html:161
+msgid "Văn bản gốc:"
+msgstr "Original text:"
+
+#: templates/comments/annotate_workspace.html:167
+msgid "AI đề xuất:"
+msgstr "AI suggests:"
+
+#: templates/comments/annotate_workspace.html:173
+#: templates/comments/link_detail.html:384
+msgid "Đồng ý với AI"
+msgstr "Accept AI"
+
+#: templates/comments/annotate_workspace.html:180
+msgid "Nhãn cấp câu"
+msgstr "Sentence-level label"
+
+#: templates/comments/annotate_workspace.html:181
+msgid "bấm số để chọn, hoặc chọn token rồi bấm số để gán cho cụm từ"
+msgstr "press a number to pick, or select tokens first to label a phrase"
+
+#: templates/comments/annotate_workspace.html:188
+msgid "Không có nghĩa / bỏ qua"
+msgstr "Not meaningful / skip"
+
+#: templates/comments/annotate_workspace.html:191
+msgid "Xoá nhãn"
+msgstr "Clear label"
+
+#: templates/comments/annotate_workspace.html:194
+msgid "Hoàn tác"
+msgstr "Undo"
+
+#: templates/comments/annotate_workspace.html:198
+#: templates/comments/project_adjudicate.html:86
+msgid "Trước"
+msgstr "Previous"
+
+#: templates/comments/annotate_workspace.html:201
+#: templates/comments/project_adjudicate.html:90
+msgid "Sau"
+msgstr "Next"
+
+#: templates/comments/annotate_workspace.html:219
+msgid "Gán nhãn tương ứng"
+msgstr "Apply the matching label"
+
+#: templates/comments/annotate_workspace.html:220
+msgid "Xoá nhãn của câu"
+msgstr "Clear the sentence label"
+
+#: templates/comments/annotate_workspace.html:221
+msgid "Đồng ý với đề xuất của AI rồi sang câu kế"
+msgstr "Accept the AI's suggestion and move on"
+
+#: templates/comments/annotate_workspace.html:222
+msgid "Đánh dấu không có nghĩa"
+msgstr "Mark as not meaningful"
+
+#: templates/comments/annotate_workspace.html:223
+msgid "Bình luận tiếp theo"
+msgstr "Next comment"
+
+#: templates/comments/annotate_workspace.html:224
+msgid "Bình luận trước"
+msgstr "Previous comment"
+
+#: templates/comments/annotate_workspace.html:225
+msgid "Hoàn tác thao tác cuối"
+msgstr "Undo the last action"
+
+#: templates/comments/annotate_workspace.html:226
+msgid "Click / kéo trên từ"
+msgstr "Click / drag over words"
+
+#: templates/comments/annotate_workspace.html:226
+msgid "Chọn token hoặc cụm từ"
+msgstr "Select a token or a phrase"
+
+#: templates/comments/annotate_workspace.html:227
+msgid "Bỏ chọn token"
+msgstr "Clear token selection"
+
+#: templates/comments/annotate_workspace.html:228
+msgid "Mở bảng phím tắt này"
+msgstr "Open this shortcut list"
+
+#: templates/comments/annotate_workspace.html:250
+msgid "Đang lưu…"
+msgstr "Saving…"
+
+#: templates/comments/annotate_workspace.html:251
+msgid "Đã lưu"
+msgstr "Saved"
+
+#: templates/comments/annotate_workspace.html:252
+msgid "Lỗi khi lưu"
+msgstr "Save failed"
+
+#: templates/comments/annotate_workspace.html:253
+msgid "Bạn chưa gán nhãn câu này"
+msgstr "You have not labelled this comment"
+
+#: templates/comments/annotate_workspace.html:255
+#: templates/comments/project_adjudicate.html:75
+msgid "Không nhãn (O)"
+msgstr "No label (O)"
+
+#: templates/comments/annotate_workspace.html:256
+msgid "Bạn đã đánh dấu không có nghĩa"
+msgstr "You marked this as not meaningful"
+
+#: templates/comments/annotate_workspace.html:257
+msgid "Nhóm đang bất đồng — chờ phân xử"
+msgstr "Team disagrees — awaiting adjudication"
+
+#: templates/comments/annotate_workspace.html:258
+msgid "Nhóm đã đồng thuận"
+msgstr "Team agreed"
+
+#: templates/comments/annotate_workspace.html:259
+msgid "Chờ thêm người gán nhãn"
+msgstr "Awaiting more annotators"
+
+#: templates/comments/annotate_workspace.html:260
+msgid "Đã được phân xử"
+msgstr "Adjudicated"
+
+#: templates/comments/annotate_workspace.html:261
+#, python-brace-format
+msgid "Câu {current} / {total} trong hàng đợi"
+msgstr "Comment {current} of {total} in the queue"
+
+#: templates/comments/annotate_workspace.html:264
+msgid "Chưa có gì để xem lại"
+msgstr "Nothing to review yet"
+
+#: templates/comments/annotate_workspace.html:265
+msgid "Bạn chưa gán nhãn bình luận nào ở nguồn dữ liệu này."
+msgstr "You have not labeled any comment in this data source yet."
+
+#: templates/comments/annotate_workspace.html:266
+msgid "Không có bình luận"
+msgstr "No comments"
+
+#: templates/comments/annotate_workspace.html:267
+msgid "Nguồn dữ liệu này chưa có bình luận nào."
+msgstr "This data source has no comments yet."
+
+#: templates/comments/annotate_workspace.html:268
+msgid "Đã quay lại câu bạn vừa gán"
+msgstr "Back to the comment you just labeled"
+
+#: templates/comments/annotate_workspace.html:269
+msgid "Đã trở lại phần việc còn dư"
+msgstr "Back to the work still waiting for you"
+
+#: templates/comments/annotate_workspace.html:270
+#, python-brace-format
+msgid "· {n} token"
+msgstr "· {n} tokens"
+
+#: templates/comments/annotate_workspace.html:271
+msgid "Đã nhận nhãn của AI làm nhãn của bạn"
+msgstr "The AI's labels are now yours"
+
+#: templates/comments/annotate_workspace.html:272
+msgid "Câu này không có đề xuất của AI"
+msgstr "This comment has no AI suggestion"
+
+#: templates/comments/base.html:216 templates/comments/login.html:488
 msgid "Vietnamese Comment Annotation Hub"
 msgstr "Vietnamese Comment Annotation Hub"
 
-#: templates/comments/base.html:144 templates/comments/link_detail.html:9
-#: templates/comments/project_list.html:3
-msgid "Projects"
-msgstr "Projects"
-
-#: templates/comments/base.html:147 templates/comments/project_list.html:9
+#: templates/comments/base.html:224 templates/comments/project_list.html:9
 msgid "New Project"
 msgstr "New Project"
 
-#: templates/comments/base.html:151 templates/comments/project_detail.html:25
-msgid "Labels"
-msgstr "Labels"
-
-#: templates/comments/base.html:154
-msgid "Settings"
-msgstr "Settings"
-
-#: templates/comments/base.html:159
+#: templates/comments/base.html:236
 msgid "Admin"
 msgstr "Admin"
 
-#: templates/comments/base.html:194
+#: templates/comments/base.html:271
 msgid "Logout"
 msgstr ""
 
-#: templates/comments/base.html:200 templates/comments/login.html:7
+#: templates/comments/base.html:277 templates/comments/login.html:7
 msgid "Login"
 msgstr "Login"
 
@@ -573,12 +1387,11 @@ msgstr "Links"
 msgid "Comments"
 msgstr "Comments"
 
-#: templates/comments/dashboard.html:26 templates/comments/link_detail.html:161
-#: templates/comments/link_detail.html:181
+#: templates/comments/dashboard.html:26
 msgid "Annotated"
 msgstr "Annotated"
 
-#: templates/comments/dashboard.html:30 templates/comments/project_list.html:32
+#: templates/comments/dashboard.html:30 templates/comments/project_list.html:33
 msgid "Created"
 msgstr "Created"
 
@@ -590,115 +1403,250 @@ msgstr "No projects yet"
 msgid "Create Project"
 msgstr "Create Project"
 
-#: templates/comments/export.html:3 templates/comments/project_detail.html:21
-msgid "Export"
-msgstr "Export"
+#: templates/comments/error.html:11
+msgid "Về trang dự án"
+msgstr "Back to projects"
 
-#: templates/comments/export.html:10
+#: templates/comments/export.html:11
 msgid "Export Dataset"
 msgstr "Export Dataset"
 
-#: templates/comments/export.html:17
-msgid "Export Format"
-msgstr "Export Format"
-
-#: templates/comments/export.html:19
-msgid "JSON Format"
-msgstr "JSON Format"
-
-#: templates/comments/export.html:20
-msgid "JSON - Sentence Level (comment + label)"
-msgstr "JSON - Sentence Level (comment + label)"
-
-#: templates/comments/export.html:21
-msgid "JSON - Token Level (comment + tokens + BIO labels)"
-msgstr "JSON - Token Level (comment + tokens + BIO labels)"
-
-#: templates/comments/export.html:22
-msgid "JSON - LLM Training (instruction/input/output format)"
-msgstr "JSON - LLM Training (instruction/input/output format)"
+#: templates/comments/export.html:12
+msgid "Chọn định dạng và phạm vi dữ liệu để tải bộ dữ liệu về máy."
+msgstr "Pick a format and data scope to download the dataset."
 
 #: templates/comments/export.html:24
-msgid "XML Format"
-msgstr "XML Format"
+msgid "Định dạng xuất"
+msgstr "Export format"
 
-#: templates/comments/export.html:25
-msgid "XML - CoNLL-like (token-level with tags)"
-msgstr "XML - CoNLL-like (token-level with tags)"
+#: templates/comments/export.html:41
+msgid "Phạm vi dữ liệu"
+msgstr "Data scope"
 
-#: templates/comments/export.html:27
-msgid "CSV Format"
-msgstr "CSV Format"
+#: templates/comments/export.html:46
+msgid "Chỉ nhãn đã chốt — dùng để công bố / huấn luyện"
+msgstr "Settled labels only — for publication / training"
 
-#: templates/comments/export.html:28
-msgid "CSV - Sentence Level"
-msgstr "CSV - Sentence Level"
+#: templates/comments/export.html:49
+msgid ""
+"Dữ liệu công bố hoặc huấn luyện mô hình nên dùng <b>\"chỉ nhãn đã chốt\"</"
+"b>.\n"
+"                            Xuất cả bình luận chưa ai gán nhãn sẽ dạy mô "
+"hình rằng \"chưa gán nhãn\" nghĩa là \"O\"."
+msgstr ""
+"Use <b>\"settled labels only\"</b> for publication or model training.\n"
+"                            Exporting unannotated comments teaches the model "
+"that \"not yet labelled\" means \"O\"."
 
-#: templates/comments/export.html:29
-msgid "CSV - Token Level"
-msgstr "CSV - Token Level"
+#: templates/comments/export.html:55
+msgid "Lọc theo nhãn"
+msgstr "Filter by label"
 
-#: templates/comments/export.html:35
-msgid "Filter by Toxicity"
-msgstr "Filter by Toxicity"
+#: templates/comments/export.html:57
+msgid "Tất cả nhãn"
+msgstr "All labels"
 
-#: templates/comments/export.html:37
-msgid "All Comments"
-msgstr "All Comments"
-
-#: templates/comments/export.html:45
+#: templates/comments/export.html:65
 msgid "Scope"
 msgstr "Scope"
 
-#: templates/comments/export.html:49
+#: templates/comments/export.html:69
 msgid "Entire Project"
 msgstr "Entire Project"
 
-#: templates/comments/export.html:53
+#: templates/comments/export.html:73
 msgid "Specific Video"
 msgstr "Specific Video"
 
-#: templates/comments/export.html:57
+#: templates/comments/export.html:77
 msgid "Select Video"
 msgstr "Select Video"
 
-#: templates/comments/export.html:59 templates/comments/link_detail.html:81
-#: templates/comments/link_detail.html:119
-#: templates/comments/link_detail.html:317
-#: templates/comments/project_detail.html:83
-#: templates/comments/project_list.html:29
-#: templates/comments/project_list.html:61
+#: templates/comments/export.html:79 templates/comments/link_detail.html:82
+#: templates/comments/link_detail.html:120
+#: templates/comments/link_detail.html:472
+#: templates/comments/project_detail.html:108
+#: templates/comments/project_list.html:30
+#: templates/comments/project_list.html:62
+#: templates/comments/project_list.html:102
 msgid "comments"
 msgstr "comments"
 
-#: templates/comments/export.html:66
-msgid "Download Dataset"
-msgstr "Download Dataset"
+#: templates/comments/export.html:86
+msgid "Bắt đầu xuất"
+msgstr "Start export"
 
-#: templates/comments/export.html:68 templates/comments/label_form.html:58
-#: templates/comments/project_form.html:25
+#: templates/comments/export.html:88 templates/comments/label_form.html:58
+#: templates/comments/project_form.html:39
+#: templates/comments/project_form.html:41
 msgid "Cancel"
 msgstr "Cancel"
 
-#: templates/comments/export.html:77
+#: templates/comments/export.html:91
+msgid ""
+"Việc xuất chạy ở chế độ nền nên dataset lớn không bị ngắt giữa chừng.\n"
+"                        Khi xong, file sẽ xuất hiện ở bảng bên dưới và tự "
+"tải về."
+msgstr ""
+"Exports run in the background so a large dataset is never cut off midway.\n"
+"                        When it finishes the file appears in the table below "
+"and downloads by itself."
+
+#: templates/comments/export.html:101
+msgid "Lần xuất gần đây"
+msgstr "Recent exports"
+
+#: templates/comments/export.html:107
+#: templates/comments/project_versions.html:29
+#: templates/comments/project_versions.html:192
+msgid "Định dạng"
+msgstr "Format"
+
+#: templates/comments/export.html:108
+msgid "Phạm vi"
+msgstr "Scope"
+
+#: templates/comments/export.html:109
+#: templates/comments/project_versions.html:30
+msgid "Bình luận"
+msgstr "Comments"
+
+#: templates/comments/export.html:110
+#: templates/comments/project_versions.html:33
+msgid "Thời điểm"
+msgstr "Created at"
+
+#: templates/comments/export.html:111
+#: templates/comments/project_versions.html:28
+msgid "Trạng thái"
+msgstr "Status"
+
+#: templates/comments/export.html:112 templates/comments/export.html:146
+#: templates/comments/export.html:208
+msgid "Tải về"
+msgstr "Download"
+
+#: templates/comments/export.html:118
+msgid "Cả dự án"
+msgstr "Whole project"
+
+#: templates/comments/export.html:134 templates/comments/export.html:204
+msgid "Chờ xử lý"
+msgstr "Queued"
+
+#: templates/comments/export.html:137 templates/comments/export.html:206
+#: templates/comments/project_versions.html:43
+msgid "Sẵn sàng"
+msgstr "Ready"
+
+#: templates/comments/export.html:148 templates/comments/export.html:209
+msgid "File đã bị xoá"
+msgstr "File removed"
+
+#: templates/comments/export.html:154
+msgid "Chưa có lần xuất nào."
+msgstr "No export yet."
+
+#: templates/comments/export.html:165
 msgid "Format Descriptions"
 msgstr "Format Descriptions"
 
-#: templates/comments/export.html:81
-msgid "JSON - Sentence Level:"
-msgstr "JSON - Sentence Level:"
+#: templates/comments/export.html:169
+msgid ""
+"Chọn định dạng phù hợp với công cụ bạn sẽ dùng. Các định dạng\n"
+"                    nhóm <b>Chuẩn NLP</b> nạp trực tiếp được vào thư viện "
+"huấn luyện mô hình."
+msgstr ""
+"Pick the format that matches the tool you will use. Formats in the\n"
+"                    <b>NLP standards</b> group load directly into model "
+"training libraries."
 
-#: templates/comments/export.html:85
-msgid "JSON - Token Level (BIO):"
-msgstr "JSON - Token Level (BIO):"
+#: templates/comments/export.html:205
+msgid "Đang xuất"
+msgstr "Exporting"
 
-#: templates/comments/export.html:89
-msgid "JSON - LLM Training:"
-msgstr "JSON - LLM Training:"
+#: templates/comments/export.html:210
+msgid "Đang cập nhật tiến độ…"
+msgstr "Updating progress…"
 
-#: templates/comments/export.html:93
-msgid "XML - CoNLL-like:"
-msgstr "XML - CoNLL-like:"
+#: templates/comments/export.html:229
+msgid "Tệp kết quả"
+msgstr "Output file"
+
+#: templates/comments/export.html:230
+msgid ""
+"CẢNH BÁO: định dạng này dùng để huấn luyện mô hình. Với phạm vi \\\"tất cả "
+"bình luận\\\", dữ liệu chưa gán nhãn sẽ bị coi là nhãn \\\"O\\\". Nên chọn \\"
+"\"chỉ nhãn đã chốt\\\"."
+msgstr ""
+"WARNING: this format is meant for model training. With the \\\"all comments\\"
+"\" scope, unannotated data will be treated as label \\\"O\\\". Choose \\"
+"\"settled labels only\\\" instead."
+
+#: templates/comments/export.html:231
+msgid "Xem mô tả chi tiết ở khung bên cạnh."
+msgstr "See the detailed description in the panel beside."
+
+#: templates/comments/import_csv.html:3
+msgid "Nhập dữ liệu từ CSV"
+msgstr "Import from CSV"
+
+#: templates/comments/import_csv.html:10
+msgid "Nhập dữ liệu từ file CSV"
+msgstr "Import data from a CSV file"
+
+#: templates/comments/import_csv.html:12
+msgid ""
+"File CSV phải mã hoá UTF-8 và có cột <code>text</code>. Các cột tuỳ chọn: "
+"<code>id</code>, <code>author</code>."
+msgstr ""
+"The CSV must be UTF-8 encoded and have a <code>text</code> column. Optional "
+"columns: <code>id</code>, <code>author</code>."
+
+#: templates/comments/import_csv.html:20
+msgid "Đang nhập dữ liệu"
+msgstr "Importing"
+
+#: templates/comments/import_csv.html:25
+msgid "Đang xếp hàng…"
+msgstr "Queued…"
+
+#: templates/comments/import_csv.html:35
+msgid "Tên bộ dữ liệu"
+msgstr "Dataset name"
+
+#: templates/comments/import_csv.html:36
+msgid "Ví dụ: Khảo sát tháng 9"
+msgstr "e.g. September survey"
+
+#: templates/comments/import_csv.html:39
+msgid "File CSV"
+msgstr "CSV file"
+
+#: templates/comments/import_csv.html:43
+msgid "Nhập dữ liệu"
+msgstr "Import"
+
+#: templates/comments/import_csv.html:45
+#: templates/comments/project_versions.html:169
+msgid "Huỷ"
+msgstr "Cancel"
+
+#: templates/comments/import_csv.html:52
+msgid "Đã nhập gần đây"
+msgstr "Recently imported"
+
+#: templates/comments/import_csv.html:58
+msgid "dòng"
+msgstr "rows"
+
+#: templates/comments/import_csv.html:68
+msgid "Đã nhập xong, đang tải lại trang…"
+msgstr "Import finished, reloading…"
+
+#: templates/comments/import_csv.html:69
+msgid "Nhập dữ liệu thất bại"
+msgstr "Import failed"
 
 #: templates/comments/label_form.html:3 templates/comments/label_form.html:14
 msgid "Label"
@@ -717,7 +1665,7 @@ msgid "e.g. toxic, spam, hate_speech"
 msgstr "e.g. toxic, spam, hate_speech"
 
 #: templates/comments/label_form.html:28 templates/comments/label_list.html:32
-#: templates/comments/project_form.html:20
+#: templates/comments/project_form.html:33
 msgid "Description"
 msgstr "Description"
 
@@ -742,6 +1690,7 @@ msgid "Save"
 msgstr "Save"
 
 #: templates/comments/label_list.html:3 templates/comments/label_list.html:7
+#: templates/comments/project_labels_settings.html:15
 msgid "Your Labels"
 msgstr "Your Labels"
 
@@ -754,7 +1703,7 @@ msgid "Usage Count"
 msgstr "Usage Count"
 
 #: templates/comments/label_list.html:34
-#: templates/comments/user_settings.html:131
+#: templates/comments/user_settings.html:150
 msgid "Status"
 msgstr "Status"
 
@@ -767,7 +1716,7 @@ msgid "in use"
 msgstr "in use"
 
 #: templates/comments/label_list.html:54
-#: templates/comments/project_participants.html:93
+#: templates/comments/project_participants.html:92
 msgid "Active"
 msgstr "Active"
 
@@ -776,7 +1725,7 @@ msgid "Inactive"
 msgstr "Inactive"
 
 #: templates/comments/label_list.html:61
-#: templates/comments/project_detail.html:31
+#: templates/comments/project_detail.html:26
 msgid "Edit"
 msgstr "Edit"
 
@@ -786,8 +1735,8 @@ msgstr "Are you sure you want to delete this label?"
 
 #: templates/comments/label_list.html:68 templates/comments/label_list.html:73
 #: templates/comments/link_detail.html:21
-#: templates/comments/project_detail.html:34
-#: templates/comments/project_participants.html:125
+#: templates/comments/project_detail.html:33
+#: templates/comments/project_participants.html:124
 msgid "Delete"
 msgstr "Delete"
 
@@ -800,7 +1749,7 @@ msgid "You don't have any labels yet. Add your first label!"
 msgstr "You don't have any labels yet. Add your first label!"
 
 #: templates/comments/label_list.html:94
-#: templates/comments/project_labels_settings.html:141
+#: templates/comments/project_labels_settings.html:146
 msgid "Note"
 msgstr "Note"
 
@@ -816,142 +1765,248 @@ msgstr ""
 msgid "Delete this link and all data?"
 msgstr "Delete this link and all data?"
 
-#: templates/comments/link_detail.html:32
+#: templates/comments/link_detail.html:33
 msgid "YouTube Source"
 msgstr "YouTube Source"
 
-#: templates/comments/link_detail.html:38
-#: templates/comments/link_detail.html:315
+#: templates/comments/link_detail.html:39
+#: templates/comments/link_detail.html:470
 msgid "Show video"
 msgstr "Show video"
 
-#: templates/comments/link_detail.html:41
+#: templates/comments/link_detail.html:42
 msgid "Open on YouTube"
 msgstr "Open on YouTube"
 
-#: templates/comments/link_detail.html:58
+#: templates/comments/link_detail.html:59
 msgid "If the embed is blocked, use the direct YouTube link."
 msgstr "If the embed is blocked, use the direct YouTube link."
 
-#: templates/comments/link_detail.html:59
+#: templates/comments/link_detail.html:60
 msgid "Embed loads only when requested."
 msgstr "Embed loads only when requested."
 
-#: templates/comments/link_detail.html:71
+#: templates/comments/link_detail.html:72
 msgid "Fetch Comments"
 msgstr "Fetch Comments"
 
-#: templates/comments/link_detail.html:85
+#: templates/comments/link_detail.html:86
 msgid "No fetch task yet"
 msgstr "No fetch task yet"
 
-#: templates/comments/link_detail.html:90
-#: templates/comments/link_detail.html:128
+#: templates/comments/link_detail.html:91
+#: templates/comments/link_detail.html:129
 msgid "Stop"
 msgstr "Stop"
 
-#: templates/comments/link_detail.html:94
+#: templates/comments/link_detail.html:95
 msgid "Refetch"
 msgstr "Refetch"
 
-#: templates/comments/link_detail.html:98
+#: templates/comments/link_detail.html:99
 msgid "Clear and Refetch"
 msgstr "Clear and Refetch"
 
-#: templates/comments/link_detail.html:109
+#: templates/comments/link_detail.html:110
 msgid "AI Annotation"
 msgstr "AI Annotation"
 
-#: templates/comments/link_detail.html:123
+#: templates/comments/link_detail.html:124
 msgid "No annotation task yet"
 msgstr "No annotation task yet"
 
-#: templates/comments/link_detail.html:133
+#: templates/comments/link_detail.html:134
 msgid "Continue Annotation"
 msgstr "Continue Annotation"
 
-#: templates/comments/link_detail.html:136
+#: templates/comments/link_detail.html:137
 msgid "Re-Annotate All"
 msgstr "Re-Annotate All"
 
-#: templates/comments/link_detail.html:152
+#: templates/comments/link_detail.html:153
 msgid "Total Comments"
 msgstr "Total Comments"
 
-#: templates/comments/link_detail.html:170
-#: templates/comments/link_detail.html:182
-msgid "Unannotated"
-msgstr "Unannotated"
+#: templates/comments/link_detail.html:171
+#: templates/comments/link_detail.html:237
+#: templates/comments/link_detail.html:293
+msgid "Bạn chưa gán"
+msgstr "Not labeled by you"
 
-#: templates/comments/link_detail.html:180
+#: templates/comments/link_detail.html:182
+msgid "AI chờ soát"
+msgstr "AI to review"
+
+#: templates/comments/link_detail.html:192
+msgid "AI so với người"
+msgstr "AI vs human"
+
+#: templates/comments/link_detail.html:194
+msgid ""
+"AI đã chạy qua nhưng không đưa ra nhãn cho những câu này — không phải nhãn "
+"bị mất"
+msgstr ""
+"The AI ran over these comments but returned no label — nothing was lost"
+
+#: templates/comments/link_detail.html:195
+#, python-format
+msgid "AI không đề xuất: %(n)s/%(total)s câu"
+msgstr "No AI suggestion: %(n)s of %(total)s comments"
+
+#: templates/comments/link_detail.html:198
+#, python-format
+msgid "Đã soát %(n)s câu"
+msgstr "%(n)s comments reviewed"
+
+#: templates/comments/link_detail.html:199
+#, python-format
+msgid "AI đúng %(n)s"
+msgstr "AI right %(n)s"
+
+#: templates/comments/link_detail.html:200
+#, python-format
+msgid "sửa %(n)s"
+msgstr "corrected %(n)s"
+
+#: templates/comments/link_detail.html:205
+msgid "Token:"
+msgstr "Tokens:"
+
+#: templates/comments/link_detail.html:206
+#, python-format
+msgid "đúng %(ok)s · sửa %(fixed)s · bỏ sót %(miss)s"
+msgstr "right %(ok)s · corrected %(fixed)s · missed %(miss)s"
+
+#: templates/comments/link_detail.html:214
+msgid "Chế độ gán nhãn nhanh"
+msgstr "Fast annotation mode"
+
+#: templates/comments/link_detail.html:215
+msgid "phím tắt"
+msgstr "shortcuts"
+
+#: templates/comments/link_detail.html:220
+msgid "Tìm trong nội dung hoặc tác giả…"
+msgstr "Search text or author…"
+
+#: templates/comments/link_detail.html:225
+msgid "Xoá tìm kiếm"
+msgstr "Clear search"
+
+#: templates/comments/link_detail.html:235
 msgid "All"
 msgstr "All"
 
-#: templates/comments/link_detail.html:207
+#: templates/comments/link_detail.html:238
+#: templates/comments/link_detail.html:309
+#: templates/comments/project_adjudicate.html:47
+#: templates/comments/project_quality.html:217
+msgid "Bất đồng"
+msgstr "Disagreement"
+
+#: templates/comments/link_detail.html:239
+msgid "Đã bỏ qua"
+msgstr "Skipped"
+
+#: templates/comments/link_detail.html:244
+msgid "Đang lọc theo từ khoá"
+msgstr "Filtering by keyword"
+
+#: templates/comments/link_detail.html:271
 msgid "Not meaningful"
 msgstr "Not meaningful"
 
-#: templates/comments/link_detail.html:209
-msgid "Not labeled"
-msgstr "Not labeled"
+#: templates/comments/link_detail.html:287
+msgid "AI đề xuất — bấm Đồng ý để nhận làm nhãn của bạn"
+msgstr "AI suggestion — press Accept to make it your own label"
 
-#: templates/comments/link_detail.html:212
+#: templates/comments/link_detail.html:292
+msgid "Bạn chưa gán, và AI cũng không đưa ra đề xuất nào cho câu này"
+msgstr "You have not labeled this, and the AI made no suggestion for it either"
+
+#: templates/comments/link_detail.html:305
+msgid "Trạng thái của cả nhóm"
+msgstr "The whole team's status"
+
+#: templates/comments/link_detail.html:308
+#: templates/comments/project_quality.html:215
+msgid "Đồng thuận"
+msgstr "Agreed"
+
+#: templates/comments/link_detail.html:310
+#: templates/comments/project_adjudicate.html:101
+msgid "Đã chốt"
+msgstr "Resolved"
+
+#: templates/comments/link_detail.html:315
 msgid "Translated from original"
 msgstr "Translated from original"
 
-#: templates/comments/link_detail.html:213
+#: templates/comments/link_detail.html:316
 msgid "Translated"
 msgstr "Translated"
 
-#: templates/comments/link_detail.html:220
+#: templates/comments/link_detail.html:323
 msgid "likes"
 msgstr "likes"
 
-#: templates/comments/link_detail.html:227
+#: templates/comments/link_detail.html:330
 msgid "Original"
 msgstr "Original"
 
-#: templates/comments/link_detail.html:266
+#: templates/comments/link_detail.html:377
+#, python-format
+msgid "AI đề xuất nhãn <b>%(label)s</b>"
+msgstr "AI suggests <b>%(label)s</b>"
+
+#: templates/comments/link_detail.html:379
+#, python-format
+msgid "%(n)s token được gán nhãn"
+msgid_plural "%(n)s token được gán nhãn"
+msgstr[0] "%(n)s token labeled"
+msgstr[1] "%(n)s tokens labeled"
+
+#: templates/comments/link_detail.html:397
 msgid "No comments match this filter"
 msgstr "No comments match this filter"
 
-#: templates/comments/link_detail.html:273
+#: templates/comments/link_detail.html:404
 msgid "Comment pagination"
 msgstr "Comment pagination"
 
-#: templates/comments/link_detail.html:277
+#: templates/comments/link_detail.html:408
 msgid "Previous"
 msgstr "Previous"
 
-#: templates/comments/link_detail.html:287
+#: templates/comments/link_detail.html:431
 msgid "Next"
 msgstr "Next"
 
-#: templates/comments/link_detail.html:304
+#: templates/comments/link_detail.html:461
 msgid "Select label for token:"
 msgstr "Select label for token:"
 
-#: templates/comments/link_detail.html:305
+#: templates/comments/link_detail.html:462
 msgid "None"
 msgstr "None"
 
-#: templates/comments/link_detail.html:306
+#: templates/comments/link_detail.html:463
 msgid "Comment label:"
 msgstr "Comment label:"
 
-#: templates/comments/link_detail.html:309
+#: templates/comments/link_detail.html:464
 msgid "Error setting token label."
 msgstr "Error setting token label."
 
-#: templates/comments/link_detail.html:310
+#: templates/comments/link_detail.html:465
 msgid "Error setting comment label."
 msgstr "Error setting comment label."
 
-#: templates/comments/link_detail.html:311
+#: templates/comments/link_detail.html:466
 msgid "Failed to set label."
 msgstr "Failed to set label."
 
-#: templates/comments/link_detail.html:312
+#: templates/comments/link_detail.html:467
 msgid ""
 "Clear all existing comments and fetch them again from YouTube? This will "
 "delete old comments and annotations."
@@ -959,7 +2014,7 @@ msgstr ""
 "Clear all existing comments and fetch them again from YouTube? This will "
 "delete old comments and annotations."
 
-#: templates/comments/link_detail.html:313
+#: templates/comments/link_detail.html:468
 msgid ""
 "Refetch comments without deleting existing ones? Existing comments will be "
 "kept."
@@ -967,13 +2022,22 @@ msgstr ""
 "Refetch comments without deleting existing ones? Existing comments will be "
 "kept."
 
-#: templates/comments/link_detail.html:314
+#: templates/comments/link_detail.html:469
 msgid "Reset all annotations and re-run AI from scratch?"
 msgstr "Reset all annotations and re-run AI from scratch?"
 
-#: templates/comments/link_detail.html:316
+#: templates/comments/link_detail.html:471
 msgid "Hide video"
 msgstr "Hide video"
+
+#: templates/comments/link_detail.html:473
+msgid "Đã nhận nhãn của AI"
+msgstr "Accepted the AI's labels"
+
+#: templates/comments/link_detail.html:474
+#, python-brace-format
+msgid "gồm {n} token"
+msgstr "including {n} tokens"
 
 #: templates/comments/login.html:523 templates/comments/register.html:451
 msgid "Enter your username"
@@ -1013,160 +2077,263 @@ msgstr ""
 msgid "Signing in..."
 msgstr "Signing in..."
 
-#: templates/comments/project_detail.html:11
-#: templates/comments/project_detail.html:17
-#: templates/comments/project_list.html:24
-#: templates/comments/project_list.html:64
+#: templates/comments/project_adjudicate.html:3
+#: templates/comments/project_adjudicate.html:20
+#: templates/comments/project_quality.html:30
+#: templates/comments/project_quality.html:223
+msgid "Phân xử bất đồng"
+msgstr "Adjudicate disagreements"
+
+#: templates/comments/project_adjudicate.html:22
+#, python-format
+msgid "Có %(n)s bình luận mà các annotator không thống nhất."
+msgid_plural "Có %(n)s bình luận mà các annotator không thống nhất."
+msgstr[0] "%(n)s comment the annotators disagree on."
+msgstr[1] "%(n)s comments the annotators disagree on."
+
+#: templates/comments/project_adjudicate.html:27
+msgid "Bảng chất lượng"
+msgstr "Quality dashboard"
+
+#: templates/comments/project_adjudicate.html:35
+msgid "Không có bất đồng nào"
+msgstr "No disagreements"
+
+#: templates/comments/project_adjudicate.html:36
+msgid "Tất cả bình luận đã đồng thuận hoặc đã được phân xử."
+msgstr "All comments are agreed or already adjudicated."
+
+#: templates/comments/project_adjudicate.html:66
+msgid "Chốt nhãn:"
+msgstr "Final label:"
+
+#: templates/comments/project_adjudicate.html:102
+#: templates/comments/project_versions.html:57
+msgid "Lỗi"
+msgstr "Error"
+
+#: templates/comments/project_detail.html:13
+#: templates/comments/project_detail.html:21
+#: templates/comments/project_list.html:25
+#: templates/comments/project_list.html:65
 msgid "Owner"
 msgstr "Owner"
 
-#: templates/comments/project_detail.html:13
-#: templates/comments/project_list.html:56
+#: templates/comments/project_detail.html:15
+#: templates/comments/project_list.html:57
 msgid "Participant"
 msgstr "Participant"
 
-#: templates/comments/project_detail.html:28
-#: templates/comments/project_participants.html:42
-msgid "Participants"
-msgstr "Participants"
+#: templates/comments/project_detail.html:30
+msgid "Unlock"
+msgstr ""
 
-#: templates/comments/project_detail.html:44
+#: templates/comments/project_detail.html:30
+msgid "Lock"
+msgstr ""
+
+#: templates/comments/project_detail.html:43
+#, python-format
+msgid ""
+"Đây là dự án của <b>%(owner)s</b>.\n"
+"        Bạn thấy được nhờ quyền quản trị hệ thống — <b>không phải</b> vì bạn "
+"sở hữu dự án này.\n"
+"        Mọi thay đổi sẽ tác động lên dữ liệu của người khác."
+msgstr ""
+"This project belongs to <b>%(owner)s</b>.\n"
+"        You can see it because you are a system administrator — <b>not</b> "
+"because you own it.\n"
+"        Any change you make affects someone else's data."
+
+#: templates/comments/project_detail.html:54
+msgid ""
+"Dự án đang bị khoá: mọi thao tác thay đổi dữ liệu và gán nhãn đều bị chặn."
+msgstr "This project is locked: all data changes and annotation are blocked."
+
+#: templates/comments/project_detail.html:57
+msgid ""
+"Các mục <b>Nhãn</b>, <b>Phân xử</b> và <b>Nhập CSV</b> tạm ẩn vì không dùng "
+"được khi khoá.\n"
+"            Bấm <b>Mở khoá</b> ở trên để hiện lại."
+msgstr ""
+"<b>Labels</b>, <b>Adjudicate</b> and <b>Import CSV</b> are hidden because "
+"they do not work while the project is locked.\n"
+"            Press <b>Unlock</b> above to bring them back."
+
+#: templates/comments/project_detail.html:69
 msgid "Add YouTube Link"
 msgstr "Add YouTube Link"
 
-#: templates/comments/project_detail.html:52
+#: templates/comments/project_detail.html:77
 msgid "Add & Start Fetching"
 msgstr "Add & Start Fetching"
 
-#: templates/comments/project_detail.html:63
+#: templates/comments/project_detail.html:88
 #, python-format
-msgid "YouTube Link (%(count)s)"
-msgid_plural "YouTube Links (%(count)s)"
-msgstr[0] ""
-msgstr[1] ""
+msgid "Nguồn dữ liệu (%(count)s)"
+msgid_plural "Nguồn dữ liệu (%(count)s)"
+msgstr[0] "Data source (%(count)s)"
+msgstr[1] "Data sources (%(count)s)"
 
-#: templates/comments/project_detail.html:100
+#: templates/comments/project_detail.html:125
 msgid "Details"
 msgstr "Details"
 
-#: templates/comments/project_detail.html:102
+#: templates/comments/project_detail.html:127
 msgid "Delete this link and all related data?"
 msgstr "Delete this link and all related data?"
 
-#: templates/comments/project_detail.html:115
+#: templates/comments/project_detail.html:141
+msgid "Chưa có nguồn dữ liệu nào. Mở khoá dự án để thêm nguồn."
+msgstr "No data source yet. Unlock the project to add one."
+
+#: templates/comments/project_detail.html:142
 msgid "No YouTube links yet. Add a link above to get started."
 msgstr "No YouTube links yet. Add a link above to get started."
 
-#: templates/comments/project_detail.html:128
+#: templates/comments/project_detail.html:161
 msgid "Are you sure you want to delete this project and ALL data?"
 msgstr "Are you sure you want to delete this project and ALL data?"
 
 #: templates/comments/project_form.html:3
-#: templates/comments/project_form.html:10
+#: templates/comments/project_form.html:22
 msgid "Project"
 msgstr "Project"
 
-#: templates/comments/project_form.html:16
+#: templates/comments/project_form.html:11
+msgid "Project Settings"
+msgstr "Project Settings"
+
+#: templates/comments/project_form.html:12
+msgid "Đổi tên và mô tả của dự án."
+msgstr "Rename the project or change its description."
+
+#: templates/comments/project_form.html:29
 msgid "Project Name"
 msgstr "Project Name"
 
 #: templates/comments/project_labels_settings.html:3
+#: templates/comments/project_labels_settings.html:10
 msgid "Label Settings"
 msgstr "Label Settings"
 
-#: templates/comments/project_labels_settings.html:8
-msgid "Back to Project"
-msgstr "Back to Project"
-
-#: templates/comments/project_labels_settings.html:12
-msgid "Label Settings for"
-msgstr "Label Settings for"
-
-#: templates/comments/project_labels_settings.html:13
+#: templates/comments/project_labels_settings.html:11
 msgid ""
 "Manage labels from your label list (project owner) to use in this project."
 msgstr ""
 "Manage labels from your label list (project owner) to use in this project."
 
-#: templates/comments/project_labels_settings.html:31
+#: templates/comments/project_labels_settings.html:36
 #, python-format
 msgid "Active Label in Project (%(count)s)"
 msgid_plural "Active Labels in Project (%(count)s)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/comments/project_labels_settings.html:42
+#: templates/comments/project_labels_settings.html:47
 msgid "created by"
 msgstr "created by"
 
-#: templates/comments/project_labels_settings.html:49
+#: templates/comments/project_labels_settings.html:54
 msgid "Remove label from this project?"
 msgstr "Remove label from this project?"
 
-#: templates/comments/project_labels_settings.html:50
+#: templates/comments/project_labels_settings.html:55
 msgid "Remove from Project"
 msgstr "Remove from Project"
 
-#: templates/comments/project_labels_settings.html:59
+#: templates/comments/project_labels_settings.html:64
 #, python-format
 msgid "Used in %(token_count)s token"
 msgid_plural "Used in %(token_count)s tokens"
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/comments/project_labels_settings.html:60
+#: templates/comments/project_labels_settings.html:65
 #, python-format
 msgid "%(comment_count)s comment"
 msgid_plural "%(comment_count)s comments"
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/comments/project_labels_settings.html:67
+#: templates/comments/project_labels_settings.html:72
 msgid "No labels added to this project yet."
 msgstr "No labels added to this project yet."
 
-#: templates/comments/project_labels_settings.html:77
+#: templates/comments/project_labels_settings.html:82
 #, python-format
 msgid "Your Available Label (%(count)s)"
 msgid_plural "Your Available Labels (%(count)s)"
 msgstr[0] ""
 msgstr[1] ""
 
-#: templates/comments/project_labels_settings.html:94
+#: templates/comments/project_labels_settings.html:99
 msgid "Add"
 msgstr "Add"
 
-#: templates/comments/project_labels_settings.html:102
+#: templates/comments/project_labels_settings.html:107
 msgid "All labels added or no labels available."
 msgstr "All labels added or no labels available."
 
-#: templates/comments/project_labels_settings.html:103
+#: templates/comments/project_labels_settings.html:108
 msgid "Create new label"
 msgstr "Create new label"
 
-#: templates/comments/project_labels_settings.html:112
+#: templates/comments/project_labels_settings.html:117
 msgid "Add New Label & Attach to Project"
 msgstr "Add New Label & Attach to Project"
 
-#: templates/comments/project_labels_settings.html:120
+#: templates/comments/project_labels_settings.html:125
 msgid "Label name..."
 msgstr "Label name..."
 
-#: templates/comments/project_labels_settings.html:124
+#: templates/comments/project_labels_settings.html:129
 msgid "Description..."
 msgstr "Description..."
 
-#: templates/comments/project_labels_settings.html:131
+#: templates/comments/project_labels_settings.html:136
 msgid "Create label and add to project"
 msgstr "Create label and add to project"
 
-#: templates/comments/project_labels_settings.html:141
+#: templates/comments/project_labels_settings.html:146
 msgid ""
 "Only labels created by the project owner are shown. When project labels "
 "change, AI auto-annotation will use the new label list."
 msgstr ""
 "Only labels created by the project owner are shown. When project labels "
 "change, AI auto-annotation will use the new label list."
+
+#: templates/comments/project_labels_settings.html:153
+msgid "Quy trình gán nhãn"
+msgstr "Annotation workflow"
+
+#: templates/comments/project_labels_settings.html:161
+msgid "Số annotator mỗi bình luận"
+msgstr "Annotators per comment"
+
+#: templates/comments/project_labels_settings.html:165
+msgid ""
+"Đặt ≥ 2 để có thể tính độ đồng thuận (IAA) — bắt buộc nếu muốn công bố "
+"dataset."
+msgstr ""
+"Set to 2 or more to compute inter-annotator agreement — required to publish "
+"a dataset."
+
+#: templates/comments/project_labels_settings.html:169
+msgid "Hướng dẫn gán nhãn"
+msgstr "Annotation guideline"
+
+#: templates/comments/project_labels_settings.html:171
+msgid "Mô tả tiêu chí gán nhãn để các annotator hiểu thống nhất…"
+msgstr "Describe the labelling criteria so annotators stay consistent…"
+
+#: templates/comments/project_labels_settings.html:178
+msgid "Tự chốt nhãn khi có đa số tuyệt đối (vẫn đánh dấu là đã từng bất đồng)"
+msgstr "Settle the label automatically on an absolute majority (still flagged as having been disputed)"
+
+#: templates/comments/project_labels_settings.html:184
+msgid "Lưu cấu hình"
+msgstr "Save settings"
 
 #: templates/comments/project_list.html:7
 msgid "My Projects"
@@ -1176,34 +2343,56 @@ msgstr "My Projects"
 msgid "Owned Projects"
 msgstr "Owned Projects"
 
-#: templates/comments/project_list.html:28
-#: templates/comments/project_list.html:60
+#: templates/comments/project_list.html:16
+msgid "Dự án do chính bạn tạo và sở hữu."
+msgstr "Projects you created and own."
+
+#: templates/comments/project_list.html:29
+#: templates/comments/project_list.html:61
+#: templates/comments/project_list.html:101
 msgid "links"
 msgstr "links"
 
-#: templates/comments/project_list.html:40
+#: templates/comments/project_list.html:41
 msgid "You don't have any projects yet. Click \"New Project\" to get started."
 msgstr "You don't have any projects yet. Click \"New Project\" to get started."
 
-#: templates/comments/project_list.html:47
+#: templates/comments/project_list.html:48
 msgid "Participated Projects"
 msgstr "Participated Projects"
 
-#: templates/comments/project_list.html:72
+#: templates/comments/project_list.html:73
 msgid "You are not participating in any projects."
 msgstr "You are not participating in any projects."
 
+#: templates/comments/project_list.html:84
+msgid "Dự án của người khác (quyền quản trị)"
+msgstr "Other people's projects (admin access)"
+
+#: templates/comments/project_list.html:86
+msgid ""
+"Bạn là quản trị viên hệ thống nên truy cập được các dự án dưới đây,\n"
+"        nhưng <b>không phải chủ sở hữu</b>. Hãy cân nhắc trước khi thay đổi "
+"dữ liệu của người khác."
+msgstr ""
+"You can access the projects below because you are a system administrator,\n"
+"        but you are <b>not their owner</b>. Think carefully before changing "
+"someone else's data."
+
+#: templates/comments/project_list.html:97
+msgid "Quản trị"
+msgstr "Admin"
+
+#: templates/comments/project_list.html:107
+msgid "Chủ sở hữu"
+msgstr "Owner"
+
 #: templates/comments/project_participants.html:3
-#: templates/comments/project_participants.html:11
+#: templates/comments/project_participants.html:10
 msgid "Manage Members"
 msgstr "Manage Members"
 
-#: templates/comments/project_participants.html:9
-#: templates/comments/user_settings.html:188
-msgid "Back"
-msgstr "Back"
-
-#: templates/comments/project_participants.html:12
+#: templates/comments/project_participants.html:11
 msgid ""
 "Participants can only label, they cannot add, delete, or edit project "
 "information."
@@ -1211,16 +2400,16 @@ msgstr ""
 "Participants can only label, they cannot add, delete, or edit project "
 "information."
 
-#: templates/comments/project_participants.html:19
-#: templates/comments/project_participants.html:28
+#: templates/comments/project_participants.html:18
+#: templates/comments/project_participants.html:27
 msgid "Add Participant"
 msgstr "Add Participant"
 
-#: templates/comments/project_participants.html:24
+#: templates/comments/project_participants.html:23
 msgid "Enter participant email..."
 msgstr "Enter participant email..."
 
-#: templates/comments/project_participants.html:34
+#: templates/comments/project_participants.html:33
 msgid ""
 "If the email has an account, the user will be added immediately. If not, an "
 "invitation email will be sent to this address."
@@ -1228,68 +2417,417 @@ msgstr ""
 "If the email has an account, the user will be added immediately. If not, an "
 "invitation email will be sent to this address."
 
-#: templates/comments/project_participants.html:58
+#: templates/comments/project_participants.html:57
 #, python-format
 msgid "Remove %(participant.username)s from the project?"
 msgstr "Remove %(participant.username)s from the project?"
 
-#: templates/comments/project_participants.html:63
+#: templates/comments/project_participants.html:62
 msgid "Remove"
 msgstr "Remove"
 
-#: templates/comments/project_participants.html:72
+#: templates/comments/project_participants.html:71
 msgid "No participants yet."
 msgstr "No participants yet."
 
-#: templates/comments/project_participants.html:81
+#: templates/comments/project_participants.html:80
 msgid "Pending Invitations"
 msgstr "Pending Invitations"
 
-#: templates/comments/project_participants.html:91
+#: templates/comments/project_participants.html:90
 msgid "Expired"
 msgstr "Expired"
 
-#: templates/comments/project_participants.html:97
+#: templates/comments/project_participants.html:96
 msgid "Invited by"
 msgstr "Invited by"
 
-#: templates/comments/project_participants.html:100
+#: templates/comments/project_participants.html:99
 msgid "Sent at"
 msgstr "Sent at"
 
-#: templates/comments/project_participants.html:104
+#: templates/comments/project_participants.html:103
 msgid "Expires at"
 msgstr "Expires at"
 
-#: templates/comments/project_participants.html:108
+#: templates/comments/project_participants.html:107
 msgid "User"
 msgstr "User"
 
-#: templates/comments/project_participants.html:112
+#: templates/comments/project_participants.html:111
 #, python-format
 msgid "Resend invitation email to %(invitation.email)s?"
 msgstr "Resend invitation email to %(invitation.email)s?"
 
-#: templates/comments/project_participants.html:116
+#: templates/comments/project_participants.html:115
 msgid "Resend invitation email"
 msgstr "Resend invitation email"
 
-#: templates/comments/project_participants.html:117
+#: templates/comments/project_participants.html:116
 msgid "Resend"
 msgstr "Resend"
 
-#: templates/comments/project_participants.html:120
+#: templates/comments/project_participants.html:119
 #, python-format
 msgid "Delete invitation for %(invitation.email)s?"
 msgstr "Delete invitation for %(invitation.email)s?"
 
-#: templates/comments/project_participants.html:124
+#: templates/comments/project_participants.html:123
 msgid "Delete invitation"
 msgstr "Delete invitation"
 
-#: templates/comments/project_participants.html:134
+#: templates/comments/project_participants.html:133
 msgid "No pending invitations."
 msgstr "No pending invitations."
+
+#: templates/comments/project_quality.html:3
+#: templates/comments/project_quality.html:23
+msgid "Chất lượng gán nhãn"
+msgstr "Annotation quality"
+
+#: templates/comments/project_quality.html:25
+msgid ""
+"Độ đồng thuận giữa những người gán nhãn — chỉ số bắt buộc để bộ dữ liệu có "
+"giá trị công bố."
+msgstr ""
+"Agreement between annotators — the metric required for a dataset to be "
+"publishable."
+
+#: templates/comments/project_quality.html:38
+msgid "Krippendorff's α"
+msgstr "Krippendorff's α"
+
+#: templates/comments/project_quality.html:47
+msgid "Đồng thuận thô"
+msgstr "Raw agreement"
+
+#: templates/comments/project_quality.html:52
+#, python-format
+msgid "trên %(n)s bình luận"
+msgstr "over %(n)s comments"
+
+#: templates/comments/project_quality.html:58
+msgid "Có nhiều annotator"
+msgstr "Multi-annotated"
+
+#: templates/comments/project_quality.html:61
+#, python-format
+msgid "/ %(total)s bình luận"
+msgstr "/ %(total)s comments"
+
+#: templates/comments/project_quality.html:67
+msgid "Số annotator"
+msgstr "Annotators"
+
+#: templates/comments/project_quality.html:70
+#, python-format
+msgid "cấu hình: %(n)s/bình luận"
+msgstr "configured: %(n)s per comment"
+
+#: templates/comments/project_quality.html:79
+msgid ""
+"Chưa có bình luận nào được hai người trở lên gán nhãn, nên chưa tính được độ "
+"đồng thuận.\n"
+"    Vào <b>Cài đặt nhãn</b> để đặt \"số annotator mỗi bình luận\" lớn hơn 1, "
+"rồi phân công công việc."
+msgstr ""
+"No comment has been labelled by two or more people yet, so agreement cannot "
+"be computed.\n"
+"    Go to <b>Label settings</b> to set \"annotators per comment\" above 1, "
+"then assign work."
+
+#: templates/comments/project_quality.html:85
+msgid "Thang diễn giải"
+msgstr "Interpretation scale"
+
+#: templates/comments/project_quality.html:87
+msgid "rất thấp"
+msgstr "very low"
+
+#: templates/comments/project_quality.html:88
+msgid "thấp"
+msgstr "low"
+
+#: templates/comments/project_quality.html:89
+msgid "trung bình"
+msgstr "moderate"
+
+#: templates/comments/project_quality.html:90
+msgid "chấp nhận công bố"
+msgstr "publishable"
+
+#: templates/comments/project_quality.html:91
+msgid "tốt"
+msgstr "good"
+
+#: templates/comments/project_quality.html:100
+msgid "Đồng thuận theo cặp (Cohen's κ)"
+msgstr "Pairwise agreement (Cohen's κ)"
+
+#: templates/comments/project_quality.html:104
+msgid "Annotator A"
+msgstr "Annotator A"
+
+#: templates/comments/project_quality.html:104
+msgid "Annotator B"
+msgstr "Annotator B"
+
+#: templates/comments/project_quality.html:105
+msgid "Chung"
+msgstr "Overlap"
+
+#: templates/comments/project_quality.html:106
+msgid "Đánh giá"
+msgstr "Assessment"
+
+#: templates/comments/project_quality.html:119
+msgid "Chưa có cặp annotator nào cùng gán nhãn một bình luận."
+msgstr "No pair of annotators has labelled the same comment yet."
+
+#: templates/comments/project_quality.html:130
+msgid "Năng suất annotator"
+msgstr "Annotator productivity"
+
+#: templates/comments/project_quality.html:134
+msgid "Người gán nhãn"
+msgstr "Annotator"
+
+#: templates/comments/project_quality.html:135
+msgid "Đã gán"
+msgstr "Annotated"
+
+#: templates/comments/project_quality.html:136
+msgid "TB (giây)"
+msgstr "Avg (sec)"
+
+#: templates/comments/project_quality.html:147
+msgid "Chưa có ai gán nhãn thủ công."
+msgstr "Nobody has annotated manually yet."
+
+#: templates/comments/project_quality.html:159
+msgid "AI gán trước — người soát lại"
+msgstr "AI pre-annotation — human review"
+
+#: templates/comments/project_quality.html:161
+msgid "Đối chiếu nhãn người gán với đề xuất của AI trên cùng một đối tượng."
+msgstr "Compares human labels against the AI suggestion on the same items."
+
+#: templates/comments/project_quality.html:167
+msgid "Cấp câu"
+msgstr "Comment level"
+
+#: templates/comments/project_quality.html:169
+#: templates/comments/project_quality.html:184
+msgid "Đã soát"
+msgstr "Reviewed"
+
+#: templates/comments/project_quality.html:171
+#: templates/comments/project_quality.html:186
+msgid "AI đúng"
+msgstr "AI right"
+
+#: templates/comments/project_quality.html:173
+#: templates/comments/project_quality.html:188
+msgid "Người sửa"
+msgstr "Corrected"
+
+#: templates/comments/project_quality.html:175
+#: templates/comments/project_quality.html:190
+msgid "AI bỏ sót"
+msgstr "AI missed"
+
+#: templates/comments/project_quality.html:177
+#: templates/comments/project_quality.html:192
+msgid "Tỷ lệ đúng"
+msgstr "Accuracy"
+
+#: templates/comments/project_quality.html:182
+msgid "Cấp token"
+msgstr "Token level"
+
+#: templates/comments/project_quality.html:198
+msgid ""
+"<b>Đã soát</b>: chỗ có cả đề xuất của AI lẫn nhãn của người.\n"
+"        <b>AI bỏ sót</b>: người gán nhãn ở chỗ AI không có ý kiến.\n"
+"        Số liệu tính lại từ dữ liệu nên đúng cả với phần đã gán trước khi có "
+"tính năng này."
+msgstr ""
+"<b>Reviewed</b>: items carrying both an AI suggestion and a human label.\n"
+"        <b>AI missed</b>: the human labeled something the AI said nothing "
+"about.\n"
+"        The numbers are recomputed from the data, so they also cover work "
+"labeled before this feature existed."
+
+#: templates/comments/project_quality.html:203
+#, python-format
+msgid "Còn <b>%(n)s</b> đề xuất của AI chưa ai soát."
+msgid_plural "Còn <b>%(n)s</b> đề xuất của AI chưa ai soát."
+msgstr[0] "<b>%(n)s</b> AI suggestion still waiting to be reviewed."
+msgstr[1] "<b>%(n)s</b> AI suggestions still waiting to be reviewed."
+
+#: templates/comments/project_quality.html:211
+msgid "Trạng thái phân xử"
+msgstr "Adjudication status"
+
+#: templates/comments/project_quality.html:213
+msgid "Chờ thêm annotator"
+msgstr "Awaiting more annotators"
+
+#: templates/comments/project_quality.html:219
+msgid "Đã phân xử"
+msgstr "Adjudicated"
+
+#: templates/comments/project_versions.html:3
+#: templates/comments/project_versions.html:10
+msgid "Phiên bản dataset"
+msgstr "Dataset versions"
+
+#: templates/comments/project_versions.html:12
+msgid ""
+"Mỗi phiên bản là một ảnh chụp bất biến kèm checksum — dùng để tái lập kết "
+"quả nghiên cứu."
+msgstr ""
+"Each version is an immutable snapshot with a checksum — used to reproduce "
+"research results."
+
+#: templates/comments/project_versions.html:18
+msgid "Chốt phiên bản mới"
+msgstr "Create new version"
+
+#: templates/comments/project_versions.html:31
+msgid "Token"
+msgstr "Tokens"
+
+#: templates/comments/project_versions.html:33
+msgid "Checksum"
+msgstr "Checksum"
+
+#: templates/comments/project_versions.html:33
+msgid "Người tạo"
+msgstr "Created by"
+
+#: templates/comments/project_versions.html:34
+msgid "Thao tác"
+msgstr "Actions"
+
+#: templates/comments/project_versions.html:55
+msgid "Đang tạo"
+msgstr "Building"
+
+#: templates/comments/project_versions.html:75
+msgid "Tải file phiên bản này về máy"
+msgstr "Download this version to your computer"
+
+#: templates/comments/project_versions.html:80
+msgid "Chưa có file để tải"
+msgstr "No file to download"
+
+#: templates/comments/project_versions.html:92
+msgid "Đưa nhãn của dự án về đúng phiên bản này"
+msgstr "Roll the project's labels back to this version"
+
+#: templates/comments/project_versions.html:97
+#: templates/comments/project_versions.html:104
+msgid "Dự án đang bị khoá"
+msgstr "The project is locked"
+
+#: templates/comments/project_versions.html:97
+msgid "Phiên bản này không có ảnh chụp nên không phục hồi được"
+msgstr "This version has no snapshot, so it cannot be restored"
+
+#: templates/comments/project_versions.html:110
+#, python-format
+msgid "Xoá vĩnh viễn phiên bản %(name)s và file của nó?"
+msgstr "Permanently delete version %(name)s and its file?"
+
+#: templates/comments/project_versions.html:113
+msgid "Xoá phiên bản này"
+msgstr "Delete this version"
+
+#: templates/comments/project_versions.html:124
+msgid "Chưa có phiên bản nào được chốt."
+msgstr "No versions have been created yet."
+
+#: templates/comments/project_versions.html:143
+msgid "Phục hồi dự án về phiên bản"
+msgstr "Restore project to version"
+
+#: templates/comments/project_versions.html:149
+msgid "Thao tác này sẽ ghi đè nhãn hiện tại của dự án:"
+msgstr "This overwrites the project's current labels:"
+
+#: templates/comments/project_versions.html:151
+msgid ""
+"Nhãn đã chốt, nhãn thủ công, trạng thái phân xử và nhãn token quay về đúng "
+"thời điểm chốt phiên bản."
+msgstr ""
+"Gold labels, manual labels, adjudication status and token labels go back to "
+"the moment this version was created."
+
+#: templates/comments/project_versions.html:152
+msgid "Mọi thay đổi nhãn thực hiện sau thời điểm đó sẽ mất."
+msgstr "Any labeling done after that moment is lost."
+
+#: templates/comments/project_versions.html:153
+msgid ""
+"Bình luận không bị xoá hay thêm; bình luận mới thêm về sau được giữ nguyên."
+msgstr ""
+"No comment is deleted or added; comments added later are left untouched."
+
+#: templates/comments/project_versions.html:154
+msgid ""
+"Lịch sử ai đã gán nhãn gì được giữ nguyên để không làm sai lệch chỉ số đồng "
+"thuận."
+msgstr ""
+"The record of who labeled what is kept, so agreement scores stay truthful."
+
+#: templates/comments/project_versions.html:157
+msgid "Chốt lúc"
+msgstr "Created at"
+
+#: templates/comments/project_versions.html:158
+msgid "Bình luận trong phiên bản"
+msgstr "Comments in this version"
+
+#: templates/comments/project_versions.html:163
+msgid "Chốt một phiên bản dự phòng trước khi ghi đè (khuyến nghị)"
+msgstr "Create a backup version before overwriting (recommended)"
+
+#: templates/comments/project_versions.html:165
+msgid "Nhờ vậy có thể quay lại trạng thái hiện tại nếu phục hồi nhầm."
+msgstr "That way you can come back to the current state if you restore the wrong one."
+
+#: templates/comments/project_versions.html:171
+msgid "Phục hồi"
+msgstr "Restore"
+
+#: templates/comments/project_versions.html:182
+msgid "Chốt phiên bản dataset"
+msgstr "Create a dataset version"
+
+#: templates/comments/project_versions.html:187
+msgid "Tên phiên bản"
+msgstr "Version name"
+
+#: templates/comments/project_versions.html:189
+msgid "Để trống sẽ tự sinh theo thời điểm."
+msgstr "Leave blank to auto-generate from the timestamp."
+
+#: templates/comments/project_versions.html:202
+msgid "Ghi chú"
+msgstr "Notes"
+
+#: templates/comments/project_versions.html:208
+msgid "Đóng"
+msgstr "Close"
+
+#: templates/comments/project_versions.html:209
+msgid "Tạo phiên bản"
+msgstr "Create version"
+
+#: templates/comments/project_versions.html:270
+msgid "Đang gửi…"
+msgstr "Submitting…"
 
 #: templates/comments/register.html:7
 msgid "Register"
@@ -1375,125 +2913,139 @@ msgstr ""
 "use the server's default settings."
 
 #: templates/comments/user_settings.html:33
-#: templates/comments/user_settings.html:64
-#: templates/comments/user_settings.html:84
-#: templates/comments/user_settings.html:105
+#: templates/comments/user_settings.html:75
+#: templates/comments/user_settings.html:95
+#: templates/comments/user_settings.html:124
 msgid "Optional"
 msgstr "Optional"
 
-#: templates/comments/user_settings.html:37
+#: templates/comments/user_settings.html:40
+#: templates/comments/user_settings.html:99
+msgid "để trống nếu giữ nguyên"
+msgstr "leave blank to keep unchanged"
+
+#: templates/comments/user_settings.html:40
 msgid "Enter your YouTube API Key (optional)"
 msgstr "Enter your YouTube API Key (optional)"
 
-#: templates/comments/user_settings.html:40
-#: templates/comments/user_settings.html:91
+#: templates/comments/user_settings.html:45
+#: templates/comments/user_settings.html:104
+msgid "Xoá khoá đang lưu"
+msgstr "Delete the stored key"
+
+#: templates/comments/user_settings.html:51
+#: templates/comments/user_settings.html:110
 msgid "API Key configured"
 msgstr "API Key configured"
 
-#: templates/comments/user_settings.html:42
-#: templates/comments/user_settings.html:93
+#: templates/comments/user_settings.html:53
+#: templates/comments/user_settings.html:112
 msgid "Using server default API Key"
 msgstr "Using server default API Key"
 
-#: templates/comments/user_settings.html:44
-#: templates/comments/user_settings.html:95
+#: templates/comments/user_settings.html:55
+#: templates/comments/user_settings.html:114
 msgid "No API Key"
 msgstr "No API Key"
 
-#: templates/comments/user_settings.html:47
+#: templates/comments/user_settings.html:58
 msgid ""
 "This API Key will be used to fetch comments from YouTube for your projects."
 msgstr ""
 "This API Key will be used to fetch comments from YouTube for your projects."
 
-#: templates/comments/user_settings.html:49
+#: templates/comments/user_settings.html:60
 msgid "Create API Key at Google Cloud Console"
 msgstr "Create API Key at Google Cloud Console"
 
-#: templates/comments/user_settings.html:58
+#: templates/comments/user_settings.html:69
 msgid "Configuration"
 msgstr "Configuration"
 
-#: templates/comments/user_settings.html:72
+#: templates/comments/user_settings.html:83
 msgid "Using custom URL"
 msgstr "Using custom URL"
 
-#: templates/comments/user_settings.html:74
+#: templates/comments/user_settings.html:85
 msgid "Using default URL"
 msgstr "Using default URL"
 
-#: templates/comments/user_settings.html:77
+#: templates/comments/user_settings.html:88
 msgid "URL of the Ollama server for AI comment labeling."
 msgstr "URL of the Ollama server for AI comment labeling."
 
-#: templates/comments/user_settings.html:88
+#: templates/comments/user_settings.html:99
 msgid "Enter your Ollama API Key (optional)"
 msgstr "Enter your Ollama API Key (optional)"
 
-#: templates/comments/user_settings.html:98
+#: templates/comments/user_settings.html:117
 msgid "API Key to authenticate with the Ollama server."
 msgstr "API Key to authenticate with the Ollama server."
 
-#: templates/comments/user_settings.html:112
+#: templates/comments/user_settings.html:131
 msgid "Using model"
 msgstr "Using model"
 
-#: templates/comments/user_settings.html:114
+#: templates/comments/user_settings.html:133
 msgid "Using default model"
 msgstr "Using default model"
 
-#: templates/comments/user_settings.html:117
+#: templates/comments/user_settings.html:136
 msgid "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)"
 msgstr "Ollama model name for AI labeling (e.g., qwen3.6:27b, llama3, etc.)"
 
-#: templates/comments/user_settings.html:125
+#: templates/comments/user_settings.html:144
 msgid "Current Configuration Summary"
 msgstr "Current Configuration Summary"
 
-#: templates/comments/user_settings.html:130
+#: templates/comments/user_settings.html:149
 msgid "Component"
 msgstr "Component"
 
-#: templates/comments/user_settings.html:132
+#: templates/comments/user_settings.html:151
 msgid "Source"
 msgstr "Source"
 
-#: templates/comments/user_settings.html:140
-#: templates/comments/user_settings.html:161
+#: templates/comments/user_settings.html:159
+#: templates/comments/user_settings.html:180
 msgid "Configured"
 msgstr "Configured"
 
-#: templates/comments/user_settings.html:142
-#: templates/comments/user_settings.html:163
+#: templates/comments/user_settings.html:161
+#: templates/comments/user_settings.html:182
 msgid "Using default"
 msgstr "Using default"
 
-#: templates/comments/user_settings.html:144
-#: templates/comments/user_settings.html:165
+#: templates/comments/user_settings.html:163
+#: templates/comments/user_settings.html:184
 msgid "Not configured"
 msgstr "Not configured"
 
-#: templates/comments/user_settings.html:149
+#: templates/comments/user_settings.html:168
 msgid "Your account"
 msgstr "Your account"
 
-#: templates/comments/user_settings.html:151
+#: templates/comments/user_settings.html:170
 msgid "Server default"
 msgstr "Server default"
 
-#: templates/comments/user_settings.html:170
+#: templates/comments/user_settings.html:189
 #, python-format
 msgid "Your account (%(user_settings.ollama_model)s)"
 msgstr "Your account (%(user_settings.ollama_model)s)"
 
-#: templates/comments/user_settings.html:172
+#: templates/comments/user_settings.html:191
 #, python-format
 msgid "Server default (%(global_ollama_model)s)"
 msgstr "Server default (%(global_ollama_model)s)"
 
-#: templates/comments/user_settings.html:185
+#: templates/comments/user_settings.html:204
 msgid "Save Settings"
 msgstr "Save Settings"
+
+#: templates/comments/user_settings.html:207
+msgid "Back"
+msgstr "Back"
 
 #: templates/comments/verification_sent.html:7
 msgid "Verification Email Sent"
@@ -1529,31 +3081,4 @@ msgstr ""
 
 #: templates/comments/verification_sent.html:333
 msgid "Already verified?"
-msgstr ""
-
-#~ msgid "Toxic Only"
-#~ msgstr "Toxic Only"
-
-#~ msgid "Non-Toxic Only"
-#~ msgstr "Non-Toxic Only"
-
-#~ msgid "Toxic"
-#~ msgstr "Toxic"
-
-#~ msgid "Non-Toxic"
-#~ msgstr "Non-Toxic"
-
-msgid "Token not found"
-msgstr ""
-
-msgid "Chưa thiết lập nhãn cho dự án hiện tại."
-msgstr "No labels have been configured for the current project."
-
-msgid "Chưa thiết lập API KEY, OLLAMA URL và OLLAMA MODEL."
-msgstr "API Key, Ollama URL, and Ollama model have not been configured."
-
-msgid "Annotating comments with Ollama"
-msgstr ""
-
-msgid "Fetching comments from YouTube"
 msgstr ""

@@ -1,0 +1,891 @@
+{% extends "comments/base.html" %}
+{% load i18n static %}
+{% block title %}{% trans "Gán nhãn" %} — {{ link.title|default:link.video_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .ann-shell { max-width: 1100px; margin: 0 auto; }
+  .ann-card { border:1px solid #e5e7eb; border-radius:.75rem; background:#fff; }
+  .ann-text { font-size:1.35rem; line-height:2.1; }
+  .ann-token {
+    cursor:pointer; padding:2px 3px; border-radius:4px;
+    transition:background .12s, box-shadow .12s;
+    border-bottom:2px solid transparent;
+  }
+  .ann-token:hover { background:rgba(13,110,253,.10); }
+  .ann-token.sel { background:rgba(13,110,253,.22); box-shadow:0 0 0 1px rgba(13,110,253,.45) inset; }
+  .ann-token.has-label { border-bottom-width:3px; font-weight:600; }
+  /* Gợi ý của AI: gạch đứt nét, nhạt hơn — nhìn là biết chưa phải nhãn của mình */
+  .ann-token.has-ai-hint { border-bottom-width:2px; border-bottom-style:dashed; opacity:.85; }
+  .label-key {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:1.4rem; height:1.4rem; border-radius:.3rem;
+    background:rgba(0,0,0,.08); font-size:.75rem; font-weight:700; margin-right:.4rem;
+  }
+  .kbd { font-family:ui-monospace,monospace; background:#f1f3f5; border:1px solid #dee2e6;
+         border-bottom-width:2px; border-radius:.25rem; padding:.05rem .35rem; font-size:.8rem; }
+  .ann-dot { display:inline-block; width:.7rem; height:.7rem; border-radius:50%; margin-right:.35rem; }
+  .ai-hint { background:#fff8e1; border-left:3px solid #ffc107; }
+  #annProgressBar { transition: width .3s; }
+
+  .stat-strip { display:flex; flex-wrap:wrap; gap:.5rem 1.5rem; align-items:baseline; }
+  .stat-strip .stat { display:flex; align-items:baseline; gap:.35rem; }
+  .stat-strip .stat b { font-size:1.15rem; }
+  .stat-strip .stat span { font-size:.78rem; color:#6b7280; }
+
+  .my-label-chip {
+    display:inline-flex; align-items:center; gap:.4rem;
+    border:1px solid #d1d5db; border-radius:1rem;
+    padding:.15rem .7rem; font-size:.82rem; font-weight:600; background:#fff;
+  }
+  .my-label-chip .dot { width:.7rem; height:.7rem; border-radius:50%; }
+  .my-label-chip.none { color:#9ca3af; font-weight:400; }
+
+  /* Nút nhãn đang được chọn cho câu hiện tại */
+  #annLabels .btn.picked {
+    box-shadow: 0 0 0 3px rgba(13,110,253,.25);
+    border-width: 2px;
+  }
+  #annLabels .btn.picked::after {
+    content:'✓'; margin-left:.4rem; font-weight:700;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 ann-shell">
+
+  {% include "comments/_project_nav.html" with active='overview' link=link sub='annotate' compact=True %}
+
+  <div class="page-head">
+    <div>
+      <h1 class="h5 mb-1"><i class="bi bi-lightning-charge"></i> {% trans "Gán nhãn" %}</h1>
+      <p class="text-muted mb-0 small">{{ link.title|default:link.video_id }}</p>
+    </div>
+    <div class="page-head__actions">
+      <a href="{% url 'comments:link_detail' link.id %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> {% trans "Về danh sách" %}
+      </a>
+      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#helpModal">
+        <i class="bi bi-keyboard"></i> {% trans "Phím tắt" %} <span class="kbd">?</span>
+      </button>
+    </div>
+  </div>
+
+  {% if project.guideline %}
+  <details class="mb-3">
+    <summary class="text-muted small">{% trans "Hướng dẫn gán nhãn của dự án" %}</summary>
+    <div class="ann-card p-3 mt-2 small" style="white-space:pre-wrap">{{ project.guideline }}</div>
+  </details>
+  {% endif %}
+
+  <div class="ann-card p-3 mb-3">
+    <div class="stat-strip">
+      <div class="stat">
+        <b id="statMine" class="text-success">—</b>
+        <span>{% trans "bạn đã gán ở nguồn này" %}</span>
+      </div>
+      <div class="stat">
+        <b id="statPercent" class="text-success">—</b>
+        <span>{% trans "hoàn thành" %}</span>
+      </div>
+      <div class="stat">
+        <b id="statRemaining">—</b>
+        <span>{% trans "còn lại chờ bạn" %}</span>
+      </div>
+      <div class="stat">
+        <b id="statSession" class="text-primary">0</b>
+        <span>{% trans "trong phiên này" %}</span>
+      </div>
+      <div class="stat ms-auto">
+        <b id="statProject">—</b>
+        <span>{% trans "tổng trong dự án" %}</span>
+      </div>
+    </div>
+    <div class="progress progress-thin mt-3">
+      <div id="annProgressBar" class="progress-bar bg-success" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+    <div class="btn-group btn-group-sm" role="group" id="annModes">
+      <button type="button" class="btn btn-outline-primary active" data-mode="todo">
+        {% trans "Cần gán" %} <span class="badge bg-light text-dark" id="cntTodo">—</span>
+      </button>
+      <button type="button" class="btn btn-outline-success" data-mode="done">
+        {% trans "Bạn đã gán" %} <span class="badge bg-light text-dark" id="cntDone">—</span>
+      </button>
+      <button type="button" class="btn btn-outline-secondary" data-mode="all">
+        {% trans "Tất cả" %} <span class="badge bg-light text-dark" id="cntAll">—</span>
+      </button>
+    </div>
+    <div class="small text-muted ms-auto"><span id="annPosition">—</span></div>
+    <div class="small"><span id="annSaveState"></span></div>
+  </div>
+  <div id="annReviewHint" class="small text-muted mb-2 d-none">
+    <i class="bi bi-pencil-square"></i>
+    {% trans "Chế độ xem lại: sửa nhãn xong màn hình đứng yên, không tự chuyển câu." %}
+  </div>
+
+  <div id="annEmpty" class="ann-card p-5 text-center d-none">
+    <i class="bi bi-check2-circle text-success" style="font-size:3rem"></i>
+    <h2 class="h5 mt-3" id="annEmptyTitle">{% trans "Đã xong!" %}</h2>
+    <p class="text-muted" id="annEmptyText">{% trans "Không còn bình luận nào cần bạn gán nhãn ở nguồn dữ liệu này." %}</p>
+    <div class="d-flex justify-content-center gap-2">
+      <button class="btn btn-primary" id="btnReviewDone">
+        <i class="bi bi-pencil-square"></i> {% trans "Xem lại nhãn đã gán" %}
+      </button>
+      <a href="{% url 'comments:link_detail' link.id %}" class="btn btn-outline-secondary">{% trans "Về danh sách" %}</a>
+    </div>
+  </div>
+
+  <div id="annMain">
+    <div class="ann-card p-4 mb-3">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <div class="text-muted small">
+          <i class="bi bi-person-circle"></i> <span id="annAuthor"></span>
+        </div>
+        <div class="text-end">
+          {% comment %} Nhãn do CHÍNH người dùng đã gán — hiển thị khi quay lại câu trước.
+             Trước đây chỗ này hiện trạng thái đồng thuận của cả nhóm ("Agreed"),
+             không cho biết người dùng đã chọn nhãn nào. {% endcomment %}
+          <div id="annMyLabel"></div>
+          <div id="annStatus" class="small text-muted mt-1"></div>
+        </div>
+      </div>
+
+      <div id="annText" class="ann-text"></div>
+
+      <div id="annOriginal" class="mt-3 p-2 bg-light rounded small d-none">
+        <div class="text-muted mb-1">{% trans "Văn bản gốc:" %}</div>
+        <div id="annOriginalText"></div>
+      </div>
+
+      <div id="annAiHint" class="mt-3 p-2 rounded small ai-hint d-none d-flex flex-wrap align-items-center gap-2">
+        <span>
+          <i class="bi bi-robot"></i> {% trans "AI đề xuất:" %}
+          <b id="annAiLabel"></b>
+          <span class="text-muted" id="annAiConf"></span>
+          <span class="text-muted" id="annAiTokens"></span>
+        </span>
+        <button class="btn btn-sm btn-warning ms-auto" id="btnAcceptAi">
+          <span class="kbd">A</span> {% trans "Đồng ý với AI" %}
+        </button>
+      </div>
+    </div>
+
+    <div class="ann-card p-3">
+      <div class="small text-muted mb-2">
+        {% trans "Nhãn cấp câu" %} —
+        {% trans "bấm số để chọn, hoặc chọn token rồi bấm số để gán cho cụm từ" %}
+      </div>
+      <div id="annLabels" class="d-flex flex-wrap gap-2"></div>
+
+      <hr>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-sm btn-outline-secondary" id="btnSkip">
+          <span class="kbd">S</span> {% trans "Không có nghĩa / bỏ qua" %}
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="btnClear">
+          <span class="kbd">0</span> {% trans "Xoá nhãn" %}
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" id="btnUndo">
+          <span class="kbd">Ctrl+Z</span> {% trans "Hoàn tác" %}
+        </button>
+        <div class="ms-auto d-flex gap-2">
+          <button class="btn btn-sm btn-outline-primary" id="btnPrev">
+            <span class="kbd">←</span> {% trans "Trước" %}
+          </button>
+          <button class="btn btn-sm btn-primary" id="btnNext">
+            {% trans "Sau" %} <span class="kbd">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="helpModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{% trans "Phím tắt" %}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr><td><span class="kbd">1</span> … <span class="kbd">9</span></td><td>{% trans "Gán nhãn tương ứng" %}</td></tr>
+            <tr><td><span class="kbd">0</span></td><td>{% trans "Xoá nhãn của câu" %}</td></tr>
+            <tr><td><span class="kbd">A</span></td><td>{% trans "Đồng ý với đề xuất của AI rồi sang câu kế" %}</td></tr>
+            <tr><td><span class="kbd">S</span></td><td>{% trans "Đánh dấu không có nghĩa" %}</td></tr>
+            <tr><td><span class="kbd">→</span> / <span class="kbd">Enter</span></td><td>{% trans "Bình luận tiếp theo" %}</td></tr>
+            <tr><td><span class="kbd">←</span></td><td>{% trans "Bình luận trước" %}</td></tr>
+            <tr><td><span class="kbd">Ctrl</span>+<span class="kbd">Z</span></td><td>{% trans "Hoàn tác thao tác cuối" %}</td></tr>
+            <tr><td>{% trans "Click / kéo trên từ" %}</td><td>{% trans "Chọn token hoặc cụm từ" %}</td></tr>
+            <tr><td><span class="kbd">Esc</span></td><td>{% trans "Bỏ chọn token" %}</td></tr>
+            <tr><td><span class="kbd">?</span></td><td>{% trans "Mở bảng phím tắt này" %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+
+{{ project_labels_json|json_script:"project-labels-data" }}
+<script>
+"use strict";
+/* Màn hình gán nhãn tập trung.
+   Dữ liệu nhãn nạp qua json_script (không nội suy thẳng vào <script>). */
+const LABELS   = JSON.parse(JSON.parse(document.getElementById('project-labels-data').textContent));
+const LINK_ID  = "{{ link.id }}";
+const CSRF     = "{{ csrf_token }}";
+{% comment %}
+Chuỗi dịch đưa vào JS phải qua |escapejs. Bản dịch chứa dấu nháy sẽ đóng
+chuỗi sớm và làm hỏng CẢ khối script — lỗi im lặng, chỉ lộ ở một ngôn ngữ.
+{% endcomment %}
+{% trans 'Đang lưu…' as t_ws_saving %}
+{% trans 'Đã lưu' as t_ws_saved %}
+{% trans 'Lỗi khi lưu' as t_ws_error %}
+{% trans 'Bạn chưa gán nhãn câu này' as t_ws_none %}
+{% trans 'Bạn đã gán' as t_ws_youLabelled %}
+{% trans 'Không nhãn (O)' as t_ws_noLabel %}
+{% trans 'Bạn đã đánh dấu không có nghĩa' as t_ws_skipped %}
+{% trans 'Nhóm đang bất đồng — chờ phân xử' as t_ws_conflict %}
+{% trans 'Nhóm đã đồng thuận' as t_ws_agreed %}
+{% trans 'Chờ thêm người gán nhãn' as t_ws_pending %}
+{% trans 'Đã được phân xử' as t_ws_adjudicated %}
+{% trans 'Câu {current} / {total} trong hàng đợi' as t_ws_position %}
+{% trans 'Đã xong!' as t_ws_emptyTodoTitle %}
+{% trans 'Không còn bình luận nào cần bạn gán nhãn ở nguồn dữ liệu này.' as t_ws_emptyTodoText %}
+{% trans 'Chưa có gì để xem lại' as t_ws_emptyDoneTitle %}
+{% trans 'Bạn chưa gán nhãn bình luận nào ở nguồn dữ liệu này.' as t_ws_emptyDoneText %}
+{% trans 'Không có bình luận' as t_ws_emptyAllTitle %}
+{% trans 'Nguồn dữ liệu này chưa có bình luận nào.' as t_ws_emptyAllText %}
+{% trans 'Đã quay lại câu bạn vừa gán' as t_ws_backToDone %}
+{% trans 'Đã trở lại phần việc còn dư' as t_ws_backToTodo %}
+{% trans '· {n} token' as t_ws_aiTokens %}
+{% trans 'Đã nhận nhãn của AI làm nhãn của bạn' as t_ws_aiAccepted %}
+{% trans 'Câu này không có đề xuất của AI' as t_ws_aiNone %}
+const I18N = {
+  saving: '{{ t_ws_saving|escapejs }}',
+  saved: '{{ t_ws_saved|escapejs }}',
+  error: '{{ t_ws_error|escapejs }}',
+  none: '{{ t_ws_none|escapejs }}',
+  youLabelled: '{{ t_ws_youLabelled|escapejs }}',
+  noLabel: '{{ t_ws_noLabel|escapejs }}',
+  skipped: '{{ t_ws_skipped|escapejs }}',
+  conflict: '{{ t_ws_conflict|escapejs }}',
+  agreed: '{{ t_ws_agreed|escapejs }}',
+  pending: '{{ t_ws_pending|escapejs }}',
+  adjudicated: '{{ t_ws_adjudicated|escapejs }}',
+  position: '{{ t_ws_position|escapejs }}',
+  emptyTodoTitle: '{{ t_ws_emptyTodoTitle|escapejs }}',
+  emptyTodoText: '{{ t_ws_emptyTodoText|escapejs }}',
+  emptyDoneTitle: '{{ t_ws_emptyDoneTitle|escapejs }}',
+  emptyDoneText: '{{ t_ws_emptyDoneText|escapejs }}',
+  emptyAllTitle: '{{ t_ws_emptyAllTitle|escapejs }}',
+  emptyAllText: '{{ t_ws_emptyAllText|escapejs }}',
+  backToDone: '{{ t_ws_backToDone|escapejs }}',
+  backToTodo: '{{ t_ws_backToTodo|escapejs }}',
+  aiTokens: '{{ t_ws_aiTokens|escapejs }}',
+  aiAccepted: '{{ t_ws_aiAccepted|escapejs }}',
+  aiNone: '{{ t_ws_aiNone|escapejs }}',
+};
+
+let queue = [];
+let index = 0;
+let mode = 'todo';         // todo | done | all
+let offset = 0;            // vị trí trang hiện tại trong chế độ đang xem
+let total = 0;             // tổng số câu của chế độ đang xem
+let counts = { todo: 0, done: 0, all: 0 };
+let remaining = 0;
+let progress = null;       // số liệu tiến độ của chính người dùng
+let sessionCount = 0;      // số câu đã gán trong phiên làm việc này
+let selection = null;      // {start, end}
+let dragAnchor = null;
+let undoStack = [];
+let shownAt = Date.now();
+
+const PAGE = 25;
+const $ = (id) => document.getElementById(id);
+
+/* Ghi nhớ chỗ đang đứng để F5 không ném người dùng về đầu hàng đợi. Lưu theo
+   từng nguồn dữ liệu, chỉ trong trình duyệt của chính người đó. */
+const RESUME_KEY = 'annotahub:workspace:' + LINK_ID;
+
+function saveResume() {
+  try {
+    const comment = current();
+    localStorage.setItem(RESUME_KEY, JSON.stringify({
+      mode: mode, offset: offset, at: comment ? comment.id : null,
+    }));
+  } catch (err) { /* trình duyệt chặn lưu trữ: bỏ qua, không phải lỗi */ }
+}
+
+function readResume() {
+  try {
+    const raw = localStorage.getItem(RESUME_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!['todo', 'done', 'all'].includes(saved.mode)) return null;
+    return saved;
+  } catch (err) { return null; }
+}
+
+async function api(url, body, method) {
+  const response = await fetch(url, {
+    method: method || 'POST',
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!response.ok) throw new Error('HTTP ' + response.status);
+  return response.json();
+}
+
+function setSaveState(text, isError) {
+  const el = $('annSaveState');
+  el.textContent = text || '';
+  el.className = 'small ' + (isError ? 'text-danger' : 'text-success');
+}
+
+async function loadQueue(options) {
+  const opts = options || {};
+  const wantMode = opts.mode || mode;
+  const wantOffset = Math.max(0, opts.offset || 0);
+
+  const url = `/api/links/${LINK_ID}/queue/`
+    + `?mode=${wantMode}&limit=${PAGE}&offset=${wantOffset}`;
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) return;
+  const data = await response.json();
+
+  mode = data.mode;
+  offset = data.offset;
+  total = data.total || 0;
+  counts = data.counts || counts;
+  queue = data.comments || [];
+  remaining = data.remaining || 0;
+  if (data.progress) progress = data.progress;
+
+  // `at` = id câu muốn dừng lại; `last` = nhảy về cuối trang (dùng khi bấm
+  // "Trước" từ đầu hàng đợi để quay lại câu vừa gán).
+  index = 0;
+  if (opts.at) {
+    const found = queue.findIndex((c) => c.id === opts.at);
+    if (found >= 0) index = found;
+  } else if (opts.last) {
+    index = Math.max(0, queue.length - 1);
+  }
+
+  renderModes();
+  renderStats();
+  render();
+}
+
+function renderModes() {
+  $('cntTodo').textContent = counts.todo;
+  $('cntDone').textContent = counts.done;
+  $('cntAll').textContent = counts.all;
+  document.querySelectorAll('#annModes button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.mode === mode);
+  });
+  $('annReviewHint').classList.toggle('d-none', mode === 'todo');
+}
+
+async function switchMode(nextMode, options) {
+  const opts = options || {};
+  // Sang phần "đã gán" thì dừng ở câu MỚI NHẤT — đó là câu người dùng nhiều
+  // khả năng muốn sửa. Hai chế độ còn lại bắt đầu từ đầu.
+  const goLast = opts.last || nextMode === 'done';
+  const offsetWanted = goLast
+    ? Math.max(0, Math.floor((Math.max(1, counts[nextMode]) - 1) / PAGE) * PAGE)
+    : 0;
+  await loadQueue({ mode: nextMode, offset: offsetWanted, last: goLast });
+}
+
+function renderStats() {
+  if (progress) {
+    $('statMine').textContent = `${progress.my_annotated_link} / ${progress.link_total}`;
+    $('statPercent').textContent = progress.percent + '%';
+    $('statProject').textContent = progress.my_annotated_project;
+    $('annProgressBar').style.width = Math.min(100, progress.percent) + '%';
+  }
+  $('statRemaining').textContent = remaining;
+  $('statSession').textContent = sessionCount;
+}
+
+function renderLabelButtons() {
+  const container = $('annLabels');
+  container.textContent = '';
+  LABELS.forEach((label, i) => {
+    const button = document.createElement('button');
+    button.className = 'btn btn-sm btn-outline-dark';
+    button.dataset.labelId = label.id;
+    button.title = label.description || '';
+
+    const key = document.createElement('span');
+    key.className = 'label-key';
+    key.textContent = String(i + 1);
+
+    const dot = document.createElement('span');
+    dot.className = 'ann-dot';
+    dot.style.backgroundColor = label.color;
+
+    // textContent, không innerHTML: tên nhãn do người dùng nhập.
+    const name = document.createElement('span');
+    name.textContent = label.name;
+
+    button.append(key, dot, name);
+    button.addEventListener('click', () => applyLabel(label.id));
+    container.appendChild(button);
+  });
+}
+
+function current() { return queue[index] || null; }
+
+function renderEmpty() {
+  const text = {
+    todo: [I18N.emptyTodoTitle, I18N.emptyTodoText],
+    done: [I18N.emptyDoneTitle, I18N.emptyDoneText],
+    all:  [I18N.emptyAllTitle, I18N.emptyAllText],
+  }[mode];
+  $('annEmptyTitle').textContent = text[0];
+  $('annEmptyText').textContent = text[1];
+  // Chỉ mời xem lại khi thực sự có cái để xem.
+  $('btnReviewDone').classList.toggle('d-none', mode === 'done' || !counts.done);
+}
+
+function render() {
+  const comment = current();
+  if (!comment) {
+    $('annMain').classList.add('d-none');
+    $('annEmpty').classList.remove('d-none');
+    $('annPosition').textContent = '';
+    renderEmpty();
+    renderStats();
+    saveResume();
+    return;
+  }
+  $('annMain').classList.remove('d-none');
+  $('annEmpty').classList.add('d-none');
+
+  $('annAuthor').textContent = comment.author || '—';
+  // Đánh số theo TOÀN BỘ chế độ đang xem, không phải theo trang đang tải —
+  // nếu không, mỗi lần nạp trang mới con số lại nhảy về 1.
+  $('annPosition').textContent = I18N.position
+    .replace('{current}', offset + index + 1)
+    .replace('{total}', total);
+  saveResume();
+
+  renderMyLabel(comment);
+  renderGroupStatus(comment);
+  renderTokens(comment);
+  highlightPickedLabel(comment);
+
+  if (comment.source_text && comment.source_text !== comment.text) {
+    $('annOriginal').classList.remove('d-none');
+    $('annOriginalText').textContent = comment.source_text;
+  } else {
+    $('annOriginal').classList.add('d-none');
+  }
+
+  if (comment.ai_label) {
+    $('annAiHint').classList.remove('d-none');
+    $('annAiLabel').textContent = comment.ai_label.name;
+    $('annAiConf').textContent = comment.ai_confidence != null
+      ? ` (${Math.round(comment.ai_confidence * 100)}%)` : '';
+    const aiTokens = (comment.tokens || []).filter((t) => t.is_ai_suggestion).length;
+    $('annAiTokens').textContent = aiTokens
+      ? ' ' + I18N.aiTokens.replace('{n}', aiTokens) : '';
+    // Chỉ mời "Đồng ý với AI" khi mình CHƯA quyết định gì ở câu này — đã gán
+    // rồi mà vẫn hiện nút thì bấm nhầm là ghi đè mất nhãn của chính mình.
+    $('btnAcceptAi').classList.toggle(
+      'd-none', Boolean(comment.my_label) || comment.is_meaningful === false
+    );
+  } else {
+    $('annAiHint').classList.add('d-none');
+  }
+
+  selection = null;
+  shownAt = Date.now();
+}
+
+function renderMyLabel(comment) {
+  /* Hiển thị nhãn mà CHÍNH người dùng đã gán cho câu này.
+     Đây là thông tin cần khi quay lại câu trước — khác với trạng thái đồng
+     thuận của cả nhóm ("Đồng thuận"/"Bất đồng"), vốn không cho biết mình đã
+     chọn nhãn nào. */
+  const container = $('annMyLabel');
+  container.textContent = '';
+
+  const chip = document.createElement('span');
+  chip.className = 'my-label-chip';
+
+  if (comment.is_meaningful === false) {
+    chip.classList.add('none');
+    chip.textContent = I18N.skipped;
+    container.appendChild(chip);
+    return;
+  }
+
+  const label = comment.my_label;
+  if (!label) {
+    chip.classList.add('none');
+    chip.textContent = I18N.none;
+    container.appendChild(chip);
+    return;
+  }
+
+  const dot = document.createElement('span');
+  dot.className = 'dot';
+  dot.style.backgroundColor = label.color || '#9ca3af';
+
+  const prefix = document.createElement('span');
+  prefix.className = 'text-muted fw-normal';
+  prefix.textContent = I18N.youLabelled + ':';
+
+  const name = document.createElement('span');
+  name.textContent = label.id ? label.name : I18N.noLabel;
+
+  chip.append(prefix, dot, name);
+  container.appendChild(chip);
+}
+
+function renderGroupStatus(comment) {
+  /* Trạng thái đồng thuận của cả nhóm — thông tin phụ, đặt nhỏ bên dưới. */
+  const el = $('annStatus');
+  const map = {
+    conflict: ['text-warning', I18N.conflict],
+    agreed: ['text-success', I18N.agreed],
+    adjudicated: ['text-primary', I18N.adjudicated],
+    pending: ['text-muted', I18N.pending],
+  };
+  const entry = map[comment.review_status] || map.pending;
+  el.className = 'small mt-1 ' + entry[0];
+  // Chỉ hiện khi dự án cần nhiều người gán nhãn; nếu chỉ một người thì thông
+  // tin đồng thuận không có ý nghĩa.
+  el.textContent = (comment.manual_annotation_count > 1
+                    || comment.review_status === 'conflict') ? entry[1] : '';
+}
+
+function highlightPickedLabel(comment) {
+  /* Đánh dấu nút nhãn đang được chọn cho câu hiện tại. */
+  const picked = comment.my_label && comment.my_label.id;
+  document.querySelectorAll('#annLabels .btn').forEach((button) => {
+    button.classList.toggle('picked', button.dataset.labelId === picked);
+  });
+}
+
+function renderTokens(comment) {
+  const container = $('annText');
+  container.textContent = '';
+  (comment.tokens || []).forEach((token) => {
+    const span = document.createElement('span');
+    span.className = 'ann-token';
+    span.dataset.position = token.position;
+    span.textContent = token.text;
+
+    // Nhãn CỦA TÔI hiện đậm; chưa gán thì mới hiện gợi ý của AI ở dạng mờ.
+    // Không bao giờ hiện nhãn của annotator khác — thấy trước sẽ bị dẫn dắt
+    // theo và làm hỏng chỉ số đồng thuận.
+    if (token.my_label) {
+      span.classList.add('has-label');
+      span.style.borderBottomColor = token.my_label.color;
+      span.title = token.my_label.name;
+    } else if (token.ai_label) {
+      span.classList.add('has-ai-hint');
+      span.style.borderBottomColor = token.ai_label.color;
+      span.title = token.ai_label.name + ' (AI)';
+    }
+
+    span.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+      dragAnchor = token.position;
+      selection = { start: token.position, end: token.position };
+      paintSelection();
+    });
+    span.addEventListener('mouseenter', () => {
+      if (dragAnchor === null) return;
+      selection = {
+        start: Math.min(dragAnchor, token.position),
+        end: Math.max(dragAnchor, token.position),
+      };
+      paintSelection();
+    });
+
+    container.appendChild(span);
+    container.appendChild(document.createTextNode(' '));
+  });
+}
+
+document.addEventListener('mouseup', () => { dragAnchor = null; });
+
+function paintSelection() {
+  document.querySelectorAll('.ann-token').forEach((el) => {
+    const position = Number(el.dataset.position);
+    const inRange = selection && position >= selection.start && position <= selection.end;
+    el.classList.toggle('sel', Boolean(inRange));
+  });
+}
+
+function absorbResult(comment, result) {
+  /* Ghi kết quả từ server vào bản ghi cục bộ, để khi quay lại câu này vẫn hiển
+     thị đúng nhãn đã gán mà không cần gọi lại API. */
+  if (!result) return;
+  if ('my_label' in result) comment.my_label = result.my_label;
+  if (result.review_status) comment.review_status = result.review_status;
+  if (typeof result.manual_count === 'number') {
+    comment.manual_annotation_count = result.manual_count;
+  }
+  if ('is_meaningful' in result) comment.is_meaningful = result.is_meaningful;
+  if (result.progress) progress = result.progress;
+}
+
+async function applyLabel(labelId) {
+  const comment = current();
+  if (!comment) return;
+  setSaveState(I18N.saving);
+  try {
+    if (selection) {
+      // Có token đang chọn -> gán nhãn cho DẢI token đó.
+      undoStack.push({ type: 'span', commentId: comment.id, selection: { ...selection } });
+      await api(`/api/comments/${comment.id}/set-token-span/`, {
+        start: selection.start, end: selection.end, label_id: labelId,
+      });
+      const data = await (await fetch(`/api/comments/${comment.id}/tokens/`)).json();
+      comment.tokens = data.tokens;
+      renderTokens(comment);
+      selection = null;
+      setSaveState(I18N.saved);
+      return;
+    }
+
+    const wasUnlabelled = !comment.my_label;
+    undoStack.push({ type: 'comment', commentId: comment.id, index: index });
+    const result = await api(`/api/comments/${comment.id}/set-comment-labels/`, {
+      label_id: labelId,
+      time_spent_ms: Date.now() - shownAt,
+    });
+    absorbResult(comment, result);
+
+    if (wasUnlabelled) {
+      remaining = Math.max(0, remaining - 1);
+      counts.todo = Math.max(0, counts.todo - 1);
+      counts.done += 1;
+      sessionCount += 1;
+    }
+    renderModes();
+    renderStats();
+    setSaveState(I18N.saved);
+    // Chế độ todo chạy nhanh nên tự sang câu kế; chế độ xem lại thì đứng yên
+    // để người dùng thấy nhãn vừa sửa.
+    if (mode === 'todo') next(); else render();
+  } catch (err) {
+    console.error(err);
+    setSaveState(I18N.error, true);
+  }
+}
+
+async function clearLabel() {
+  const comment = current();
+  if (!comment) return;
+  setSaveState(I18N.saving);
+  try {
+    const hadLabel = Boolean(comment.my_label);
+    // remove=true gỡ hẳn quyết định của mình, đúng như chữ trên nút "Xoá nhãn".
+    const result = await api(`/api/comments/${comment.id}/set-comment-labels/`,
+                             { remove: true });
+    absorbResult(comment, result);
+    if (hadLabel) {
+      sessionCount = Math.max(0, sessionCount - 1);
+      remaining += 1;
+      counts.todo += 1;
+      counts.done = Math.max(0, counts.done - 1);
+    }
+    renderModes();
+    renderStats();
+    // Cập nhật lại chip và nút đang chọn ngay tại chỗ, không chuyển câu.
+    renderMyLabel(comment);
+    renderGroupStatus(comment);
+    highlightPickedLabel(comment);
+    setSaveState(I18N.saved);
+  } catch (err) { setSaveState(I18N.error, true); }
+}
+
+async function acceptAi() {
+  const comment = current();
+  if (!comment || !comment.ai_label) { setSaveState(I18N.aiNone, true); return; }
+  if (comment.my_label) return;   // đã tự gán rồi thì không ghi đè
+
+  setSaveState(I18N.saving);
+  try {
+    undoStack.push({ type: 'comment', commentId: comment.id, index: index });
+    const result = await api(`/api/comments/${comment.id}/accept-ai/`, {});
+    absorbResult(comment, result);
+    comment.tokens = result.tokens || comment.tokens;
+
+    remaining = Math.max(0, remaining - 1);
+    counts.todo = Math.max(0, counts.todo - 1);
+    counts.done += 1;
+    sessionCount += 1;
+    renderModes();
+    renderStats();
+    setSaveState(I18N.aiAccepted);
+    if (mode === 'todo') next(); else render();
+  } catch (err) {
+    console.error(err);
+    setSaveState(I18N.error, true);
+  }
+}
+
+async function skipComment() {
+  const comment = current();
+  if (!comment) return;
+  setSaveState(I18N.saving);
+  try {
+    const wasUnlabelled = !comment.my_label && comment.is_meaningful !== false;
+    const result = await api(`/api/comments/${comment.id}/skip/`, { skipped: true });
+    absorbResult(comment, result);
+    if (wasUnlabelled) {
+      remaining = Math.max(0, remaining - 1);
+      counts.todo = Math.max(0, counts.todo - 1);
+      sessionCount += 1;
+    }
+    renderModes();
+    renderStats();
+    setSaveState(I18N.saved);
+    if (mode === 'todo') next(); else render();
+  } catch (err) { setSaveState(I18N.error, true); }
+}
+
+async function undo() {
+  const entry = undoStack.pop();
+  if (!entry) return;
+  setSaveState(I18N.saving);
+  try {
+    if (entry.type === 'comment') {
+      const result = await api(
+        `/api/comments/${entry.commentId}/set-comment-labels/`, { remove: true }
+      );
+      // Quay về đúng câu vừa hoàn tác để người dùng thấy kết quả.
+      if (typeof entry.index === 'number' && entry.index < queue.length) {
+        index = entry.index;
+      }
+      const comment = queue.find((c) => c.id === entry.commentId);
+      if (comment) {
+        absorbResult(comment, result);
+        sessionCount = Math.max(0, sessionCount - 1);
+        remaining += 1;
+      }
+      renderStats();
+      render();
+    } else {
+      await api(`/api/comments/${entry.commentId}/set-token-span/`, {
+        start: entry.selection.start, end: entry.selection.end, label_id: null,
+      });
+      const comment = current();
+      if (comment && comment.id === entry.commentId) {
+        const data = await (await fetch(`/api/comments/${comment.id}/tokens/`)).json();
+        comment.tokens = data.tokens;
+        renderTokens(comment);
+      }
+    }
+    setSaveState(I18N.saved);
+  } catch (err) { setSaveState(I18N.error, true); }
+}
+
+/*
+  Ba chế độ ghép thành MỘT dòng thời gian:
+
+      [ đã gán: cũ → mới ][ cần gán: câu tiếp theo → ... ]
+
+  Nhờ vậy "Trước" ở đầu hàng đợi việc-còn-lại sẽ lùi sang câu vừa gán xong,
+  và "Sau" ở cuối phần đã gán thì trở lại phần việc còn dư.
+*/
+function next() {
+  if (index < queue.length - 1) { index += 1; render(); return; }
+
+  if (mode === 'todo') {
+    // Câu vừa gán RỜI KHỎI hàng đợi todo, nên danh sách co lại ngay dưới chân
+    // mình. Nhảy offset += PAGE sẽ bỏ sót đúng bằng số câu vừa gán; chỉ được
+    // tiến đúng bằng số câu trong trang mà mình CHƯA gán.
+    const stillPending = queue.filter(
+      (c) => !c.my_label && c.is_meaningful !== false
+    ).length;
+    loadQueue({ offset: offset + stillPending });
+    return;
+  }
+
+  if (offset + queue.length < total) {
+    loadQueue({ offset: offset + PAGE });
+    return;
+  }
+  if (mode === 'done' && counts.todo) {
+    setSaveState(I18N.backToTodo);
+    switchMode('todo');
+    return;
+  }
+  render();
+}
+
+function prev() {
+  // Quay lại câu trước: bản ghi cục bộ đã giữ my_label nên chip hiển thị đúng
+  // nhãn người dùng đã chọn.
+  if (index > 0) { index -= 1; render(); return; }
+  if (offset > 0) {
+    loadQueue({ offset: Math.max(0, offset - PAGE), last: true });
+    return;
+  }
+  // Đầu hàng đợi việc-còn-lại -> lùi sang câu MỚI NHẤT mình đã gán.
+  if (mode === 'todo' && counts.done) {
+    setSaveState(I18N.backToDone);
+    switchMode('done');
+  }
+}
+
+document.addEventListener('keydown', (event) => {
+  const tag = (event.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+
+  if (event.ctrlKey && event.key.toLowerCase() === 'z') { event.preventDefault(); undo(); return; }
+  if (event.ctrlKey || event.metaKey || event.altKey) return;
+
+  if (event.key >= '1' && event.key <= '9') {
+    const label = LABELS[Number(event.key) - 1];
+    if (label) { event.preventDefault(); applyLabel(label.id); }
+    return;
+  }
+  switch (event.key) {
+    case '0': event.preventDefault(); clearLabel(); break;
+    case 'a': case 'A': event.preventDefault(); acceptAi(); break;
+    case 's': case 'S': event.preventDefault(); skipComment(); break;
+    case 'ArrowRight': case 'Enter': event.preventDefault(); next(); break;
+    case 'ArrowLeft': event.preventDefault(); prev(); break;
+    case 'Escape': selection = null; paintSelection(); break;
+    case '?': new bootstrap.Modal($('helpModal')).show(); break;
+  }
+});
+
+$('btnNext').addEventListener('click', next);
+$('btnPrev').addEventListener('click', prev);
+$('btnAcceptAi').addEventListener('click', acceptAi);
+$('btnSkip').addEventListener('click', skipComment);
+$('btnClear').addEventListener('click', clearLabel);
+$('btnUndo').addEventListener('click', undo);
+
+document.querySelectorAll('#annModes button').forEach((button) => {
+  button.addEventListener('click', () => switchMode(button.dataset.mode));
+});
+$('btnReviewDone').addEventListener('click', () => switchMode('done', { last: true }));
+
+renderLabelButtons();
+
+// Mở lại trang thì tiếp tục đúng chỗ đang đứng, thay vì luôn bắt đầu một phiên
+// mới từ đầu hàng đợi.
+const resume = readResume();
+loadQueue(resume ? { mode: resume.mode, offset: resume.offset, at: resume.at } : {});
+</script>
+{% endblock %}

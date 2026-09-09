@@ -279,6 +279,28 @@ body {
 }
 
 /* ============================================
+   Đề xuất của AI (chưa được người dùng xác nhận)
+   Vẽ nét ĐỨT và nhạt màu để phân biệt với nhãn người dùng đã gán (nét liền,
+   đậm) — nhìn là biết ngay cái nào của mình, cái nào máy đoán hộ.
+   ============================================ */
+.token-word.token-ai-suggested {
+    background: transparent;
+    border-style: dashed;
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+.comment-card.ai-suggested {
+    border-left-color: var(--info-color, #0dcaf0);
+    border-left-style: dashed;
+}
+
+.ai-suggestion-badge {
+    border: 1px dashed currentColor;
+    background: transparent !important;
+}
+
+/* ============================================
    Comment label buttons
    ============================================ */
 .comment-label-btn {

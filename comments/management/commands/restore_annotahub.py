@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils.dateparse import parse_datetime
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS('Default user "vdhong" created.'))
         else:
             self.stdout.write('Default user "vdhong" already exists. Credentials updated.')
-        
+
         if Project.objects.exists():
             self.stdout.write('Projects already exist.')
             return
@@ -164,5 +164,5 @@ class Command(BaseCommand):
                         'generated_at': _dt(item.get('generated_at')) or None,
                     },
                 )
-                
+
         self.stdout.write(self.style.SUCCESS(f'Restored backup from {input_path}'))

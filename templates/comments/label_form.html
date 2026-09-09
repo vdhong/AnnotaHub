@@ -5,13 +5,13 @@
 <div class="container-fluid">
   <div class="mb-4">
     <a href="{% url 'comments:label_list' %}" class="btn btn-outline-secondary">
-      <i class="fas fa-arrow-left me-1"></i>{% trans "Back to list" %}
+      <i class="bi bi-arrow-left me-1"></i>{% trans "Back to list" %}
     </a>
   </div>
 
   <div class="card" style="max-width:600px;">
     <div class="card-header">
-      <h5 class="mb-0"><i class="fas fa-tag me-2"></i>{{ action }} {% trans "Label" %}</h5>
+      <h5 class="mb-0"><i class="bi bi-tag me-2"></i>{{ action }} {% trans "Label" %}</h5>
     </div>
     <div class="card-body">
       <form method="POST">
@@ -52,16 +52,18 @@
 
         <div class="d-flex gap-2">
           <button type="submit" class="btn btn-primary">
-            <i class="fas fa-save me-1"></i>{% trans "Save" %}
+            <i class="bi bi-save me-1"></i>{% trans "Save" %}
           </button>
           <a href="{% url 'comments:label_list' %}" class="btn btn-secondary">
-            <i class="fas fa-times me-1"></i>{% trans "Cancel" %}
+            <i class="bi bi-x-lg me-1"></i>{% trans "Cancel" %}
           </a>
         </div>
       </form>
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
 
 <script>
 document.getElementById('color').addEventListener('input', function() {

@@ -1,8 +1,18 @@
 """Admin configuration for AnnotaHub models."""
 from django.contrib import admin
+from django.utils.html import format_html
+
 from .models import (
-    Project, YouTubeLink, Comment, Token, TaskProgress,
-    ExportRecord, Label, ProjectLabel, UserSettings, UserInvitation
+    Comment,
+    ExportRecord,
+    Label,
+    Project,
+    ProjectLabel,
+    TaskProgress,
+    Token,
+    UserInvitation,
+    UserSettings,
+    YouTubeLink,
 )
 
 
@@ -10,9 +20,19 @@ class UserSettingsAdmin(admin.ModelAdmin):
     """Admin interface for managing user API settings."""
     list_display = ('user', 'username', 'has_youtube_key', 'has_ollama', 'ollama_model_display', 'updated_at')
     search_fields = ('user__username', 'user__email')
-    readonly_fields = ('created_at', 'updated_at')
-    fields = ('user', 'youtube_api_key', 'ollama_base_url', 'ollama_api_key',
-              'ollama_model', 'created_at', 'updated_at')
+    # Không hiển thị API key thô trong Admin: chỉ hiện dạng đã che.
+    fields = ('user', 'youtube_api_key_display', 'ollama_base_url',
+              'ollama_api_key_display', 'ollama_model', 'created_at', 'updated_at')
+    readonly_fields = ('created_at', 'updated_at',
+                       'youtube_api_key_display', 'ollama_api_key_display')
+
+    def youtube_api_key_display(self, obj):
+        return obj.youtube_api_key_masked or '(chưa đặt)'
+    youtube_api_key_display.short_description = 'YouTube API Key'
+
+    def ollama_api_key_display(self, obj):
+        return obj.ollama_api_key_masked or '(chưa đặt)'
+    ollama_api_key_display.short_description = 'Ollama API Key'
 
     def username(self, obj):
         return obj.user.username
@@ -39,9 +59,13 @@ class LabelAdmin(admin.ModelAdmin):
     readonly_fields = ('created_at', 'updated_at',)
 
     def color_display(self, obj):
-        return f'<span style="color: {obj.color}; font-weight: bold;">{obj.name} ({obj.color})</span>'
+        # allow_tags đã bị xoá khỏi Django từ 2.0; format_html vừa hoạt động
+        # vừa tự escape nội dung do người dùng nhập.
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{} ({})</span>',
+            obj.color, obj.name, obj.color,
+        )
     color_display.short_description = 'Label'
-    color_display.allow_tags = True
 
 
 class ProjectLabelInlineAdmin(admin.TabularInline):
@@ -205,3 +229,69 @@ class UserInvitationAdmin(admin.ModelAdmin):
 
 
 admin.site.register(UserInvitation, UserInvitationAdmin)
+
+
+# ---------------------------------------------------------------------------
+# Đăng ký các model của hệ thống gán nhãn đa người
+# ---------------------------------------------------------------------------
+from .models import (  # noqa: E402
+    AnnotationAssignment,
+    AnnotationEvent,
+    CommentAnnotation,
+    DatasetVersion,
+    TokenAnnotation,
+)
+
+
+@admin.register(CommentAnnotation)
+class CommentAnnotationAdmin(admin.ModelAdmin):
+    list_display = ('comment', 'annotator', 'source', 'project_label', 'created_at')
+    list_filter = ('source', 'created_at')
+    search_fields = ('comment__text', 'annotator__username')
+    raw_id_fields = ('comment', 'annotator', 'project_label')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(TokenAnnotation)
+class TokenAnnotationAdmin(admin.ModelAdmin):
+    list_display = ('token', 'annotator', 'source', 'project_label', 'created_at')
+    list_filter = ('source',)
+    raw_id_fields = ('token', 'annotator', 'project_label')
+    readonly_fields = ('created_at', 'updated_at')
+
+
+@admin.register(AnnotationAssignment)
+class AnnotationAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('project', 'annotator', 'comment', 'status', 'assigned_at')
+    list_filter = ('status', 'project')
+    raw_id_fields = ('project', 'comment', 'annotator')
+
+
+@admin.register(AnnotationEvent)
+class AnnotationEventAdmin(admin.ModelAdmin):
+    """Nhật ký kiểm toán: chỉ đọc, không cho sửa/xoá."""
+
+    list_display = ('created_at', 'project', 'actor', 'action', 'old_value', 'new_value')
+    list_filter = ('action', 'created_at', 'project')
+    search_fields = ('actor__username', 'old_value', 'new_value')
+    raw_id_fields = ('project', 'comment', 'actor')
+    readonly_fields = tuple(
+        field.name for field in AnnotationEvent._meta.fields
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(DatasetVersion)
+class DatasetVersionAdmin(admin.ModelAdmin):
+    list_display = ('project', 'version', 'status', 'comment_count',
+                    'agreement_score', 'created_at')
+    list_filter = ('status', 'export_format')
+    readonly_fields = ('checksum_sha256', 'file_path', 'created_at')

@@ -11,7 +11,13 @@ celerybeat-schedule
 .ipynb_checkpoints/
 .DS_Store
 backups/*
-token_normalizer.py
 staticfiles/*
 .clinerules
 notes.txt
+
+# Không bỏ qua lock file — cần cho build tái lập
+!requirements.lock.txt
+.ruff_cache/
+.pytest_cache/
+exports/
+.env.bak.*

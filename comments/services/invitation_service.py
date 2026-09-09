@@ -3,11 +3,10 @@ Invitation email service for AnnotaHub.
 Handles sending invitation emails to new users.
 """
 import logging
+
 from django.conf import settings
 from django.core.mail import send_mail
 from django.urls import reverse
-from django.utils.http import urlsafe_base64_encode
-from django.utils.encoding import force_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -15,21 +14,21 @@ logger = logging.getLogger(__name__)
 def send_invitation_email(email, token, site_url=None):
     """
     Send an invitation email to a new user.
-    
+
     Args:
         email: The recipient's email address
         token: The invitation token
         site_url: Base URL for the site (defaults to http://localhost:8000)
-    
+
     Returns:
         bool: True if email was sent successfully, False otherwise
     """
     if site_url is None:
         site_url = getattr(settings, 'SITE_URL', 'http://localhost:8000')
-    
+
     # Build the invitation link
     invitation_link = f"{site_url}{reverse('comments:accept_invitation', kwargs={'token': token})}"
-    
+
     subject = 'Mời bạn tham gia AnnotaHub'
     message = f"""Xin chào,
 
@@ -43,7 +42,7 @@ Liên kết này sẽ hết hạn sau 7 ngày.
 
 Trân trọng,
 Đội ngũ AnnotaHub"""
-    
+
     html_message = f"""
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6;">
@@ -51,8 +50,8 @@ Trân trọng,
         <p>Bạn được mời tham gia dự án trên <strong>AnnotaHub</strong>.</p>
         <p>Vui lòng nhấn vào nút bên dưới để hoàn tất đăng ký và bắt đầu sử dụng:</p>
         <p>
-            <a href="{invitation_link}" 
-               style="background-color: #007bff; color: white; padding: 12px 24px; 
+            <a href="{invitation_link}"
+               style="background-color: #007bff; color: white; padding: 12px 24px;
                       text-decoration: none; border-radius: 4px; display: inline-block;">
                 Hoàn tất đăng ký
             </a>
@@ -65,9 +64,9 @@ Trân trọng,
     </body>
     </html>
     """
-    
+
     from_email = getattr(settings, 'EMAIL_FROM', settings.DEFAULT_FROM_EMAIL)
-    
+
     try:
         send_mail(
             subject=subject,
@@ -87,7 +86,7 @@ Trân trọng,
 def log_invitation_attempt(email, token, success):
     """
     Log an invitation attempt for debugging purposes.
-    
+
     Args:
         email: The recipient's email address
         token: The invitation token

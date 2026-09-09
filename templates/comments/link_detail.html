@@ -3,27 +3,29 @@
 {% block title %}{{ link.title|default:link.video_id }} - {% trans "Comments" %}{% endblock %}
 
 {% block content %}
-<!-- Breadcrumb & Actions -->
-<nav aria-label="breadcrumb" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'comments:project_list' %}">{% trans "Projects" %}</a></li>
-        <li class="breadcrumb-item"><a href="{% url 'comments:project_detail' link.project.id %}">{{ link.project.name }}</a></li>
-        <li class="breadcrumb-item active">{{ link.title|default:"Video" }}</li>
-    </ol>
-</nav>
+{% include "comments/_project_nav.html" with active='overview' link=link %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4><i class="bi bi-youtube text-danger"></i> {{ link.title|default:link.video_id }}</h4>
+<div class="page-head">
     <div>
+        <h1 class="h4 mb-1">
+            <i class="bi bi-{% if link.kind == 'csv' %}filetype-csv{% else %}youtube text-danger{% endif %}"></i>
+            {{ link.title|default:link.video_id }}
+        </h1>
+        <p class="text-muted mb-0 small">{{ link.channel|default:"" }}</p>
+    </div>
+    <div class="page-head__actions">
+        {% if is_owner %}
         <form method="post" action="{% url 'comments:delete_youtube_link' link.id %}" class="d-inline">
             {% csrf_token %}
-            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('{% trans "Delete this link and all data?" %}')">
+            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('{% trans "Delete this link and all data?" %}')">
                 <i class="bi bi-trash"></i> {% trans "Delete" %}
             </button>
         </form>
+        {% endif %}
     </div>
 </div>
 
+{% if link.kind == 'youtube' %}
 <!-- Video Preview -->
 <div class="card video-shell mb-4">
     <div class="card-body">
@@ -61,9 +63,11 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- Progress Status Cards -->
 <div class="row g-3 mb-4" id="progressContainer">
+    {% if link.kind == 'youtube' %}
     <!-- Fetch Comments Card -->
     <div class="col-md-6">
         <div class="card stats-card">
@@ -101,9 +105,10 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- AI Annotation Card -->
-    <div class="col-md-6">
+    <div class="{% if link.kind == 'youtube' %}col-md-6{% else %}col-12{% endif %}">
         <div class="card stats-card">
             <div class="card-body">
                 <h6 class="card-title"><i class="bi bi-robot"></i> {% trans "AI Annotation" %}</h6>
@@ -153,41 +158,102 @@
             </div>
         </div>
     </div>
-    <!-- Annotated -->
+    <!-- Đã gán — của CHÍNH người đang xem, không phải của cả nhóm -->
     <div class="col-md-2">
         <div class="card stats-card bg-success text-white">
             <div class="card-body text-center">
                 <h3 id="annotatedCommentsCount">{{ annotated_comments }}</h3>
-                <small>{% trans "Annotated" %}</small>
+                <small>{% trans "Bạn đã gán" %}</small>
             </div>
         </div>
     </div>
-    <!-- Unannotated -->
+    <!-- Còn lại chờ chính người đang xem -->
     <div class="col-md-2">
         <div class="card stats-card bg-warning text-dark">
             <div class="card-body text-center">
-                <h3 id="unannotatedCommentsCount">{{ unannotated_count }}</h3>
-                <small>{% trans "Unannotated" %}</small>
+                <h3 id="manualPendingCount">{{ manual_pending_count }}</h3>
+                <small>{% trans "Bạn chưa gán" %}</small>
             </div>
         </div>
     </div>
+    <!-- Chờ soát: đề xuất của AI chưa ai xác nhận. Đây là con số cho biết còn
+         bao nhiêu việc có thể làm nhanh bằng cách soát lại thay vì gán từ đầu. -->
+    {% if ai_review.pending_ai_comments or ai_review.comments.reviewed %}
+    <div class="col-md-2">
+        <div class="card stats-card bg-info text-dark">
+            <div class="card-body text-center">
+                <h3>{{ ai_review.pending_ai_comments }}</h3>
+                <small><i class="bi bi-robot"></i> {% trans "AI chờ soát" %}</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     <!-- Dynamic label stats rendered by JavaScript -->
+</div>
+
+{% if ai_review.comments.reviewed or ai_review.no_ai_comments %}
+<div class="ai-review-bar border rounded bg-light small d-flex flex-wrap gap-3 align-items-center p-2 mb-3">
+    <span><i class="bi bi-robot"></i> <b>{% trans "AI so với người" %}</b></span>
+    {% if ai_review.no_ai_comments %}
+    <span class="text-muted" title="{% trans 'AI đã chạy qua nhưng không đưa ra nhãn cho những câu này — không phải nhãn bị mất' %}">
+        {% blocktrans with n=ai_review.no_ai_comments total=ai_review.total_comments %}AI không đề xuất: {{ n }}/{{ total }} câu{% endblocktrans %}
+    </span>
+    {% endif %}
+    <span>{% blocktrans with n=ai_review.comments.reviewed %}Đã soát {{ n }} câu{% endblocktrans %}</span>
+    <span class="text-success">{% blocktrans with n=ai_review.comments.matched %}AI đúng {{ n }}{% endblocktrans %}</span>
+    <span class="text-danger">{% blocktrans with n=ai_review.comments.corrected %}sửa {{ n }}{% endblocktrans %}</span>
+    {% if ai_review.comments.accuracy != None %}
+    <span class="badge bg-secondary">{{ ai_review.comments.accuracy }}%</span>
+    {% endif %}
+    <span class="text-muted ms-3">
+        {% trans "Token:" %}
+        {% blocktrans with ok=ai_review.tokens.matched fixed=ai_review.tokens.corrected miss=ai_review.tokens.ai_missed %}đúng {{ ok }} · sửa {{ fixed }} · bỏ sót {{ miss }}{% endblocktrans %}
+    </span>
+</div>
+{% endif %}
+
+<!-- Thanh công cụ: chế độ gán nhãn tập trung + tìm kiếm -->
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <a href="{% url 'comments:annotate_workspace' link.id %}" class="btn btn-primary">
+        <i class="bi bi-lightning-charge"></i> {% trans "Chế độ gán nhãn nhanh" %}
+        <span class="badge bg-light text-dark ms-1">{% trans "phím tắt" %}</span>
+    </a>
+    <form method="get" class="d-flex gap-2 ms-auto" style="max-width:420px;flex:1">
+        <input type="hidden" name="filter" value="{{ filter_status }}">
+        <input type="search" name="q" value="{{ search_query }}" class="form-control form-control-sm"
+               placeholder="{% trans 'Tìm trong nội dung hoặc tác giả…' %}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">
+            <i class="bi bi-search"></i>
+        </button>
+        {% if search_query %}
+        <a href="?filter={{ filter_status }}" class="btn btn-sm btn-outline-secondary" title="{% trans 'Xoá tìm kiếm' %}">
+            <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+    </form>
 </div>
 
 <!-- Filter -->
 <div class="mb-3">
     <div class="btn-group flex-wrap" role="group" id="filterContainer">
         <a href="?filter=all" class="btn btn-sm btn-outline-secondary {% if filter_status == 'all' %}active{% endif %}">{% trans "All" %}</a>
-        <a href="?filter=annotated" class="btn btn-sm btn-outline-success {% if filter_status == 'annotated' %}active{% endif %}">{% trans "Annotated" %}</a>
-        <a href="?filter=unannotated" class="btn btn-sm btn-outline-warning {% if filter_status == 'unannotated' %}active{% endif %}">{% trans "Unannotated" %}</a>
+        <a href="?filter=annotated" class="btn btn-sm btn-outline-success {% if filter_status == 'annotated' %}active{% endif %}">{% trans "Bạn đã gán" %}</a>
+        <a href="?filter=unannotated" class="btn btn-sm btn-outline-warning {% if filter_status == 'unannotated' %}active{% endif %}">{% trans "Bạn chưa gán" %}</a>
+        <a href="?filter=conflict" class="btn btn-sm btn-outline-danger {% if filter_status == 'conflict' %}active{% endif %}">{% trans "Bất đồng" %}</a>
+        <a href="?filter=skipped" class="btn btn-sm btn-outline-dark {% if filter_status == 'skipped' %}active{% endif %}">{% trans "Đã bỏ qua" %}</a>
         <!-- Dynamic label filters will be inserted by JavaScript -->
     </div>
+    {% if search_query %}
+    <div class="small text-muted mt-1">
+        {% trans "Đang lọc theo từ khoá" %} “{{ search_query }}”
+    </div>
+    {% endif %}
 </div>
 
 <!-- Comments List -->
 <div id="commentsContainer">
 {% for comment in comments %}
-    <div class="card comment-card mb-3 {% if comment.labeled %}{% elif comment.is_skipped %} label-meaningless{% else %} unlabeled{% endif %}"
+    <div class="card comment-card mb-3 {% if comment.is_skipped %}label-meaningless{% elif comment.my_label %}{% elif comment.ai_label %}ai-suggested{% else %}unlabeled{% endif %}"
          id="comment-{{ comment.id }}">
         <div class="card-body">
             <div class="d-flex align-items-center gap-2 mb-2">
@@ -199,14 +265,52 @@
                 <div class="flex-grow-1">
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <strong class="comment-author">{{ comment.author|default:"Anonymous" }}</strong>
-                        {% if comment.toxicity_label %}
-                        <span id="commentLabel-{{ comment.id }}" class="badge" style="{% if comment.labeled %}background-color:{{comment.labeled.display_color}}{% endif %}">
-                            {{ comment.get_toxicity_label_display }}
-                        </span>
-                        {% elif comment.is_skipped %}
+{% comment %}
+                        Huy hiệu chính = nhãn CỦA CHÍNH người đang xem. Trước
+                        đây dùng nhãn hiệu lực của comment (gold > manual > ai)
+                        nên ai vào cũng thấy nhãn của người gán gần nhất.
+                        {% endcomment %}
+                        {% if comment.is_skipped %}
                         <span id="commentLabel-{{ comment.id }}" class="badge bg-secondary">{% trans "Not meaningful" %}</span>
+                        {% elif comment.my_label %}
+                        <span id="commentLabel-{{ comment.id }}" class="badge"
+                              style="background-color:{{ comment.my_label.color }}">
+                            {{ comment.my_label.name }}
+                        </span>
+                        {% elif comment.ai_label %}
+                        {% comment %}
+                        Chưa gán nhưng AI đã có đề xuất: hiện ra để người dùng
+                        soát lại thay vì gán lại từ đầu. Nét đứt + biểu tượng
+                        robot để không ai nhầm đây là nhãn của mình.
+                        {% endcomment %}
+                        <span id="commentLabel-{{ comment.id }}"
+                              class="badge ai-suggestion-badge"
+                              style="background:transparent;border:1px dashed {{ comment.ai_label.display_color }};color:{{ comment.ai_label.display_color }}"
+                              title="{% trans 'AI đề xuất — bấm Đồng ý để nhận làm nhãn của bạn' %}">
+                            <i class="bi bi-robot"></i> {{ comment.ai_label.display_name }}
+                        </span>
                         {% else %}
-                        <span id="commentLabel-{{ comment.id }}" class="badge bg-warning text-dark">{% trans "Not labeled" %}</span>
+                        <span id="commentLabel-{{ comment.id }}" class="badge bg-warning text-dark"
+                              title="{% trans 'Bạn chưa gán, và AI cũng không đưa ra đề xuất nào cho câu này' %}">
+                            {% trans "Bạn chưa gán" %}
+                        </span>
+                        {% endif %}
+
+                        {% comment %}
+                        Trạng thái của cả nhóm — số người đã gán và kết quả
+                        đồng thuận. Cố ý KHÔNG hiện nhãn của từng người khác:
+                        thấy nhãn của nhau trước khi chốt sẽ kéo theo thiên
+                        kiến và làm hỏng chỉ số đồng thuận.
+                        {% endcomment %}
+                        {% if comment.manual_annotation_count %}
+                        <span class="badge bg-light text-muted border" title="{% trans 'Trạng thái của cả nhóm' %}">
+                            <i class="bi bi-people"></i>
+                            {{ comment.manual_annotation_count }}/{{ project.annotators_per_comment }}
+                            {% if comment.review_status == 'agreed' %}· {% trans "Đồng thuận" %}
+                            {% elif comment.review_status == 'conflict' %}· {% trans "Bất đồng" %}
+                            {% elif comment.review_status == 'adjudicated' %}· {% trans "Đã chốt" %}
+                            {% endif %}
+                        </span>
                         {% endif %}
                         {% if comment.was_translated %}
                         <span class="badge bg-secondary" title="{% trans "Translated from original" %}">
@@ -230,7 +334,7 @@
             {% endif %}
 
             <div class="comment-text token-strip" id="commentText-{{ comment.id }}">
-                {% with display_tokens=comment.display_tokens %}
+                {% with display_tokens=comment.my_tokens %}
                 {% if display_tokens %}
                 {% for token in display_tokens %}
                 {% with ml=token.manual_label %}
@@ -240,7 +344,10 @@
                       data-token-position="{{ token.position }}"
                       data-manual-label-id="{{ ml.id|default:'' }}"
                       data-manual-label-color="{{ ml.color|default:'' }}"
+                      data-ai-label-id="{{ al.id|default:'' }}"
                       data-ai-label-color="{{ al.color|default:'' }}"
+                      data-ai-label-name="{{ al.name|default:'' }}"
+                      data-ai-suggested="{% if token.is_ai_suggestion %}1{% else %}0{% endif %}"
                       oncontextmenu="return false;">
                     {{ token.text }}
                 </span>
@@ -254,6 +361,30 @@
             </div>
 
             <div class="comment-actions mt-3" id="commentActions-{{ comment.id }}">
+                {% if comment.ai_label and not comment.my_label and not comment.is_skipped %}
+                {% comment %}
+                Cố ý KHÔNG dùng class .alert: main.js tự đóng thông báo sau vài
+                giây, mà đây là bảng điều khiển thường trực chứ không phải
+                thông báo chớp. Màu đặt thẳng bằng inline style để không phụ
+                thuộc vào style.css đã collectstatic — file tĩnh chỉ được thu
+                thập lúc build image nên rất dễ lệch bản.
+                {% endcomment %}
+                <div class="ai-suggest-panel d-flex flex-wrap align-items-center gap-2 py-2 px-3 mb-2 rounded border"
+                     id="aiSuggestion-{{ comment.id }}"
+                     style="border-left:4px solid #0dcaf0;background:rgba(13,202,240,.08)">
+                    <i class="bi bi-robot"></i>
+                    <span class="small">
+                        {% blocktrans with label=comment.ai_label.display_name %}AI đề xuất nhãn <b>{{ label }}</b>{% endblocktrans %}
+                        {% if comment.ai_token_count %}
+                        · {% blocktrans count n=comment.ai_token_count %}{{ n }} token được gán nhãn{% plural %}{{ n }} token được gán nhãn{% endblocktrans %}
+                        {% endif %}
+                    </span>
+                    <button type="button" class="btn btn-sm btn-info ms-auto js-accept-ai"
+                            data-comment-id="{{ comment.id }}">
+                        <i class="bi bi-check2-all"></i> {% trans "Đồng ý với AI" %}
+                    </button>
+                </div>
+                {% endif %}
                 <div class="d-flex flex-wrap gap-2" id="commentLabelButtons-{{ comment.id }}">
                     <!-- Dynamic label buttons will be inserted by JavaScript -->
                 </div>
@@ -277,11 +408,23 @@
             <a class="page-link" href="?page={{ page|add:"-1" }}&filter={{ filter_status }}">{% trans "Previous" %}</a>
         </li>
         {% endif %}
-        {% for p in pages %}
-        <li class="page-item {% if p == page %}active{% endif %}">
-            <a class="page-link" href="?page={{ p }}&filter={{ filter_status }}">{{ p }}</a>
-        </li>
+        {% comment %} Chỉ render cửa sổ quanh trang hiện tại. Trước đây render TẤT CẢ số
+           trang: 100k bình luận / 50 = 2.000 thẻ <a> trong một trang HTML. {% endcomment %}
+        {% if page_obj.number > 3 %}
+        <li class="page-item"><a class="page-link" href="?page=1&filter={{ filter_status }}&q={{ search_query|urlencode }}">1</a></li>
+        {% if page_obj.number > 4 %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+        {% endif %}
+        {% for p in paginator.page_range %}
+          {% if p >= page_obj.number|add:"-2" and p <= page_obj.number|add:"2" %}
+          <li class="page-item {% if p == page_obj.number %}active{% endif %}">
+              <a class="page-link" href="?page={{ p }}&filter={{ filter_status }}&q={{ search_query|urlencode }}">{{ p }}</a>
+          </li>
+          {% endif %}
         {% endfor %}
+        {% if page_obj.number < total_pages|add:"-2" %}
+        {% if page_obj.number < total_pages|add:"-3" %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+        <li class="page-item"><a class="page-link" href="?page={{ total_pages }}&filter={{ filter_status }}&q={{ search_query|urlencode }}">{{ total_pages }}</a></li>
+        {% endif %}
         {% if page < total_pages %}
         <li class="page-item">
             <a class="page-link" href="?page={{ page|add:"1" }}&filter={{ filter_status }}">{% trans "Next" %}</a>
@@ -290,6 +433,14 @@
     </ul>
 </nav>
 {% endif %}
+
+{% endblock %}
+{% block extra_js %}
+
+<!-- Dữ liệu cho JS: json_script escape an toàn, không nội suy vào <script> -->
+{{ project_labels_data|json_script:"data-project-labels" }}
+{{ comment_manual_labels|json_script:"data-comment-labels" }}
+{{ label_stats|json_script:"data-label-stats" }}
 
 <!-- CSRF Token for AJAX -->
 <input type="hidden" id="csrfToken" value="{{ csrf_token }}">
@@ -300,37 +451,61 @@
 
 <script>
 // Translations for JavaScript strings
+{% comment %}
+Mọi chuỗi dịch nhét vào JS đều phải qua |escapejs.
+Bản dịch có dấu nháy đơn — tiếng Anh rất hay có, ví dụ "the AI's labels" — sẽ
+đóng chuỗi JS sớm và làm HỎNG CẢ KHỐI SCRIPT: mất nút nhãn, token bấm không ăn.
+Lỗi im lặng, chỉ lộ ra ở đúng một ngôn ngữ.
+{% endcomment %}
+{% trans "Select label for token:" as t_select_token %}
+{% trans "None" as t_none %}
+{% trans "Comment label:" as t_comment_label %}
+{% trans "Error setting token label." as t_err_token %}
+{% trans "Error setting comment label." as t_err_comment %}
+{% trans "Failed to set label." as t_failed %}
+{% trans "Clear all existing comments and fetch them again from YouTube? This will delete old comments and annotations." as t_clear_refetch %}
+{% trans "Refetch comments without deleting existing ones? Existing comments will be kept." as t_refetch %}
+{% trans "Reset all annotations and re-run AI from scratch?" as t_reannotate %}
+{% trans "Show video" as t_show_video %}
+{% trans "Hide video" as t_hide_video %}
+{% trans "comments" as t_comments %}
+{% trans "Đã nhận nhãn của AI" as t_ai_accepted %}
+{% trans "gồm {n} token" as t_ai_accepted_tokens %}
 var I18N = {
-    selectLabelForToken: '{% trans "Select label for token:" %}',
-    noneLabel: '{% trans "None" %}',
-    commentLabel: '{% trans "Comment label:" %}',
+    selectLabelForToken: '{{ t_select_token|escapejs }}',
+    noneLabel: '{{ t_none|escapejs }}',
+    commentLabel: '{{ t_comment_label|escapejs }}',
     tokenLabeled: function(text, label) { return 'Token "' + text + '" \u2192 ' + label; },
     commentLabeled: function(label) { return 'Comment \u2192 ' + label; },
-    errorSettingTokenLabel: '{% trans "Error setting token label." %}',
-    errorSettingCommentLabel: '{% trans "Error setting comment label." %}',
-    failedSetLabel: '{% trans "Failed to set label." %}',
-    clearRefetchConfirm: '{% trans "Clear all existing comments and fetch them again from YouTube? This will delete old comments and annotations." %}',
-    refetchConfirm: '{% trans "Refetch comments without deleting existing ones? Existing comments will be kept." %}',
-    reannotateConfirm: '{% trans "Reset all annotations and re-run AI from scratch?" %}',
-    showVideo: '{% trans "Show video" %}',
-    hideVideo: '{% trans "Hide video" %}',
-    comments: '{% trans "comments" %}',
+    errorSettingTokenLabel: '{{ t_err_token|escapejs }}',
+    errorSettingCommentLabel: '{{ t_err_comment|escapejs }}',
+    failedSetLabel: '{{ t_failed|escapejs }}',
+    clearRefetchConfirm: '{{ t_clear_refetch|escapejs }}',
+    refetchConfirm: '{{ t_refetch|escapejs }}',
+    reannotateConfirm: '{{ t_reannotate|escapejs }}',
+    showVideo: '{{ t_show_video|escapejs }}',
+    hideVideo: '{{ t_hide_video|escapejs }}',
+    comments: '{{ t_comments|escapejs }}',
+    aiAccepted: function(n) {
+        const base = '{{ t_ai_accepted|escapejs }}';
+        if (!n) return base;
+        return base + ' — ' + '{{ t_ai_accepted_tokens|escapejs }}'.replace('{n}', n);
+    },
 };
 
 const CSRF_VALUE = (document.getElementById('csrfToken') || {}).value || '';
 const LINK_ID = '{{ link.id }}';
 
-// Project labels for manual labeling
-const PROJECT_LABELS = {{ project_labels_data | safe }};
-
-// Comment manual labels for initializing comment label buttons
-const COMMENT_MANUAL_LABELS = {{ comment_manual_labels_json | safe }};
-
-// Label statistics from server (per-label comment counts)
-const LABEL_STATS = {{ label_stats | safe }};
+// Dữ liệu từ server nạp qua json_script: Django tự escape nên tên nhãn chứa
+// "&lt/script&gt;" hay dấu nháy không thể thoát ra khỏi thẻ script (stored XSS).
+const PROJECT_LABELS = JSON.parse(document.getElementById('data-project-labels').textContent);
+const COMMENT_MANUAL_LABELS = JSON.parse(document.getElementById('data-comment-labels').textContent);
+const LABEL_STATS = JSON.parse(document.getElementById('data-label-stats').textContent);
 
 // Initial running state from server
-let fetchIsRunning = document.getElementById('initialFetchRunning').value === '1';
+// Nguồn CSV không có khối tải bình luận, nên phần tử này có thể không tồn tại.
+const fetchFlagEl = document.getElementById('initialFetchRunning');
+let fetchIsRunning = fetchFlagEl ? fetchFlagEl.value === '1' : false;
 let annotateIsRunning = document.getElementById('initialAnnotateRunning').value === '1';
 
 // ---- Bootstrap Popover for token labeling ----
@@ -438,6 +613,26 @@ document.addEventListener('click', function(e) {
     }
 });
 
+/*
+  Tô màu một token. `suggested` = đang hiển thị đề xuất của AI mà người dùng
+  CHƯA xác nhận -> vẽ nét đứt, nhạt hơn, để không nhầm với nhãn của chính mình.
+*/
+function paintToken(tokenEl, color, suggested) {
+    tokenEl.classList.toggle('token-labeled', Boolean(color) && !suggested);
+    tokenEl.classList.toggle('token-ai-suggested', Boolean(color) && Boolean(suggested));
+    if (!color) {
+        tokenEl.style.backgroundColor = '';
+        tokenEl.style.borderColor = '';
+        tokenEl.style.color = '';
+        tokenEl.style.fontWeight = '';
+        return;
+    }
+    tokenEl.style.backgroundColor = suggested ? 'transparent' : color + '33';
+    tokenEl.style.borderColor = color;
+    tokenEl.style.color = color;
+    tokenEl.style.fontWeight = suggested ? '500' : '600';
+}
+
 async function applyTokenLabel(tokenEl, labelId, labelName, labelColor) {
     const commentId = tokenEl.dataset.commentId;
     const tokenPosition = tokenEl.dataset.tokenPosition;
@@ -455,20 +650,11 @@ async function applyTokenLabel(tokenEl, labelId, labelName, labelColor) {
         if (data.success) {
             tokenEl.dataset.manualLabelId = labelId || '';
             tokenEl.dataset.manualLabelColor = labelColor || '';
-
-            if (labelColor) {
-                tokenEl.classList.add('token-labeled');
-                tokenEl.style.backgroundColor = labelColor + '33';
-                tokenEl.style.borderColor = labelColor;
-                tokenEl.style.color = labelColor;
-                tokenEl.style.fontWeight = '600';
-            } else {
-                tokenEl.classList.remove('token-labeled');
-                tokenEl.style.backgroundColor = '';
-                tokenEl.style.borderColor = '';
-                tokenEl.style.color = '';
-                tokenEl.style.fontWeight = '';
-            }
+            // Người dùng đã tự quyết định ở token này -> không còn là đề xuất,
+            // kể cả khi họ gỡ nhãn (gỡ cũng là một quyết định).
+            tokenEl.dataset.aiSuggested = '0';
+            paintToken(tokenEl, labelColor, false);
+            dismissAiPanel(commentId);
 
             syncLinkStatus();
             showToast(I18N.tokenLabeled(tokenEl.textContent, labelName), 'success');
@@ -490,7 +676,46 @@ document.querySelectorAll('.token-word').forEach(function(token) {
 });
 
 // ---- Dynamic comment label buttons ----
-function buildCommentLabelButtons(commentId, currentLabelId) {
+/* Vẽ huy hiệu nhãn của chính người dùng trên một comment. */
+function paintCommentBadge(commentId, myLabel) {
+    const badge = document.getElementById(`commentLabel-${commentId}`);
+    // Không có nhãn của mình thì để nguyên huy hiệu server đã render (có thể
+    // là đề xuất của AI) — ghi đè ở đây sẽ xoá mất đề xuất đó khỏi màn hình.
+    if (!badge || !myLabel) return;
+    badge.removeAttribute('title');
+    if (myLabel && myLabel.id) {
+        badge.className = 'badge';
+        badge.style.cssText = 'background-color:' + myLabel.color + ';color:#fff';
+        badge.textContent = myLabel.name;
+    } else {
+        // Đã xét và kết luận "không nhãn" — vẫn là một quyết định, khác hẳn
+        // với chưa gán, nên hiển thị chữ O chứ không phải "Bạn chưa gán".
+        badge.className = 'badge';
+        badge.style.cssText = 'background-color:#9ca3af;color:#fff';
+        badge.textContent = (myLabel && myLabel.name) || I18N.noneLabel;
+    }
+}
+
+/* Bỏ ô "AI đề xuất" của một comment sau khi người dùng đã tự quyết định. */
+function dismissAiPanel(commentId) {
+    const panel = document.getElementById(`aiSuggestion-${commentId}`);
+    if (panel) panel.remove();
+    const card = document.getElementById(`comment-${commentId}`);
+    if (card) card.classList.remove('ai-suggested', 'unlabeled');
+}
+
+/*
+  `myLabel` = nhãn CỦA CHÍNH người dùng trên câu này, hoặc null/undefined nếu
+  họ chưa gán gì.
+
+  Phải phân biệt hai trạng thái mà trước đây bị gộp làm một:
+    - chưa gán gì cả            -> KHÔNG nút nào sáng
+    - đã xét và chọn "không nhãn" -> nút "Không có" sáng ({id: null})
+  Gộp lại thì nút "Không có" luôn sáng sẵn ở mọi câu chưa gán, trông như đã
+  được chọn; người dùng bấm vào để "xác nhận" và vô tình tạo ra một nhãn O thật
+  trong dữ liệu.
+*/
+function buildCommentLabelButtons(commentId, myLabel) {
     const container = document.getElementById(`commentLabelButtons-${commentId}`);
     if (!container) return;
     container.innerHTML = '<span>' + I18N.commentLabel + '</span>';
@@ -500,11 +725,14 @@ function buildCommentLabelButtons(commentId, currentLabelId) {
         btn.className = 'btn btn-sm comment-label-btn';
         btn.style.borderColor = label.color;
         btn.style.color = label.color;
-        if (currentLabelId === label.id) {
+        if (myLabel && myLabel.id === label.id) {
             btn.style.backgroundColor = label.color + '33';
             btn.classList.add('active-label-btn');
         }
-        btn.innerHTML = `<span class="label-color-dot" style="background-color: ${label.color};"></span> ${label.name}`;
+        const dotEl = document.createElement('span');
+        dotEl.className = 'label-color-dot';
+        dotEl.style.backgroundColor = label.color;
+        btn.replaceChildren(dotEl, document.createTextNode(' ' + label.name));
         btn.addEventListener('click', function() {
             applyCommentLabel(commentId, label.id, label.name, label.color);
         });
@@ -513,11 +741,13 @@ function buildCommentLabelButtons(commentId, currentLabelId) {
 
     const noneBtn = document.createElement('button');
     noneBtn.className = 'btn btn-sm btn-outline-secondary comment-label-btn';
-    if (!currentLabelId) {
+    if (myLabel && !myLabel.id) {
         noneBtn.style.backgroundColor = '#f8f9fa';
         noneBtn.classList.add('active-label-btn');
     }
-    noneBtn.innerHTML = `<i class="bi bi-dash-circle"></i> ${I18N.noneLabel}`;
+    const noneIcon = document.createElement('i');
+    noneIcon.className = 'bi bi-dash-circle';
+    noneBtn.replaceChildren(noneIcon, document.createTextNode(' ' + I18N.noneLabel));
     noneBtn.addEventListener('click', function() {
         applyCommentLabel(commentId, null, I18N.noneLabel, null);
     });
@@ -536,42 +766,16 @@ async function applyCommentLabel(commentId, labelId, labelName, labelColor) {
         });
         const data = await response.json();
         if (data.success) {
-            const container = document.getElementById(`commentLabelButtons-${commentId}`);
-            if (container) {
-                container.querySelectorAll('.comment-label-btn').forEach(function(btn) {
-                    btn.classList.remove('active-label-btn');
-                    btn.style.backgroundColor = '';
-                });
-
-                if (labelId) {
-                    const buttons = container.querySelectorAll('.comment-label-btn');
-                    buttons.forEach(function(btn) {
-                        if (btn.textContent.trim() === labelName) {
-                            btn.classList.add('active-label-btn');
-                            btn.style.backgroundColor = labelColor + '33';
-                        }
-                    });
-                    const badge = document.getElementById(`commentLabel-${commentId}`);
-                    if (badge) {
-                        badge.style.backgroundColor = labelColor;
-                        badge.style.color = '#fff';
-                        badge.textContent = labelName;
-                        badge.className = 'badge';
-                        badge.style.backgroundColor = labelColor;
-                    }
-                } else {
-                    const noneBtn = container.querySelector('.btn-outline-secondary');
-                    if (noneBtn) {
-                        noneBtn.classList.add('active-label-btn');
-                        noneBtn.style.backgroundColor = '#f8f9fa';
-                    }
-                    const badge = document.getElementById(`commentLabel-${commentId}`);
-                    if (badge) {
-                        badge.className = 'badge bg-warning text-dark';
-                        badge.textContent = I18N.noneLabel;
-                    }
-                }
-            }
+            // Dựng lại cả dải nút từ nhãn server vừa xác nhận. Trước đây tìm
+            // nút đang chọn bằng cách so khớp CHỮ trên nút với tên nhãn — hai
+            // nhãn trùng tên hoặc tên có khoảng trắng thừa là sáng nhầm nút.
+            const mine = data.my_label
+                || (labelId ? { id: labelId, name: labelName, color: labelColor }
+                            : { id: null, name: I18N.noneLabel });
+            buildCommentLabelButtons(commentId, mine);
+            paintCommentBadge(commentId, mine);
+            // Người dùng đã tự quyết định -> ô đề xuất của AI không còn việc gì.
+            dismissAiPanel(commentId);
 
             syncLinkStatus();
             showToast(I18N.commentLabeled(labelName), 'success');
@@ -584,34 +788,75 @@ async function applyCommentLabel(commentId, labelId, labelName, labelColor) {
     }
 }
 
+// ---- "Đồng ý với AI": nhận đề xuất của AI làm nhãn của chính mình ----
+async function acceptAiSuggestion(commentId, button) {
+    button.disabled = true;
+    try {
+        const response = await fetch(`/api/comments/${commentId}/accept-ai/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': CSRF_VALUE, 'Content-Type': 'application/json' },
+            body: '{}',
+        });
+        const data = await response.json();
+        if (!data.success) {
+            showToast(data.error || I18N.failedSetLabel, 'error');
+            button.disabled = false;
+            return;
+        }
+
+        // Nhãn câu: từ đề xuất nét đứt thành nhãn đặc của người dùng.
+        paintCommentBadge(commentId, data.my_label);
+        buildCommentLabelButtons(commentId, data.my_label);
+
+        // Token: vẽ lại theo nhãn vừa nhận, giờ đã là nhãn của mình.
+        (data.tokens || []).forEach(function(token) {
+            const el = document.querySelector(
+                `.token-word[data-comment-id="${commentId}"][data-token-position="${token.position}"]`
+            );
+            if (!el) return;
+            const mine = token.my_label;
+            el.dataset.manualLabelId = mine ? (mine.id || '') : '';
+            el.dataset.manualLabelColor = mine ? (mine.color || '') : '';
+            el.dataset.aiSuggested = '0';
+            paintToken(el, mine ? mine.color : '', false);
+        });
+
+        dismissAiPanel(commentId);
+
+        syncLinkStatus();
+        showToast(I18N.aiAccepted(data.tokens_accepted || 0), 'success');
+    } catch (err) {
+        console.error('Error accepting AI suggestion:', err);
+        showToast(I18N.errorSettingCommentLabel, 'error');
+        button.disabled = false;
+    }
+}
+
+document.querySelectorAll('.js-accept-ai').forEach(function(button) {
+    button.addEventListener('click', function() {
+        acceptAiSuggestion(button.dataset.commentId, button);
+    });
+});
+
 // ---- Initialize token colors and comment buttons on page load ----
 (function initLabeling() {
     document.querySelectorAll('.token-word').forEach(function(token) {
         const manualColor = token.dataset.manualLabelColor;
         if (manualColor) {
-            token.classList.add('token-labeled');
-            token.style.backgroundColor = manualColor + '33';
-            token.style.borderColor = manualColor;
-            token.style.color = manualColor;
-            token.style.fontWeight = '600';
+            paintToken(token, manualColor, false);
+        } else if (token.dataset.aiSuggested === '1') {
+            // Trước đây màu của AI được đưa xuống DOM nhưng không hề được vẽ,
+            // nên nguồn dữ liệu đã chạy AI xong vẫn trông như trắng trơn.
+            paintToken(token, token.dataset.aiLabelColor, true);
         }
     });
 
     document.querySelectorAll('[id^="commentLabelButtons-"]').forEach(function(container) {
         const commentId = container.id.replace('commentLabelButtons-', '');
         const commentLabel = COMMENT_MANUAL_LABELS[commentId];
-        const currentLabelId = commentLabel ? commentLabel.id : null;
-        buildCommentLabelButtons(commentId, currentLabelId);
+        buildCommentLabelButtons(commentId, commentLabel);
 
-        if (commentLabel) {
-            const badge = document.getElementById(`commentLabel-${commentId}`);
-            if (badge) {
-                badge.className = 'badge';
-                badge.style.backgroundColor = commentLabel.color;
-                badge.style.color = '#fff';
-                badge.textContent = commentLabel.name;
-            }
-        }
+        if (commentLabel) paintCommentBadge(commentId, commentLabel);
     });
 
     updateFetchButtons(fetchIsRunning);
@@ -641,7 +886,15 @@ function renderLabelFilters() {
         if (isActive) {
             btn.style.backgroundColor = stat.color + '33';
         }
-        btn.innerHTML = `<span class="label-color-dot" style="background-color: ${stat.color};"></span> ${stat.name} (<b id="filter_${stat.id}">${stat.count}</b>)`;
+        // textContent thay vì innerHTML: stat.name do người dùng đặt.
+        const dot = document.createElement('span');
+        dot.className = 'label-color-dot';
+        dot.style.backgroundColor = stat.color;
+        const nameNode = document.createTextNode(' ' + stat.name + ' (');
+        const countNode = document.createElement('b');
+        countNode.id = 'filter_' + stat.id;
+        countNode.textContent = stat.count;
+        btn.replaceChildren(dot, nameNode, countNode, document.createTextNode(')'));
         container.appendChild(btn);
     });
 }
@@ -756,7 +1009,18 @@ function showToast(message, type) {
     const bgClass = type === 'error' ? 'bg-danger text-white' : type === 'success' ? 'bg-success text-white' : 'bg-info text-white';
     toastEl.className = `toast align-items-center text-white ${bgClass} border-0 position-fixed bottom-0 end-0 m-3 show`;
     toastEl.setAttribute('role', 'alert');
-    toastEl.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    // message có thể chứa nội dung từ server; dựng bằng DOM API, không innerHTML.
+    const wrap = document.createElement('div');
+    wrap.className = 'd-flex';
+    const body = document.createElement('div');
+    body.className = 'toast-body';
+    body.textContent = message;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'btn-close btn-close-white me-2 m-auto';
+    close.setAttribute('data-bs-dismiss', 'toast');
+    wrap.append(body, close);
+    toastEl.replaceChildren(wrap);
     document.body.appendChild(toastEl);
     setTimeout(() => toastEl.remove(), 4000);
 }
@@ -778,7 +1042,7 @@ function updateProgressCard(prefix, data) {
         else if (data.status === 'cancelled') status.classList.add('text-warning');
     }
     if (percent) percent.textContent = `${data.progress}%`;
-    if (data.status === 'failed' && data.error_message) {
+    if (step && data.status === 'failed' && data.error_message) {
         step.textContent = data.error_message;
     } else if (step) {
         step.textContent = data.step || '';
@@ -943,20 +1207,24 @@ function updateAnnotateButtons(running) {
 function updateStatsCards(stats) {
     const total = document.getElementById('totalCommentsCount');
     const annotated = document.getElementById('annotatedCommentsCount');
-    const unannotated = document.getElementById('unannotatedCommentsCount');
+    const pending = document.getElementById('manualPendingCount');
     const continueBtn = document.getElementById('continueAnnotationBtn');
-    const unannotatedCount = Number(stats.unannotated_count || 0);
+    // unannotated_count = số câu AI CHƯA xử lý; nó điều khiển nút chạy tiếp AI,
+    // khác với manual_pending_count là phần việc còn lại của người đang xem.
+    const aiPendingCount = Number(stats.unannotated_count || 0);
 
     if (total) total.textContent = stats.total_comments ?? total.textContent;
     if (annotated) annotated.textContent = stats.annotated_comments ?? annotated.textContent;
+    if (pending) pending.textContent = stats.manual_pending_count ?? pending.textContent;
     if (stats.label_stats) {
         for (let stat of stats.label_stats) {
-            document.getElementById('labelStat_' + stat.id).textContent = stat.count
-            document.getElementById('filter_' + stat.id).textContent = stat.count
+            const statEl = document.getElementById('labelStat_' + stat.id);
+            const filterEl = document.getElementById('filter_' + stat.id);
+            if (statEl) statEl.textContent = stat.count;
+            if (filterEl) filterEl.textContent = stat.count;
         }
     }
-    if (unannotated) unannotated.textContent = unannotatedCount;
-    if (continueBtn) continueBtn.style.display = unannotatedCount > 0 ? 'inline-flex' : 'none';
+    if (continueBtn) continueBtn.style.display = aiPendingCount > 0 ? 'inline-flex' : 'none';
 }
 
 function toggleVideoPlayer() {

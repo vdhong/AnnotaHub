@@ -3,46 +3,67 @@
 {% block title %}{{ project.name }} - AnnotaHub{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+{% include "comments/_project_nav.html" with active='overview' %}
+
+<div class="page-head">
     <div>
-        <h2>
-            <i class="bi bi-folder-fill"></i> {{ project.name }}
+        <h1 class="h4 mb-1">
+            <i class="bi bi-collection"></i> {% trans "Overview" %}
             {% if is_owner %}
-            <span class="badge bg-primary ms-2">{% trans "Owner" %}</span>
+            <span class="badge bg-primary ms-1">{% trans "Owner" %}</span>
             {% elif is_participant %}
-            <span class="badge bg-secondary ms-2">{% trans "Participant" %}</span>
+            <span class="badge bg-secondary ms-1">{% trans "Participant" %}</span>
             {% endif %}
-            {% if project.is_locked %} <span class="badge bg-warning ms-2">{% trans "Locked" %}</span>{% endif %}
-        </h2>
-        <p class="text-muted mb-0">{{ project.description }}</p>
+        </h1>
+        {% if project.description %}
+        <p class="text-muted mb-1">{{ project.description }}</p>
+        {% endif %}
         <small class="text-muted">{% trans "Owner" %}: {{ project.owner.username }}</small>
     </div>
-    <div>
-        <a href="{% url 'comments:project_export' project.id %}" class="btn btn-outline-success">
-            <i class="bi bi-download"></i> {% trans "Export" %}
-        </a>
-        {% if is_owner %}
-        <a href="{% url 'comments:project_labels_settings' project.id %}" class="btn btn-outline-info">
-            <i class="bi bi-tags"></i> {% trans "Labels" %}
-        </a>
-        <a href="{% url 'comments:project_manage_participants' project.id %}" class="btn btn-outline-warning">
-            <i class="bi bi-people"></i> {% trans "Participants" %} ({{ participants.count }})
-        </a>
-        <a href="{% url 'comments:project_edit' project.id %}" class="btn btn-outline-secondary">
+    {% if is_owner %}
+    <div class="page-head__actions">
+        <a href="{% url 'comments:project_edit' project.id %}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-pencil"></i> {% trans "Edit" %}
         </a>
-        <button class="btn btn-outline-danger" onclick="confirmDelete()">
+        <button class="btn btn-sm btn-outline-secondary" onclick="confirmLock()">
+            <i class="bi bi-lock"></i>
+            {% if project.is_locked %}{% trans "Unlock" %}{% else %}{% trans "Lock" %}{% endif %}
+        </button>
+        <button class="btn btn-sm btn-outline-danger" onclick="confirmDelete()">
             <i class="bi bi-trash"></i> {% trans "Delete" %}
         </button>
-        <button class="btn btn-outline-secondary" onclick="confirmLock()">
-            <i class="bi bi-lock"></i>{% if project.is_locked %} {% trans "Unlock" %} {% else %} {% trans "Lock" %} {% endif %}
-        </button>
+    </div>
+    {% endif %}
+</div>
+
+{% if viewing_as_admin %}
+<div class="alert alert-warning d-flex align-items-center">
+    <i class="bi bi-shield-exclamation me-2"></i>
+    <div>
+        {% blocktrans with owner=project.owner.username %}Đây là dự án của <b>{{ owner }}</b>.
+        Bạn thấy được nhờ quyền quản trị hệ thống — <b>không phải</b> vì bạn sở hữu dự án này.
+        Mọi thay đổi sẽ tác động lên dữ liệu của người khác.{% endblocktrans %}
+    </div>
+</div>
+{% endif %}
+
+{% if project.is_locked %}
+<div class="alert alert-secondary d-flex align-items-start">
+    <i class="bi bi-lock-fill me-2 mt-1"></i>
+    <div>
+        {% trans "Dự án đang bị khoá: mọi thao tác thay đổi dữ liệu và gán nhãn đều bị chặn." %}
+        {% if is_owner %}
+        <div class="small mt-1">
+            {% blocktrans %}Các mục <b>Nhãn</b>, <b>Phân xử</b> và <b>Nhập CSV</b> tạm ẩn vì không dùng được khi khoá.
+            Bấm <b>Mở khoá</b> ở trên để hiện lại.{% endblocktrans %}
+        </div>
         {% endif %}
     </div>
 </div>
+{% endif %}
 
 <!-- Add Link Form (Owner only) -->
-{% if is_owner %}
+{% if is_owner and not project.is_locked %}
 <div class="card mb-4">
     <div class="card-body">
         <h5 class="card-title"><i class="bi bi-link"></i> {% trans "Add YouTube Link" %}</h5>
@@ -64,7 +85,7 @@
 <!-- Links List -->
 <div class="card">
     <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> {% blocktrans count links.count as count %}YouTube Link ({{ count }}){% plural %}YouTube Links ({{ count }}){% endblocktrans %}</h5>
+        <h5 class="mb-0"><i class="bi bi-list-ul"></i> {% blocktrans count count=links|length %}Nguồn dữ liệu ({{ count }}){% plural %}Nguồn dữ liệu ({{ count }}){% endblocktrans %}</h5>
     </div>
     <div class="card-body p-0">
         {% if links %}
@@ -102,7 +123,7 @@
 
             <div class="ms-3">
                 <a href="{% url 'comments:link_detail' link.id %}" class="btn btn-sm btn-outline-info">{% trans "Details" %}</a>
-                {% if is_owner %}
+                {% if is_owner and not project.is_locked %}
                 <form method="post" action="{% url 'comments:delete_youtube_link' link.id %}" class="d-inline" onsubmit="return confirm('{% trans "Delete this link and all related data?" %}')">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -116,11 +137,16 @@
         {% else %}
         <div class="text-center py-4">
             <i class="bi bi-link-45deg" style="font-size: 2rem; color: #dee2e6;"></i>
-            <p class="text-muted mt-2">{% trans "No YouTube links yet. Add a link above to get started." %}</p>
+            <p class="text-muted mt-2">
+                {% if project.is_locked %}{% trans "Chưa có nguồn dữ liệu nào. Mở khoá dự án để thêm nguồn." %}
+                {% else %}{% trans "No YouTube links yet. Add a link above to get started." %}{% endif %}
+            </p>
         </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
 
 {% if is_owner %}
 <form id="deleteForm" method="post" action="{% url 'comments:project_delete' project.id %}" style="display:none;">

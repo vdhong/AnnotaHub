@@ -1,0 +1,38 @@
+# Cấu hình CHỒNG cho môi trường phát triển.
+# Docker Compose tự nạp file này khi chạy `docker compose up`.
+#
+# Production KHÔNG dùng file này — deploy bằng:
+#     docker compose -f docker-compose.yml up -d
+#
+# Khác biệt so với production:
+# - Mount mã nguồn từ host để sửa code không phải build lại image.
+# - Không mount đè thư mục staticfiles (giữ bản đã collect trong image).
+services:
+  web:
+    volumes:
+      - ./annotahub:/app/annotahub
+      - ./comments:/app/comments
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./locale:/app/locale
+      - ./manage.py:/app/manage.py
+      - media_data:/app/media
+      - export_data:/app/exports
+      - ./backups:/app/backups
+
+  celery_worker:
+    volumes:
+      - ./annotahub:/app/annotahub
+      - ./comments:/app/comments
+      - ./templates:/app/templates
+      - ./manage.py:/app/manage.py
+      - media_data:/app/media
+      - export_data:/app/exports
+      - ./backups:/app/backups
+
+  celery_beat:
+    volumes:
+      - ./annotahub:/app/annotahub
+      - ./comments:/app/comments
+      - ./manage.py:/app/manage.py
+      - ./backups:/app/backups

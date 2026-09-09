@@ -1,0 +1,229 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Chất lượng gán nhãn" %} — {{ project.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .metric { border:1px solid #e5e7eb; border-radius:.75rem; padding:1.25rem; background:#fff; height:100%; }
+  .metric .val { font-size:2rem; font-weight:700; line-height:1.1; }
+  .metric .lbl { font-size:.8rem; color:#6b7280; text-transform:uppercase; letter-spacing:.03em; }
+  .bar { height:8px; border-radius:4px; background:#e9ecef; overflow:hidden; }
+  .bar > i { display:block; height:100%; }
+  .scale { display:flex; font-size:.7rem; color:#6b7280; }
+  .scale > div { flex:1; text-align:center; border-top:3px solid; padding-top:.25rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+  {% include "comments/_project_nav.html" with active='quality' %}
+
+  <div class="page-head">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-graph-up"></i> {% trans "Chất lượng gán nhãn" %}</h1>
+      <p class="text-muted mb-0">
+        {% blocktrans %}Độ đồng thuận giữa những người gán nhãn — chỉ số bắt buộc để bộ dữ liệu có giá trị công bố.{% endblocktrans %}
+      </p>
+    </div>
+    <div class="page-head__actions">
+      <a href="{% url 'comments:project_adjudicate' project.id %}" class="btn btn-sm btn-outline-warning">
+        <i class="bi bi-hammer"></i> {% trans "Phân xử bất đồng" %}
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="metric">
+        <div class="lbl">{% trans "Krippendorff's α" %}</div>
+        <div class="val">
+          {% if report.krippendorff_alpha is not None %}{{ report.krippendorff_alpha }}{% else %}—{% endif %}
+        </div>
+        <div class="small text-muted">{{ report.alpha_interpretation }}</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="metric">
+        <div class="lbl">{% trans "Đồng thuận thô" %}</div>
+        <div class="val">
+          {% if report.percent_agreement is not None %}{{ report.percent_agreement }}{% else %}—{% endif %}
+        </div>
+        <div class="small text-muted">
+          {% blocktrans with n=report.percent_agreement_units %}trên {{ n }} bình luận{% endblocktrans %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="metric">
+        <div class="lbl">{% trans "Có nhiều annotator" %}</div>
+        <div class="val">{{ report.multi_annotated_units }}</div>
+        <div class="small text-muted">
+          {% blocktrans with total=report.total_comments %}/ {{ total }} bình luận{% endblocktrans %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="metric">
+        <div class="lbl">{% trans "Số annotator" %}</div>
+        <div class="val">{{ report.annotator_count }}</div>
+        <div class="small text-muted">
+          {% blocktrans with n=project.annotators_per_comment %}cấu hình: {{ n }}/bình luận{% endblocktrans %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if report.krippendorff_alpha is None %}
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    {% blocktrans %}Chưa có bình luận nào được hai người trở lên gán nhãn, nên chưa tính được độ đồng thuận.
+    Vào <b>Cài đặt nhãn</b> để đặt "số annotator mỗi bình luận" lớn hơn 1, rồi phân công công việc.{% endblocktrans %}
+  </div>
+  {% else %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h2 class="h6">{% trans "Thang diễn giải" %}</h2>
+      <div class="scale">
+        <div style="border-color:#dc3545">&lt; 0.20<br>{% trans "rất thấp" %}</div>
+        <div style="border-color:#fd7e14">0.20–0.40<br>{% trans "thấp" %}</div>
+        <div style="border-color:#ffc107">0.40–0.60<br>{% trans "trung bình" %}</div>
+        <div style="border-color:#20c997">0.667–0.80<br>{% trans "chấp nhận công bố" %}</div>
+        <div style="border-color:#198754">&gt; 0.80<br>{% trans "tốt" %}</div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">{% trans "Đồng thuận theo cặp (Cohen's κ)" %}</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr>
+              <th>{% trans "Annotator A" %}</th><th>{% trans "Annotator B" %}</th>
+              <th class="text-end">κ</th><th class="text-end">{% trans "Chung" %}</th>
+              <th>{% trans "Đánh giá" %}</th>
+            </tr></thead>
+            <tbody>
+              {% for row in report.pairwise_kappa %}
+              <tr>
+                <td>{{ row.annotator_a }}</td>
+                <td>{{ row.annotator_b }}</td>
+                <td class="text-end fw-bold">{{ row.kappa|default:"—" }}</td>
+                <td class="text-end text-muted">{{ row.overlap }}</td>
+                <td class="small">{{ row.interpretation }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted py-3">
+                {% trans "Chưa có cặp annotator nào cùng gán nhãn một bình luận." %}
+              </td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card h-100">
+        <div class="card-header">{% trans "Năng suất annotator" %}</div>
+        <div class="table-responsive">
+          <table class="table table-sm mb-0">
+            <thead><tr>
+              <th>{% trans "Người gán nhãn" %}</th>
+              <th class="text-end">{% trans "Đã gán" %}</th>
+              <th class="text-end">{% trans "TB (giây)" %}</th>
+            </tr></thead>
+            <tbody>
+              {% for row in productivity %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td class="text-end fw-bold">{{ row.annotated }}</td>
+                <td class="text-end text-muted">{{ row.avg_seconds }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-center text-muted py-3">
+                {% trans "Chưa có ai gán nhãn thủ công." %}
+              </td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header d-flex align-items-center gap-2">
+      <i class="bi bi-robot"></i> {% trans "AI gán trước — người soát lại" %}
+      <span class="text-muted small ms-auto">
+        {% blocktrans %}Đối chiếu nhãn người gán với đề xuất của AI trên cùng một đối tượng.{% endblocktrans %}
+      </span>
+    </div>
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="text-muted small mb-2">{% trans "Cấp câu" %}</div>
+          <div class="d-flex flex-wrap gap-4">
+            <div><div class="text-muted small">{% trans "Đã soát" %}</div>
+                 <div class="h5 mb-0">{{ ai_review.comments.reviewed }}</div></div>
+            <div><div class="text-muted small">{% trans "AI đúng" %}</div>
+                 <div class="h5 mb-0 text-success">{{ ai_review.comments.matched }}</div></div>
+            <div><div class="text-muted small">{% trans "Người sửa" %}</div>
+                 <div class="h5 mb-0 text-danger">{{ ai_review.comments.corrected }}</div></div>
+            <div><div class="text-muted small">{% trans "AI bỏ sót" %}</div>
+                 <div class="h5 mb-0 text-warning">{{ ai_review.comments.ai_missed }}</div></div>
+            <div><div class="text-muted small">{% trans "Tỷ lệ đúng" %}</div>
+                 <div class="h5 mb-0">{% if ai_review.comments.accuracy != None %}{{ ai_review.comments.accuracy }}%{% else %}—{% endif %}</div></div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="text-muted small mb-2">{% trans "Cấp token" %}</div>
+          <div class="d-flex flex-wrap gap-4">
+            <div><div class="text-muted small">{% trans "Đã soát" %}</div>
+                 <div class="h5 mb-0">{{ ai_review.tokens.reviewed }}</div></div>
+            <div><div class="text-muted small">{% trans "AI đúng" %}</div>
+                 <div class="h5 mb-0 text-success">{{ ai_review.tokens.matched }}</div></div>
+            <div><div class="text-muted small">{% trans "Người sửa" %}</div>
+                 <div class="h5 mb-0 text-danger">{{ ai_review.tokens.corrected }}</div></div>
+            <div><div class="text-muted small">{% trans "AI bỏ sót" %}</div>
+                 <div class="h5 mb-0 text-warning">{{ ai_review.tokens.ai_missed }}</div></div>
+            <div><div class="text-muted small">{% trans "Tỷ lệ đúng" %}</div>
+                 <div class="h5 mb-0">{% if ai_review.tokens.accuracy != None %}{{ ai_review.tokens.accuracy }}%{% else %}—{% endif %}</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="small text-muted mt-3">
+        {% blocktrans %}<b>Đã soát</b>: chỗ có cả đề xuất của AI lẫn nhãn của người.
+        <b>AI bỏ sót</b>: người gán nhãn ở chỗ AI không có ý kiến.
+        Số liệu tính lại từ dữ liệu nên đúng cả với phần đã gán trước khi có tính năng này.{% endblocktrans %}
+        {% if ai_review.pending_ai_comments %}
+        <div class="mt-1">
+          {% blocktrans count n=ai_review.pending_ai_comments %}Còn <b>{{ n }}</b> đề xuất của AI chưa ai soát.{% plural %}Còn <b>{{ n }}</b> đề xuất của AI chưa ai soát.{% endblocktrans %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-header">{% trans "Trạng thái phân xử" %}</div>
+    <div class="card-body d-flex flex-wrap gap-4">
+      <div><div class="text-muted small">{% trans "Chờ thêm annotator" %}</div>
+           <div class="h5 mb-0">{{ status_counts.pending|default:0 }}</div></div>
+      <div><div class="text-muted small">{% trans "Đồng thuận" %}</div>
+           <div class="h5 mb-0 text-success">{{ status_counts.agreed|default:0 }}</div></div>
+      <div><div class="text-muted small">{% trans "Bất đồng" %}</div>
+           <div class="h5 mb-0 text-danger">{{ status_counts.conflict|default:0 }}</div></div>
+      <div><div class="text-muted small">{% trans "Đã phân xử" %}</div>
+           <div class="h5 mb-0 text-primary">{{ status_counts.adjudicated|default:0 }}</div></div>
+      <div class="ms-auto align-self-center">
+        <a href="{% url 'comments:project_adjudicate' project.id %}" class="btn btn-warning">
+          <i class="bi bi-scales"></i> {% trans "Phân xử bất đồng" %}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "comments/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Phân xử bất đồng" %} — {{ project.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .conflict-card { border:1px solid #ffe0b2; border-left:4px solid #fd7e14; border-radius:.5rem; background:#fff; }
+  .ann-chip { display:inline-flex; align-items:center; gap:.35rem; border:1px solid #dee2e6;
+              border-radius:1rem; padding:.15rem .6rem; font-size:.8rem; }
+  .ann-dot { width:.6rem; height:.6rem; border-radius:50%; display:inline-block; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+  {% include "comments/_project_nav.html" with active='adjudicate' %}
+
+  <div class="page-head">
+    <div>
+      <h1 class="h4 mb-1"><i class="bi bi-hammer"></i> {% trans "Phân xử bất đồng" %}</h1>
+      <p class="text-muted mb-0">
+        {% blocktrans count n=page_obj.paginator.count %}Có {{ n }} bình luận mà các annotator không thống nhất.{% plural %}Có {{ n }} bình luận mà các annotator không thống nhất.{% endblocktrans %}
+      </p>
+    </div>
+    <div class="page-head__actions">
+      <a href="{% url 'comments:project_quality' project.id %}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-graph-up"></i> {% trans "Bảng chất lượng" %}
+      </a>
+    </div>
+  </div>
+
+  {% if not page_obj.object_list %}
+  <div class="card"><div class="card-body text-center py-5">
+    <i class="bi bi-check2-circle text-success" style="font-size:3rem"></i>
+    <h2 class="h5 mt-3">{% trans "Không có bất đồng nào" %}</h2>
+    <p class="text-muted mb-0">{% trans "Tất cả bình luận đã đồng thuận hoặc đã được phân xử." %}</p>
+  </div></div>
+  {% endif %}
+
+  <div class="d-flex flex-column gap-3">
+    {% for comment in page_obj.object_list %}
+    <div class="conflict-card p-3" data-comment-id="{{ comment.id }}">
+      <div class="d-flex justify-content-between align-items-start mb-2">
+        <small class="text-muted">
+          <i class="bi bi-link-45deg"></i> {{ comment.youtube_link.title|default:comment.youtube_link.video_id|truncatechars:60 }}
+        </small>
+        <span class="badge bg-warning text-dark">{% trans "Bất đồng" %}</span>
+      </div>
+
+      <p class="mb-3" style="font-size:1.05rem">{{ comment.text }}</p>
+
+      <div class="mb-3 d-flex flex-wrap gap-2">
+        {% for annotation in comment.annotations.all %}
+        <span class="ann-chip">
+          {% if annotation.project_label %}
+          <span class="ann-dot" style="background:{{ annotation.project_label.display_color }}"></span>
+          {% endif %}
+          <b>{% if annotation.annotator %}{{ annotation.annotator.get_full_name|default:annotation.annotator.username }}{% else %}AI{% endif %}</b>
+          <span class="text-muted">→</span>
+          <span>{{ annotation.label_name }}</span>
+        </span>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="small text-muted me-2">{% trans "Chốt nhãn:" %}</span>
+        {% for label in project_labels %}
+        <button class="btn btn-sm btn-outline-dark js-adjudicate"
+                data-comment="{{ comment.id }}" data-label="{{ label.id }}">
+          <span class="ann-dot" style="background:{{ label.color }}"></span> {{ label.name }}
+        </button>
+        {% endfor %}
+        <button class="btn btn-sm btn-outline-secondary js-adjudicate"
+                data-comment="{{ comment.id }}" data-label="">
+          {% trans "Không nhãn (O)" %}
+        </button>
+        <span class="js-result small ms-2"></span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.has_other_pages %}
+  <nav class="mt-4"><ul class="pagination justify-content-center">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">{% trans "Trước" %}</a></li>
+    {% endif %}
+    <li class="page-item active"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">{% trans "Sau" %}</a></li>
+    {% endif %}
+  </ul></nav>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+
+<script>
+"use strict";
+const CSRF = "{{ csrf_token }}";
+const MSG_OK = "{% trans 'Đã chốt' %}";
+const MSG_ERR = "{% trans 'Lỗi' %}";
+
+document.querySelectorAll('.js-adjudicate').forEach((button) => {
+  button.addEventListener('click', async () => {
+    const commentId = button.dataset.comment;
+    const labelId = button.dataset.label || null;
+    const card = button.closest('.conflict-card');
+    const result = card.querySelector('.js-result');
+    result.textContent = '…';
+    try {
+      const response = await fetch(`/api/comments/${commentId}/adjudicate/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label_id: labelId }),
+      });
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      result.className = 'js-result small ms-2 text-success';
+      result.textContent = MSG_OK;
+      card.style.opacity = '.45';
+      card.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    } catch (err) {
+      result.className = 'js-result small ms-2 text-danger';
+      result.textContent = MSG_ERR;
+    }
+  });
+});
+</script>
+{% endblock %}

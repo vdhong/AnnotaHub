@@ -1,10 +1,14 @@
+import hashlib
+import secrets
+import uuid
+from pathlib import Path
+
+from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from django.contrib.auth.models import User
-import uuid
-import hashlib
-import secrets
+
+from .fields import EncryptedCharField, mask_secret
 
 
 class EmailVerification(models.Model):
@@ -127,7 +131,8 @@ class UserSettings(models.Model):
         help_text='User who owns these settings'
     )
     # YouTube API Configuration
-    youtube_api_key = models.CharField(
+    # Mã hoá at-rest: bản dump SQL không còn lộ khoá của người dùng.
+    youtube_api_key = EncryptedCharField(
         max_length=500,
         blank=True,
         default='',
@@ -140,7 +145,7 @@ class UserSettings(models.Model):
         default='',
         help_text='Ollama API base URL (e.g., http://localhost:11434)'
     )
-    ollama_api_key = models.CharField(
+    ollama_api_key = EncryptedCharField(
         max_length=500,
         blank=True,
         default='',
@@ -195,6 +200,14 @@ class UserSettings(models.Model):
         from django.conf import settings
         return self.ollama_model.strip() or settings.OLLAMA_MODEL or ''
 
+    @property
+    def youtube_api_key_masked(self):
+        return mask_secret(self.youtube_api_key)
+
+    @property
+    def ollama_api_key_masked(self):
+        return mask_secret(self.ollama_api_key)
+
 
 class Label(models.Model):
     """
@@ -226,32 +239,57 @@ class Label(models.Model):
         return f"{self.name} (by {self.owner.username})"
 
     def is_in_use(self):
-        """Check if this label is currently used in any comments or tokens."""
-        # Check via ProjectLabel relationships
-        project_labels = self.projectlabels.all()
-        if project_labels.exists():
-            # Check if any token or comment references these project labels
-            pl_ids = project_labels.values_list('id', flat=True)
-            if Token.objects.filter(ai_label_id__in=pl_ids).exists():
-                return True
-            if Token.objects.filter(manual_label_id__in=pl_ids).exists():
-                return True
-            if Comment.objects.filter(ai_label_id__in=pl_ids).exists():
-                return True
-            if Comment.objects.filter(manual_label_id__in=pl_ids).exists():
-                return True
-        return False
+        """True nếu nhãn đang được dùng ở bất kỳ comment hay token nào."""
+        pl_ids = list(self.projectlabels.values_list('id', flat=True))
+        if not pl_ids:
+            return False
+        label_filter = Q(ai_label_id__in=pl_ids) | Q(manual_label_id__in=pl_ids) | Q(gold_label_id__in=pl_ids)
+        return (
+            Comment.objects.filter(label_filter).exists()
+            or Token.objects.filter(label_filter).exists()
+        )
 
     def usage_count(self):
-        """Count how many times this label is used across all projects."""
-        pl_ids = self.projectlabels.values_list('id', flat=True)
-        token_count = Token.objects.filter(
-            Q(ai_label_id__in=pl_ids) | Q(manual_label_id__in=pl_ids)
-        ).count()
-        comment_count = Comment.objects.filter(
-            Q(ai_label_id__in=pl_ids) | Q(manual_label_id__in=pl_ids)
-        ).count()
-        return token_count + comment_count
+        """Số lần nhãn này được dùng trên toàn hệ thống."""
+        return type(self).usage_counts_for([self]).get(self.id, 0)
+
+    @classmethod
+    def usage_counts_for(cls, labels):
+        """
+        Đếm mức sử dụng cho nhiều nhãn trong 2 truy vấn, thay vì 4-6 truy vấn
+        COUNT toàn bảng cho mỗi nhãn như trước.
+        Trả về {label_id: tổng số lần dùng}.
+        """
+        labels = list(labels)
+        if not labels:
+            return {}
+
+        label_ids = [label.id for label in labels]
+        pl_rows = ProjectLabel.objects.filter(label_id__in=label_ids).values_list(
+            'id', 'label_id'
+        )
+        pl_to_label = dict(pl_rows)
+        if not pl_to_label:
+            return {label.id: 0 for label in labels}
+
+        pl_ids = list(pl_to_label)
+        counts = {label.id: 0 for label in labels}
+
+        for model in (Comment, Token):
+            rows = (
+                model.objects.filter(
+                    Q(ai_label_id__in=pl_ids) | Q(manual_label_id__in=pl_ids)
+                )
+                .values('ai_label_id', 'manual_label_id')
+                .annotate(n=models.Count('id'))
+            )
+            for row in rows:
+                for key in ('ai_label_id', 'manual_label_id'):
+                    pl_id = row[key]
+                    if pl_id in pl_to_label:
+                        counts[pl_to_label[pl_id]] += row['n']
+
+        return counts
 
 
 class Project(models.Model):
@@ -276,6 +314,21 @@ class Project(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     is_locked = models.BooleanField(default=False)
+
+    # --- Cấu hình quy trình gán nhãn ---
+    guideline = models.TextField(
+        blank=True, default='',
+        help_text='Hướng dẫn gán nhãn hiển thị cho annotator (hỗ trợ xuống dòng)'
+    )
+    annotators_per_comment = models.PositiveSmallIntegerField(
+        default=1,
+        help_text='Số annotator cần gán nhãn mỗi comment trước khi chốt nhãn vàng'
+    )
+    auto_adjudicate = models.BooleanField(
+        default=True,
+        help_text='Tự động chốt nhãn vàng khi các annotator đồng thuận tuyệt đối'
+    )
+
     class Meta:
         ordering = ['-created_at']
 
@@ -288,7 +341,8 @@ class Project(models.Model):
 
     @property
     def total_comments(self):
-        return sum(link.comments.count() for link in self.youtubelinks.all())
+        # Một truy vấn COUNT, không lặp qua từng link.
+        return Comment.objects.filter(youtube_link__project=self).count()
 
     @property
     def available_labels(self):
@@ -348,12 +402,42 @@ class ProjectLabel(models.Model):
     def display_color(self):
         return self.override_color or self.label.color
 
+    @classmethod
+    def usage_counts_for(cls, project_labels):
+        """
+        Đếm số comment/token dùng mỗi ProjectLabel trong 2 truy vấn gộp.
+        Trả về {project_label_id: {'comments': n, 'tokens': m}}.
+        """
+        project_labels = list(project_labels)
+        if not project_labels:
+            return {}
+
+        pl_ids = [pl.id for pl in project_labels]
+        result = {pl.id: {'comments': 0, 'tokens': 0} for pl in project_labels}
+
+        for model, key in ((Comment, 'comments'), (Token, 'tokens')):
+            rows = (
+                model.objects.filter(
+                    Q(ai_label_id__in=pl_ids) | Q(manual_label_id__in=pl_ids)
+                )
+                .values('ai_label_id', 'manual_label_id')
+                .annotate(n=models.Count('id'))
+            )
+            for row in rows:
+                for field in ('ai_label_id', 'manual_label_id'):
+                    pl_id = row[field]
+                    if pl_id in result:
+                        result[pl_id][key] += row['n']
+
+        return result
+
 
 class TaskProgress(models.Model):
     """Track progress of async tasks (comment fetching, annotation)."""
     TASK_TYPES = (
         ('fetching', 'Fetching Comments'),
         ('annotating', 'Annotating Comments'),
+        ('importing', 'Importing CSV'),
     )
     TASK_STATUSES = (
         ('pending', 'Pending'),
@@ -371,7 +455,10 @@ class TaskProgress(models.Model):
     task_id = models.CharField(max_length=255, blank=True, default='', db_index=True)
     status = models.CharField(max_length=20, choices=TASK_STATUSES, default='pending')
     progress_percent = models.IntegerField(default=0)
+    # Khoá thông điệp (comments.task_messages), không phải câu viết sẵn: worker
+    # không biết người xem dùng ngôn ngữ nào.
     current_step = models.TextField(blank=True, default='')
+    step_params = models.JSONField(default=dict, blank=True)
     total_items = models.IntegerField(default=0)
     processed_items = models.IntegerField(default=0)
     error_message = models.TextField(blank=True, default='')
@@ -391,12 +478,24 @@ class TaskProgress(models.Model):
 
 class YouTubeLink(models.Model):
     """Stores YouTube video links associated with a project."""
+    KIND_CHOICES = (
+        ('youtube', 'YouTube video'),
+        ('csv', 'CSV import'),
+        ('manual', 'Nhập thủ công'),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         Project, on_delete=models.CASCADE, related_name='youtubelinks'
     )
+    # kind cho phép cùng một bảng chứa nguồn dữ liệu ngoài YouTube (CSV, nhập tay)
+    # mà không phải viết lại toàn bộ quan hệ Comment/Token.
+    kind = models.CharField(
+        max_length=20, choices=KIND_CHOICES, default='youtube', db_index=True,
+        help_text='Loại nguồn dữ liệu'
+    )
     video_id = models.CharField(max_length=100, db_index=True)
-    url = models.URLField(max_length=2048)
+    url = models.URLField(max_length=2048, blank=True, default='')
     title = models.CharField(max_length=500, blank=True, default='')
     channel = models.CharField(max_length=255, blank=True, default='')
     thumbnail = models.URLField(max_length=1024, blank=True, default='')
@@ -439,7 +538,14 @@ class Comment(models.Model):
     author = models.CharField(max_length=255, blank=True, default='')
     author_channel_url = models.URLField(max_length=1024, blank=True, default='')
     avatar_url = models.URLField(max_length=1024, blank=True, default='')
+    # text: bản chuẩn hoá dùng để hiển thị và gán nhãn (có thể là bản dịch).
     text = models.TextField()
+    # source_text: văn bản gốc lấy từ nguồn, không bao giờ bị ghi đè.
+    # Đây là bản sao bất biến để có thể tái lập lại toàn bộ pipeline.
+    source_text = models.TextField(
+        blank=True, default='',
+        help_text='Văn bản gốc từ nguồn dữ liệu — bất biến, không bao giờ ghi đè'
+    )
     original_text = models.TextField(
         blank=True, default='',
         help_text='Original comment text if it was translated (non-Vietnamese)'
@@ -450,6 +556,14 @@ class Comment(models.Model):
         default=None,
         help_text='Whether the comment contains meaningful content that should be labeled'
     )
+    # Phân biệt "AI đã xử lý và kết luận nhãn O" với "AI chưa xử lý". Gộp cả
+    # hai vào ai_label=NULL thì mỗi lần chạy lại, comment AI đã kết luận O lại
+    # bị gửi sang LLM một lần nữa.
+    ai_processed = models.BooleanField(
+        default=False, db_index=True,
+        help_text='AI đã xử lý comment này (kể cả khi kết luận là nhãn O)'
+    )
+    ai_processed_at = models.DateTimeField(null=True, blank=True)
     like_count = models.IntegerField(default=0)
     published_at = models.DateTimeField(null=True, blank=True)
     updated_at_source = models.DateTimeField(null=True, blank=True)
@@ -471,6 +585,28 @@ class Comment(models.Model):
         on_delete=models.SET_NULL,
         related_name='comments_manual_labeled',
         help_text='Label assigned by user (overrides AI label for display)'
+    )
+
+    # Nhãn vàng: kết quả chốt sau khi tổng hợp/phân xử nhiều annotator.
+    # manual_label được giữ lại như bản sao tương thích ngược của gold_label.
+    gold_label = models.ForeignKey(
+        'ProjectLabel',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='comments_gold_labeled',
+        help_text='Nhãn chốt cuối cùng sau khi phân xử'
+    )
+    REVIEW_STATUSES = (
+        ('pending', 'Chưa đủ annotator'),
+        ('agreed', 'Đồng thuận'),
+        ('conflict', 'Bất đồng — cần phân xử'),
+        ('adjudicated', 'Đã phân xử'),
+    )
+    review_status = models.CharField(
+        max_length=20, choices=REVIEW_STATUSES, default='pending', db_index=True
+    )
+    manual_annotation_count = models.PositiveSmallIntegerField(
+        default=0, help_text='Số annotator đã gán nhãn comment này'
     )
 
     toxicity_confidence = models.FloatField(
@@ -501,6 +637,11 @@ class Comment(models.Model):
         indexes = [
             models.Index(fields=['youtube_link', 'ai_label']),
             models.Index(fields=['youtube_link', 'youtube_comment_id']),
+            # Các truy vấn đếm/lọc nóng trên trang link_detail và API status.
+            models.Index(fields=['youtube_link', 'manual_label']),
+            models.Index(fields=['youtube_link', 'is_meaningful']),
+            models.Index(fields=['youtube_link', 'ai_processed']),
+            models.Index(fields=['youtube_link', 'review_status']),
         ]
         unique_together = ('youtube_link', 'youtube_comment_id')
 
@@ -511,36 +652,39 @@ class Comment(models.Model):
     @property
     def effective_label(self):
         """
-        Return the effective label for this comment.
-        Priority: manual_label > ai_label
+        Nhãn hiệu lực để hiển thị và xuất dữ liệu.
+        Thứ tự ưu tiên: gold_label (đã phân xử) > manual_label > ai_label.
         """
-        return self.manual_label or self.ai_label
+        return self.gold_label or self.manual_label or self.ai_label
+
     @property
     def labeled(self):
-        if self.effective_label:
-            return self.effective_label
+        return self.effective_label
+
     @property
     def toxicity_label(self):
-        if self.effective_label:
-            return self.effective_label.display_name
-        return 'O'
+        eff = self.effective_label
+        return eff.display_name if eff else 'O'
+
     @property
     def is_annotated(self):
         return self.effective_label is not None
 
     @property
-    def is_toxic(self):
-        """Backward compat: check if effective label name contains 'toxic'."""
-        if self.effective_label:
-            return self.effective_label.display_name
-        return False
+    def is_toxic(self) -> bool:
+        """
+        True khi nhãn hiệu lực khác nhãn trung tính 'O'.
+        """
+        eff = self.effective_label
+        if not eff:
+            return False
+        return eff.label.name.strip().upper() != 'O'
 
     @property
-    def is_non_toxic(self):
-        """Backward compat: check if effective label is neutral/O."""
-        eff = self.effective_label
-        return not eff or eff.label.name.upper() == 'O'
-        
+    def is_non_toxic(self) -> bool:
+        return not self.is_toxic
+
+
     @property
     def was_translated(self):
         """True if the comment was likely translated from Vietnamese."""
@@ -592,7 +736,7 @@ class Comment(models.Model):
         if not text:
             return []
 
-        from .services.ollama_service import tokenize_text
+        from .services.tokenization import tokens_from_cache
 
         token_rows = {token.position: token for token in self.tokens.all()}
         return [{
@@ -604,11 +748,15 @@ class Comment(models.Model):
             'ai_label': token_rows[idx].ai_label_data if idx in token_rows else None,
             'manual_label': token_rows[idx].manual_label_data if idx in token_rows else None,
             'effective_label': token_rows[idx].effective_label_data if idx in token_rows else None,
+            'span_group': (
+                str(token_rows[idx].span_group) if idx in token_rows and token_rows[idx].span_group
+                else None
+            ),
             # Backward compat
             'is_toxic': token_rows[idx].is_toxic if idx in token_rows else False,
             'toxicity_score': token_rows[idx].toxicity_score if idx in token_rows else None,
             'annotation_source': token_rows[idx].annotation_source if idx in token_rows else 'manual',
-        } for idx, token in enumerate(tokenize_text(text))]
+        } for idx, token in enumerate(tokens_from_cache(text))]
 
     def ensure_token_inventory(self):
         """
@@ -618,7 +766,7 @@ class Comment(models.Model):
         if not text:
             return []
 
-        from .services.ollama_service import tokenize_text
+        from .services.tokenization import tokenize_text
 
         token_data_list = tokenize_text(text)
         existing = {token.position: token for token in self.tokens.all()}
@@ -652,7 +800,7 @@ class Comment(models.Model):
         if not text:
             return None
 
-        from .services.ollama_service import tokenize_text
+        from .services.tokenization import tokenize_text
 
         tokens = tokenize_text(text)
         if position < 0 or position >= len(tokens):
@@ -679,16 +827,6 @@ class Comment(models.Model):
         """True when the comment was deemed not meaningful and skipped."""
         return self.is_meaningful is False
 
-    def update_comment_label(self):
-        """Update legacy toxicity_label based on token annotations (backward compat)."""
-        # eff = self.effective_label
-        # if eff and eff.label.name.upper() != 'O':
-        #     self.toxicity_label = 'toxic'
-        # elif self.tokens.exists():
-        #     self.toxicity_label = 'non_toxic'
-        # if self.tokens.exists():
-        #     self.is_meaningful = True
-        # self.save(update_fields=['toxicity_label', 'is_meaningful', 'updated_at'])
 
 
 class Token(models.Model):
@@ -720,6 +858,23 @@ class Token(models.Model):
         help_text='Label assigned by user (overrides AI label for display)'
     )
 
+    gold_label = models.ForeignKey(
+        'ProjectLabel',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='tokens_gold_labeled',
+        help_text='Nhãn chốt cuối cùng sau khi phân xử'
+    )
+
+    # Định danh cụm (span) mà token này thuộc về.
+    # Không có trường này thì hai token cạnh nhau cùng nhãn là mơ hồ: không biết
+    # đó là một cụm hai từ hay HAI cụm một từ. Mọi bộ công cụ sequence-labeling
+    # (BIO/IOB2) đều cần phân biệt này, nên phải lưu tường minh chứ không suy đoán.
+    span_group = models.UUIDField(
+        null=True, blank=True, db_index=True,
+        help_text='Các token cùng một cụm chia sẻ chung giá trị này'
+    )
+
     # Legacy fields
     toxicity_score = models.FloatField(
         null=True, blank=True,
@@ -749,20 +904,19 @@ class Token(models.Model):
     @property
     def effective_label(self):
         """
-        Return the effective label for this token.
-        Priority: manual_label > ai_label
+        Nhãn hiệu lực của token.
+        Thứ tự ưu tiên: gold_label > manual_label > ai_label.
         """
-        return self.manual_label or self.ai_label
+        return self.gold_label or self.manual_label or self.ai_label
 
     @property
     def labeled(self):
-        if self.effective_label:
-            return self.effective_label
+        return self.effective_label
+
     @property
     def toxicity_label(self):
-        if self.effective_label:
-            return self.effective_label.display_name
-        return 'O'
+        eff = self.effective_label
+        return eff.display_name if eff else 'O'
 
     @property
     def effective_label_data(self):
@@ -799,33 +953,41 @@ class Token(models.Model):
         }
 
     @property
-    def is_toxic(self):
-        """Backward compat: check if effective label is toxic-like."""
-        if self.effective_label:
-            return self.effective_label is not None
-        return False
-
-    @is_toxic.setter
-    def is_toxic(self, value):
-        """Allow setting is_toxic for backward compat during migration."""
-        # Store as private to avoid recursion
-        object.__setattr__(self, '_is_toxic_compat', value)
-
-    def _get_is_toxic(self):
-        if self.effective_label:
-            return self.effective_label is not None
-        return False
+    def is_toxic(self) -> bool:
+        """
+        True khi token mang nhãn khác 'O'.
+        """
+        eff = self.effective_label
+        if not eff:
+            return False
+        return eff.label.name.strip().upper() != 'O'
 
 
 class ExportRecord(models.Model):
-    """Record of data exports."""
+    """Lịch sử xuất dữ liệu."""
+
+    # Danh sách này chỉ để Admin hiển thị nhãn dễ đọc. Nguồn sự thật về các định
+    # dạng khả dụng là comments.export_service.EXPORT_FORMATS: không import ở
+    # đây để tránh vòng lặp import (export_service import từ models).
     EXPORT_FORMATS = (
-        ('json_sentence', 'JSON - Sentence Level'),
-        ('json_token', 'JSON - Token Level'),
-        ('json_llm', 'JSON - LLM Training'),
-        ('xml_conll', 'XML - CoNLL Format'),
-        ('csv_sentence', 'CSV - Sentence Level'),
-        ('csv_token', 'CSV - Token Level'),
+        ('conll', 'CoNLL-2003 (token + BIO)'),
+        ('conll_full', 'CoNLL extended (with offsets)'),
+        ('hf_jsonl', 'HuggingFace datasets JSONL'),
+        ('spacy_json', 'spaCy training JSON'),
+        ('doccano_jsonl', 'Doccano JSONL'),
+        ('label_studio_json', 'Label Studio JSON'),
+        ('json_sentence', 'JSON - sentence level'),
+        ('json_token', 'JSON - token level'),
+        ('jsonl', 'JSONL - token level'),
+        ('xml', 'XML - full structure'),
+        ('csv_sentence', 'CSV - sentence level'),
+        ('csv_token', 'CSV - token level'),
+        ('csv_spans', 'CSV - labelled spans only'),
+        ('csv_annotations', 'CSV - per annotation'),
+        ('xlsx', 'Excel workbook'),
+        ('json_llm', 'JSONL - LLM fine-tuning'),
+        # Tên cũ, giữ lại để đọc được các bản ghi lịch sử.
+        ('xml_conll', 'XML (legacy name)'),
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -837,22 +999,372 @@ class ExportRecord(models.Model):
         related_name='exports'
     )
     export_format = models.CharField(max_length=30, choices=EXPORT_FORMATS)
+    # Lưu 'all' hoặc tên nhãn được lọc. Không khai báo choices cố định vì giá
+    # trị thực tế là tên nhãn của từng dự án, không phải một tập đóng.
     filter_toxicity = models.CharField(
-        max_length=20,
-        choices=(
-            ('all', 'All Comments'),
-            ('toxic', 'Toxic Only'),
-            ('non_toxic', 'Non-Toxic Only'),
-        ),
-        default='all'
+        max_length=100, default='all', blank=True,
+        help_text="'all' hoặc tên nhãn được dùng để lọc"
     )
     comment_count = models.IntegerField(default=0)
     token_count = models.IntegerField(default=0)
     file_size = models.CharField(max_length=50, blank=True, default='')
     generated_at = models.DateTimeField(default=timezone.now)
 
+    # --- Chạy nền -----------------------------------------------------------
+    # Xuất dữ liệu lớn mất vài phút, vượt quá thời gian chờ của trình duyệt và
+    # của reverse proxy. Giờ mỗi lần xuất là một công việc chạy nền, và chính
+    # bản ghi lịch sử này mang trạng thái + tiến độ + đường dẫn file kết quả.
+    STATUSES = (
+        ('pending', 'Chờ xử lý'),
+        ('running', 'Đang xuất'),
+        ('ready', 'Sẵn sàng tải'),
+        ('failed', 'Thất bại'),
+    )
+
+    # Mặc định 'ready': các bản ghi lịch sử tạo trước khi có tính năng chạy nền
+    # đều đã xuất xong (chỉ là không còn file để tải).
+    status = models.CharField(max_length=20, choices=STATUSES, default='ready')
+    progress_percent = models.IntegerField(default=0)
+    current_step = models.TextField(blank=True, default='')
+    file_path = models.CharField(max_length=500, blank=True, default='')
+    file_bytes = models.BigIntegerField(default=0)
+    error_message = models.TextField(blank=True, default='')
+    review_filter = models.CharField(max_length=20, default='all', blank=True)
+    requested_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='export_records'
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         ordering = ['-generated_at']
+        indexes = [
+            models.Index(fields=['project', 'status']),
+        ]
 
     def __str__(self):
         return f"Export: {self.export_format} - {self.project.name}"
+
+    @property
+    def is_running(self) -> bool:
+        return self.status in ('pending', 'running')
+
+    @property
+    def can_download(self) -> bool:
+        return (
+            self.status == 'ready'
+            and bool(self.file_path)
+            and Path(self.file_path).is_file()
+        )
+
+    @property
+    def download_name(self) -> str:
+        safe = ''.join(
+            ch if ch.isalnum() or ch in '-_' else '-' for ch in self.project.name
+        )[:60]
+        return (
+            f'{safe}_{self.export_format}_'
+            f'{self.generated_at:%Y%m%d-%H%M%S}{Path(self.file_path).suffix}'
+        )
+
+# ---------------------------------------------------------------------------
+# Hệ thống gán nhãn đa người (multi-annotator)
+# ---------------------------------------------------------------------------
+# Mỗi Comment/Token chỉ có một manual_label thì người gán nhãn sau ghi đè im
+# lặng lên người trước: không ai biết ai đã gán gì, và không tính được độ đồng
+# thuận giữa các annotator (IAA).
+#
+# Các bảng dưới đây lưu annotation của từng người. Cột manual_label/gold_label
+# trên Comment/Token được giữ lại như bản sao đã tính sẵn (denormalised) để
+# truy vấn hiển thị và export nhanh, đồng bộ qua recompute_gold_label().
+
+ANNOTATION_SOURCES = (
+    ('ai', 'AI'),
+    ('manual', 'Người gán nhãn'),
+    ('adjudicated', 'Phân xử bởi chủ dự án'),
+)
+
+
+class CommentAnnotation(models.Model):
+    """Nhãn cấp câu do một annotator (hoặc AI) gán cho một comment."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, related_name='annotations'
+    )
+    annotator = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='comment_annotations',
+        help_text='NULL nghĩa là do AI gán'
+    )
+    source = models.CharField(max_length=20, choices=ANNOTATION_SOURCES, default='manual')
+    project_label = models.ForeignKey(
+        'ProjectLabel',
+        null=True, blank=True,
+        on_delete=models.CASCADE,
+        related_name='comment_annotations',
+        help_text='NULL nghĩa là annotator chọn "không nhãn" (tương đương O)'
+    )
+    is_meaningful = models.BooleanField(null=True, blank=True, default=None)
+    confidence = models.FloatField(null=True, blank=True)
+    note = models.TextField(blank=True, default='', help_text='Ghi chú của annotator')
+    time_spent_ms = models.PositiveIntegerField(
+        default=0, help_text='Thời gian gán nhãn (ms) — dùng đo năng suất'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['comment', 'annotator', 'source'],
+                name='uniq_comment_annotation_per_annotator',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['comment', 'source']),
+            models.Index(fields=['annotator', 'created_at']),
+        ]
+
+    def __str__(self):
+        who = self.annotator.username if self.annotator else 'AI'
+        label = self.project_label.display_name if self.project_label else 'O'
+        return f'{who} -> {label}'
+
+    @property
+    def label_name(self) -> str:
+        return self.project_label.display_name if self.project_label else 'O'
+
+
+class TokenAnnotation(models.Model):
+    """Nhãn cấp token do một annotator (hoặc AI) gán."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    token = models.ForeignKey(
+        'Token', on_delete=models.CASCADE, related_name='annotations'
+    )
+    annotator = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='token_annotations',
+    )
+    source = models.CharField(max_length=20, choices=ANNOTATION_SOURCES, default='manual')
+    project_label = models.ForeignKey(
+        'ProjectLabel',
+        null=True, blank=True,
+        on_delete=models.CASCADE,
+        related_name='token_annotations',
+    )
+    score = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['token', 'annotator', 'source'],
+                name='uniq_token_annotation_per_annotator',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['token', 'source']),
+            models.Index(fields=['annotator', 'created_at']),
+        ]
+
+    def __str__(self):
+        who = self.annotator.username if self.annotator else 'AI'
+        label = self.project_label.display_name if self.project_label else 'O'
+        return f'{who} -> {label} @{self.token_id}'
+
+
+class AnnotationAssignment(models.Model):
+    """
+    Phân công một comment cho một annotator.
+
+    Cho phép chia đều khối lượng công việc và biết ai còn nợ bao nhiêu comment.
+    """
+
+    STATUSES = (
+        ('pending', 'Chưa làm'),
+        ('done', 'Đã gán nhãn'),
+        ('skipped', 'Bỏ qua'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='assignments'
+    )
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, related_name='assignments'
+    )
+    annotator = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='annotation_assignments'
+    )
+    status = models.CharField(max_length=20, choices=STATUSES, default='pending', db_index=True)
+    assigned_at = models.DateTimeField(default=timezone.now)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['assigned_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['comment', 'annotator'], name='uniq_assignment_per_annotator'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['annotator', 'status']),
+            models.Index(fields=['project', 'status']),
+        ]
+
+    def __str__(self):
+        return f'{self.annotator.username}: {self.comment_id} [{self.status}]'
+
+
+class AnnotationEvent(models.Model):
+    """
+    Nhật ký kiểm toán (audit trail): ghi lại mọi thay đổi nhãn.
+
+    Cho phép truy vết ai đã đổi gì, khi nào, và khôi phục khi có người gán sai
+    hàng loạt.
+    """
+
+    ACTIONS = (
+        ('comment_label', 'Gán nhãn câu'),
+        ('token_label', 'Gán nhãn token'),
+        ('adjudicate', 'Phân xử'),
+        ('ai_annotate', 'AI gán nhãn'),
+        ('accept_ai', 'Chấp nhận đề xuất của AI'),
+        ('reset', 'Xoá nhãn hàng loạt'),
+        ('skip', 'Đánh dấu không có nghĩa'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='annotation_events'
+    )
+    comment = models.ForeignKey(
+        Comment, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='events'
+    )
+    token_position = models.IntegerField(null=True, blank=True)
+    actor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='annotation_events'
+    )
+    action = models.CharField(max_length=30, choices=ACTIONS)
+    old_value = models.CharField(max_length=200, blank=True, default='')
+    new_value = models.CharField(max_length=200, blank=True, default='')
+    detail = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['project', '-created_at']),
+            models.Index(fields=['comment', '-created_at']),
+            models.Index(fields=['actor', '-created_at']),
+        ]
+
+    def __str__(self):
+        who = self.actor.username if self.actor else 'system'
+        return f'[{self.created_at:%Y-%m-%d %H:%M}] {who} {self.action}: {self.old_value} -> {self.new_value}'
+
+
+class DatasetVersion(models.Model):
+    """
+    Ảnh chụp (snapshot) một phiên bản dataset đã xuất.
+
+    Cho phép tái lập kết quả nghiên cứu: mỗi lần công bố dataset sẽ ghim lại
+    số lượng, checksum và file kết quả.
+    """
+
+    STATUSES = (
+        ('building', 'Đang tạo'),
+        ('ready', 'Sẵn sàng'),
+        ('failed', 'Thất bại'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='dataset_versions'
+    )
+    version = models.CharField(max_length=50, help_text='Ví dụ: v1.0, 2026-09-03')
+    notes = models.TextField(blank=True, default='')
+    export_format = models.CharField(max_length=30, default='json_token')
+    status = models.CharField(max_length=20, choices=STATUSES, default='building')
+    progress_percent = models.IntegerField(default=0)
+    current_step = models.TextField(blank=True, default='')
+    file_path = models.CharField(max_length=500, blank=True, default='')
+    snapshot_path = models.CharField(
+        max_length=500, blank=True, default='',
+        help_text='Ảnh chụp nhãn ở dạng chuẩn, dùng để phục hồi dự án về '
+                  'phiên bản này. Khác file_path: file_path là bản xuất cho '
+                  'người dùng cuối, có định dạng do người tạo chọn.'
+    )
+    checksum_sha256 = models.CharField(max_length=64, blank=True, default='')
+    comment_count = models.IntegerField(default=0)
+    token_count = models.IntegerField(default=0)
+    annotator_count = models.IntegerField(default=0)
+    agreement_score = models.FloatField(
+        null=True, blank=True,
+        help_text="Krippendorff's alpha tại thời điểm chốt phiên bản"
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='dataset_versions'
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['project', 'version'], name='uniq_dataset_version_per_project'
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.project.name} @ {self.version} ({self.status})'
+
+    @property
+    def file_exists(self) -> bool:
+        """File xuất còn nằm trên đĩa hay không (volume có thể đã bị xoá)."""
+        return bool(self.file_path) and Path(self.file_path).is_file()
+
+    @property
+    def can_download(self) -> bool:
+        return self.status == 'ready' and self.file_exists
+
+    @property
+    def can_restore(self) -> bool:
+        """
+        Chỉ phục hồi được khi có ảnh chụp chuẩn.
+
+        Các phiên bản chốt trước khi tính năng phục hồi ra đời không có
+        snapshot_path: nút phục hồi sẽ bị vô hiệu hoá thay vì báo lỗi.
+        """
+        return (
+            self.status == 'ready'
+            and bool(self.snapshot_path)
+            and Path(self.snapshot_path).is_file()
+        )
+
+    @property
+    def download_name(self) -> str:
+        """Tên file khi tải về: có tên dự án và tên phiên bản."""
+        safe = ''.join(
+            ch if ch.isalnum() or ch in '-_' else '-' for ch in self.project.name
+        )[:60]
+        return f'{safe}_{self.version}{Path(self.file_path).suffix}'
+
+    @property
+    def file_size_bytes(self) -> int:
+        try:
+            return Path(self.file_path).stat().st_size
+        except OSError:
+            return 0

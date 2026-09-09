@@ -1,0 +1,124 @@
+{% load i18n %}
+{% comment %}
+  Thanh điều hướng dùng chung cho MỌI trang con của một dự án.
+  Mọi trang đều có cùng một luồng: breadcrumb → tên dự án → dải tab.
+
+  Tham số:
+    project   — đối tượng Project (bắt buộc)
+    active    — slug tab đang mở: overview | labels | members | quality
+                | adjudicate | versions | import | export | edit
+    is_owner  — True nếu người xem có quyền cấp chủ sở hữu (ẩn/hiện tab)
+    link      — (tuỳ chọn) nguồn dữ liệu, thêm một cấp breadcrumb
+    sub       — (tuỳ chọn) slug cấp cuối bên dưới `link`: annotate
+    compact   — (tuỳ chọn) True thì chỉ hiện breadcrumb, bỏ tên dự án và dải
+                tab — dùng cho màn hình cần tập trung (focus mode)
+
+  Dự án bị khoá: các tab mà MỌI thao tác đều bị chặn (Nhãn, Phân xử, Nhập CSV)
+  bị ẩn thay vì để người dùng bấm vào rồi nhận thông báo lỗi. Xem
+  `require_unlocked=True` trong views.py / api_views.py.
+{% endcomment %}
+<nav class="project-nav{% if compact %} project-nav--compact{% endif %}"
+     aria-label="{% trans "Project navigation" %}">
+  <ol class="breadcrumb">
+    <li class="breadcrumb-item">
+      <a href="{% url 'comments:project_list' %}">{% trans "Projects" %}</a>
+    </li>
+
+    {% if link or active != 'overview' %}
+    <li class="breadcrumb-item">
+      <a href="{% url 'comments:project_detail' project.id %}">{{ project.name }}</a>
+    </li>
+    {% else %}
+    <li class="breadcrumb-item active" aria-current="page">{{ project.name }}</li>
+    {% endif %}
+
+    {% if link %}
+      {% if sub %}
+      <li class="breadcrumb-item">
+        <a href="{% url 'comments:link_detail' link.id %}">{{ link.title|default:link.video_id }}</a>
+      </li>
+      <li class="breadcrumb-item active" aria-current="page">
+        {% if sub == 'annotate' %}{% trans "Gán nhãn" %}{% endif %}
+      </li>
+      {% else %}
+      <li class="breadcrumb-item active" aria-current="page">
+        {{ link.title|default:link.video_id }}
+      </li>
+      {% endif %}
+    {% elif active != 'overview' %}
+    <li class="breadcrumb-item active" aria-current="page">
+      {% if active == 'labels' %}{% trans "Labels" %}
+      {% elif active == 'members' %}{% trans "Participants" %}
+      {% elif active == 'quality' %}{% trans "Chất lượng" %}
+      {% elif active == 'adjudicate' %}{% trans "Phân xử" %}
+      {% elif active == 'versions' %}{% trans "Phiên bản" %}
+      {% elif active == 'import' %}{% trans "Nhập CSV" %}
+      {% elif active == 'export' %}{% trans "Export" %}
+      {% elif active == 'edit' %}{% trans "Settings" %}
+      {% endif %}
+    </li>
+    {% endif %}
+  </ol>
+
+  {% if not compact %}
+  <div class="project-nav__bar">
+    <a class="project-nav__title" href="{% url 'comments:project_detail' project.id %}">
+      <i class="bi bi-folder-fill"></i> <span>{{ project.name }}</span>
+    </a>
+    {% if project.is_locked %}
+    <span class="badge bg-warning text-dark">
+      <i class="bi bi-lock-fill"></i> {% trans "Locked" %}
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="project-tabs">
+    <a href="{% url 'comments:project_detail' project.id %}"
+       class="project-tab{% if active == 'overview' %} active{% endif %}">
+      <i class="bi bi-collection"></i> {% trans "Overview" %}
+    </a>
+    {% if is_owner %}
+    {% if not project.is_locked %}
+    <a href="{% url 'comments:project_labels_settings' project.id %}"
+       class="project-tab{% if active == 'labels' %} active{% endif %}">
+      <i class="bi bi-tags"></i> {% trans "Labels" %}
+    </a>
+    {% endif %}
+    <a href="{% url 'comments:project_manage_participants' project.id %}"
+       class="project-tab{% if active == 'members' %} active{% endif %}">
+      <i class="bi bi-people"></i> {% trans "Participants" %}
+    </a>
+    <a href="{% url 'comments:project_quality' project.id %}"
+       class="project-tab{% if active == 'quality' %} active{% endif %}">
+      <i class="bi bi-graph-up"></i> {% trans "Chất lượng" %}
+    </a>
+    {% if not project.is_locked %}
+    <a href="{% url 'comments:project_adjudicate' project.id %}"
+       class="project-tab{% if active == 'adjudicate' %} active{% endif %}">
+      <i class="bi bi-hammer"></i> {% trans "Phân xử" %}
+    </a>
+    {% endif %}
+    {% endif %}
+    <a href="{% url 'comments:project_versions' project.id %}"
+       class="project-tab{% if active == 'versions' %} active{% endif %}">
+      <i class="bi bi-bookmark-check"></i> {% trans "Phiên bản" %}
+    </a>
+    {% if is_owner and not project.is_locked %}
+    <a href="{% url 'comments:import_csv' project.id %}"
+       class="project-tab{% if active == 'import' %} active{% endif %}">
+      <i class="bi bi-filetype-csv"></i> {% trans "Nhập CSV" %}
+    </a>
+    {% endif %}
+    <a href="{% url 'comments:project_export' project.id %}"
+       class="project-tab{% if active == 'export' %} active{% endif %}">
+      <i class="bi bi-download"></i> {% trans "Export" %}
+    </a>
+    {% if is_owner %}
+    <a href="{% url 'comments:project_edit' project.id %}"
+       class="project-tab{% if active == 'edit' %} active{% endif %}">
+      <i class="bi bi-gear"></i> {% trans "Settings" %}
+    </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</nav>

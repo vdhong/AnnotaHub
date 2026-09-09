@@ -1,0 +1,40 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+exclude = [
+    ".git", "__pycache__", "staticfiles", "media", "backups",
+    "comments/migrations",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes — biến chưa định nghĩa, import thừa
+    "W",    # cảnh báo
+    "I",    # isort — thứ tự import
+    "B",    # bugbear — bẫy phổ biến
+    "DJ",   # quy ước Django
+    "UP",   # cú pháp lỗi thời
+    "C4",   # comprehension
+    "PIE",  # dọn dẹp linh tinh
+]
+ignore = [
+    "E501",   # độ dài dòng đã do formatter lo
+    "B008",   # gọi hàm trong giá trị mặc định (phổ biến trong Django)
+    "DJ001",  # null=True trên CharField (có chỗ dùng hợp lý)
+    "DJ012",  # thứ tự method trong model — thuần thẩm mỹ, không đổi hành vi
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tên `_` bị cấm dùng làm biến bỏ đi trong views.py vì trùng alias gettext.
+"comments/views.py" = []
+"comments/tests/*" = ["S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["annotahub", "comments"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "annotahub.settings"
+python_files = ["test_*.py", "tests.py"]
+addopts = "-q --strict-markers"
+testpaths = ["comments"]

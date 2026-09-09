@@ -1,146 +1,140 @@
 """
-Celery Tasks for YouTube Comment Collection and Toxicity Annotation
+Celery task: tải bình luận từ nguồn dữ liệu và gán nhãn bằng LLM.
+
+Vài chỗ dễ vấp khi sửa file này:
+
+Việc gán nhãn phải chia batch. Chạy tuần tự mười nghìn comment trong một task
+mất chừng tám tiếng, vượt time limit một giờ; task bị giết, rồi vì acks_late
+nên được giao lại và chạy lại từ đầu, đốt tiền API gấp bội.
+
+Cờ ai_processed giữ cho task idempotent: chạy lại không xử lý lại comment đã
+xong.
+
+Huỷ task bằng cờ trong Redis chứ đừng dùng revoke(terminate=True). revoke gửi
+SIGTERM giết cả tiến trình worker, kéo theo mọi task khác đang chạy chung.
+
+task_progress phải được khởi tạo trước mọi nhánh dùng đến nó, kể cả nhánh dự án
+bị khoá. Thiếu một nhánh là task chết vì UnboundLocalError và bản ghi tiến độ
+treo ở trạng thái running vĩnh viễn.
+
+Bảng tra nhãn dựng một lần thành dict, không truy vấn DB cho từng token.
 """
+from __future__ import annotations
+
+import hashlib
 import logging
 import uuid
-from annotahub import settings
-from celery import shared_task
-from django.utils import timezone
-from django.db import transaction
+from pathlib import Path
 
-from .models import YouTubeLink, Comment, Token, TaskProgress, Project, Label, ProjectLabel, UserSettings
-from .services.youtube_service import extract_video_id, get_video_info, fetch_comments
+from celery import shared_task
+from django.conf import settings
+from django.core.cache import cache
+from django.db import transaction
+from django.template.defaultfilters import filesizeformat
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+
+from . import task_messages as msg
+from .models import (
+    Comment,
+    DatasetVersion,
+    ExportRecord,
+    Project,
+    ProjectLabel,
+    TaskProgress,
+    Token,
+    TokenAnnotation,
+    UserSettings,
+    YouTubeLink,
+)
+from .services.annotation import (
+    store_ai_comment_annotation,
+    store_ai_token_annotations,
+)
 from .services.ollama_service import (
-    annotate_comment,
-    process_comment,
+    LLMError,
+    QuotaExhaustedError,
     create_token_annotations,
     get_comment_label_name,
+    process_comment,
 )
+from .services.stats import project_label_map
+from .services.youtube_service import fetch_comments
 
-def _get_owner_settings(project: Project):
+logger = logging.getLogger(__name__)
+
+TERMINAL_TASK_STATUSES = ('completed', 'failed', 'cancelled')
+CANCEL_FLAG_TTL = 60 * 60 * 6
+
+
+# ---------------------------------------------------------------------------
+# Cấu hình theo chủ dự án
+# ---------------------------------------------------------------------------
+def _owner_settings(project: Project) -> UserSettings:
     """
-    Get the UserSettings for the project owner.
-    Returns a UserSettings instance, or None if the owner has no custom settings.
+    Lấy UserSettings của chủ dự án, tạo mới nếu chưa có.
+
+    Luôn get_or_create: chủ dự án chưa từng mở trang Cài đặt thì vẫn phải rơi
+    về cấu hình toàn cục, chứ không phải báo "Chưa thiết lập API KEY".
     """
-    try:
-        return UserSettings.objects.get(user=project.owner)
-    except UserSettings.DoesNotExist:
-        return None
+    obj, _created = UserSettings.objects.get_or_create(user=project.owner)
+    return obj
 
 
-def _get_owner_youtube_api_key(project: Project):
-    """Get YouTube API key from project owner's settings, or None to use global defaults."""
-    owner_settings = _get_owner_settings(project)
-    if owner_settings and owner_settings.has_youtube_api_key:
-        return owner_settings.youtube_api_key
-    return None
+def get_owner_youtube_api_key(project: Project):
+    """YouTube API key của chủ dự án, tự động lùi về cấu hình toàn cục."""
+    return _owner_settings(project).get_youtube_api_key() or None
 
 
-def _get_owner_ollama_config(project: Project):
-    """
-    Get Ollama config from project owner's settings.
-    Returns (base_url, api_key, model) tuple, or (None, None, None) to use global defaults.
-    """
-    owner_settings = _get_owner_settings(project)
-    if owner_settings:
-        return (
-            owner_settings.ollama_base_url or settings.OLLAMA_BASE_URL,
-            owner_settings.ollama_api_key or settings.OLLAMA_API_KEY,
-            owner_settings.ollama_model or settings.OLLAMA_MODEL,
-        )
-    return (None, None, None)
+def get_owner_ollama_config(project: Project):
+    """(base_url, api_key, model) của chủ dự án, tự động lùi về cấu hình toàn cục."""
+    obj = _owner_settings(project)
+    return (
+        obj.get_ollama_base_url(),
+        obj.get_ollama_api_key(),
+        obj.get_ollama_model(),
+    )
 
 
 def _gather_labels_info(youtube_link: YouTubeLink):
-    """
-    Build labels_info list from project's ProjectLabel entries.
-    Returns list of dicts with 'name', 'description', 'color' - or empty list.
-    """
+    """Danh sách định nghĩa nhãn của dự án để đưa vào prompt."""
     project_labels = ProjectLabel.objects.filter(
         project=youtube_link.project
     ).select_related('label')
-    if not project_labels.exists():
-        return None  # Use legacy mode
-    result = []
-    for pl in project_labels:
-        result.append({
-            'name': pl.display_name,
-            'description': pl.display_description or '',
-            'color': pl.display_color,
-        })
-    return result
+    return [{
+        'name': pl.display_name,
+        'description': pl.display_description or '',
+        'color': pl.display_color,
+    } for pl in project_labels]
 
 
-def _find_project_label(project, label_name):
-    """
-    Find a ProjectLabel by label name (case-insensitive).
-    Returns the ProjectLabel instance or None.
-    """
-    if not label_name:
-        return None
-    for pl in ProjectLabel.objects.filter(project=project).select_related('label'):
-        if pl.label.name.lower() == label_name.lower():
-            return pl
-    return None
+# ---------------------------------------------------------------------------
+# Cờ huỷ mềm
+# ---------------------------------------------------------------------------
+def _cancel_key(link_id: str) -> str:
+    return f'cancel:link:{link_id}'
 
 
-def _apply_labels_to_comment(comment, annotation, youtube_link, labels_info):
-    """
-    Apply comment-level AI label from annotation result to the comment via ProjectLabel.
-    Also handles token-level AI labels.
-    Each token/comment gets exactly ONE ai_label (from AI) and optionally ONE manual_label (from user).
-    """
-    project = youtube_link.project
-
-    # --- Comment-level AI label ---
-    comment_label_name = get_comment_label_name(annotation)
-    comment.ai_label = _find_project_label(project, comment_label_name)
-
-    # --- Token-level AI labels ---
-    vietnamese_text = annotation.get('vietnamese_text', comment.text)
-    token_annotations = create_token_annotations(
-        vietnamese_text, annotation, labels_info=labels_info
-    )
-
-    # Delete old tokens and create new ones
-    Token.objects.filter(comment=comment).delete()
-
-    for token_data in token_annotations:
-        assigned_label_name = token_data.get('assigned_label')
-        # Find matching ProjectLabel for AI label
-        token_ai_label = _find_project_label(project, assigned_label_name)
-
-        token = Token.objects.create(
-            comment=comment,
-            text=token_data['text'],
-            position=token_data['position'],
-            start_offset=token_data['start_offset'],
-            end_offset=token_data['end_offset'],
-            ai_label=token_ai_label,
-            toxicity_score=token_data.get('toxicity_score'),
-            annotated_at=timezone.now(),
-            annotation_source='auto'
-        )
-
-logger = logging.getLogger(__name__)
-TERMINAL_TASK_STATUSES = ('completed', 'failed', 'cancelled')
+def request_cancel(link_id: str) -> None:
+    cache.set(_cancel_key(link_id), True, CANCEL_FLAG_TTL)
 
 
-def _trigger_annotation(youtube_link_id: str):
-    """Helper to trigger the annotation task for a given link."""
+def clear_cancel(link_id: str) -> None:
+    cache.delete(_cancel_key(link_id))
+
+
+def is_cancelled(link_id: str) -> bool:
     try:
-        youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
-    except YouTubeLink.DoesNotExist:
-        logger.error(f"YouTubeLink {youtube_link_id} not found for annotation trigger")
-        return
-
-    youtube_link.status = 'annotating'
-    youtube_link.save(update_fields=['status', 'updated_at'])
-    enqueue_annotation_task(youtube_link, 'Starting annotation')
+        return bool(cache.get(_cancel_key(link_id)))
+    except Exception:
+        return False
 
 
-def _bootstrap_task_progress(youtube_link: YouTubeLink, task_type: str, task_id: str, current_step: str):
-    """Create or refresh the task progress row that a worker will own."""
+# ---------------------------------------------------------------------------
+# Tiến độ
+# ---------------------------------------------------------------------------
+def _bootstrap_task_progress(youtube_link: YouTubeLink, task_type: str,
+                             task_id: str, current_step: str) -> TaskProgress:
     return TaskProgress.objects.update_or_create(
         task_id=task_id,
         task_type=task_type,
@@ -149,6 +143,7 @@ def _bootstrap_task_progress(youtube_link: YouTubeLink, task_type: str, task_id:
             'status': 'running',
             'progress_percent': 0,
             'current_step': current_step,
+            'step_params': {},
             'total_items': 0,
             'processed_items': 0,
             'error_message': '',
@@ -159,492 +154,945 @@ def _bootstrap_task_progress(youtube_link: YouTubeLink, task_type: str, task_id:
 
 
 def get_effective_task_progress(youtube_link_id: str, task_type: str):
-    """
-    Return the active task progress for a link.
-
-    Prefer a running task if it exists, otherwise return the latest task
-    snapshot of the requested type.
-    """
-    running_task = TaskProgress.objects.filter(
-        youtube_link_id=youtube_link_id,
-        task_type=task_type,
-        status='running',
-    ).order_by('-created_at').first()
-    if running_task:
-        return running_task
-    return TaskProgress.objects.filter(
-        youtube_link_id=youtube_link_id,
-        task_type=task_type,
-    ).order_by('-created_at').first()
+    """Bản ghi tiến độ đang chạy, nếu không có thì bản ghi mới nhất cùng loại."""
+    base = TaskProgress.objects.filter(
+        youtube_link_id=youtube_link_id, task_type=task_type
+    )
+    return (
+        base.filter(status='running').order_by('-created_at').first()
+        or base.order_by('-created_at').first()
+    )
 
 
-def enqueue_fetch_comments_task(youtube_link: YouTubeLink, current_step: str = 'Queued for comment fetching'):
-    """Create a progress row and enqueue the fetch task with a stable task id."""
+def _finish_progress(task_progress, status, step='', error='', params=None):
+    if task_progress is None:
+        return
+    task_progress.status = status
+    if step:
+        task_progress.current_step = step
+        task_progress.step_params = params or {}
+    if error:
+        task_progress.error_message = error[:2000]
+    if status == 'completed':
+        task_progress.progress_percent = 100
+    task_progress.completed_at = timezone.now()
+    task_progress.save(update_fields=[
+        'status', 'current_step', 'step_params', 'error_message',
+        'progress_percent', 'completed_at',
+    ])
+def _update_progress(task_progress, progress_percent, step_key, total, processed,
+                     params=None):
+    if task_progress is None:
+        return
+    try:
+        task_progress.progress_percent = progress_percent
+        task_progress.current_step = step_key
+        task_progress.step_params = params or {}
+        task_progress.total_items = total
+        task_progress.processed_items = processed
+        task_progress.save(update_fields=[
+            'progress_percent', 'current_step', 'step_params',
+            'total_items', 'processed_items',
+        ])
+    except Exception as exc:
+        logger.error('Không cập nhật được tiến độ: %s', exc)
+
+
+def enqueue_fetch_comments_task(youtube_link: YouTubeLink,
+                                current_step=msg.QUEUED_FETCH) -> str:
     task_id = str(uuid.uuid4())
+    clear_cancel(str(youtube_link.id))
     _bootstrap_task_progress(youtube_link, 'fetching', task_id, current_step)
     fetch_comments_task.apply_async((str(youtube_link.id),), task_id=task_id)
     return task_id
 
 
-def enqueue_annotation_task(youtube_link: YouTubeLink, current_step: str = 'Queued for annotation'):
-    """Create a progress row and enqueue the annotation task with a stable task id."""
+def enqueue_annotation_task(youtube_link: YouTubeLink,
+                            current_step=msg.QUEUED_ANNOTATION) -> str:
     task_id = str(uuid.uuid4())
+    clear_cancel(str(youtube_link.id))
     _bootstrap_task_progress(youtube_link, 'annotating', task_id, current_step)
     annotate_comments_task.apply_async((str(youtube_link.id),), task_id=task_id)
     return task_id
 
 
-def _update_progress(task_progress, progress_percent, current_step, total, processed):
-    """Update task progress in database."""
-    try:
-        task_progress.progress_percent = progress_percent
-        task_progress.current_step = current_step
-        task_progress.total_items = total
-        task_progress.processed_items = processed
-        task_progress.save(update_fields=[
-            'progress_percent', 'current_step', 'total_items', 'processed_items'
-        ])
-    except Exception as e:
-        logger.error(f"Error updating progress: {e}")
-
-
 def _derive_link_status(youtube_link: YouTubeLink) -> str:
-    """Compute a stable link status from the data currently stored."""
+    """Trạng thái link suy ra từ dữ liệu thực tế đang lưu."""
     if not youtube_link.comments.exists():
         return 'pending'
-    if youtube_link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False).exists():
+    # ai_processed thay cho ai_label__isnull: comment được AI kết luận là 'O'
+    # vẫn tính là đã xử lý.
+    if youtube_link.comments.filter(ai_processed=False).exclude(
+        is_meaningful=False
+    ).exists():
         return 'completed'
     return 'annotated'
 
 
-def cancel_tasks_for_link_now(youtube_link_id: str):
-    """Synchronously revoke running tasks for a link."""
+def cancel_tasks_for_link_now(youtube_link_id: str) -> dict:
+    """
+    Yêu cầu dừng mọi task của một link.
+
+    Đặt cờ huỷ mềm (task tự thoát ở điểm an toàn) và revoke không terminate,
+    để không giết tiến trình worker đang chạy các task khác.
+    """
     from annotahub.celery import app
 
-    running_tasks = list(TaskProgress.objects.filter(
-        youtube_link_id=youtube_link_id,
-        status__in=['pending', 'running']
-    ))
+    request_cancel(youtube_link_id)
 
-    cancelled_count = 0
-    for task in running_tasks:
+    running = list(TaskProgress.objects.filter(
+        youtube_link_id=youtube_link_id, status__in=['pending', 'running']
+    ))
+    for task in running:
         if task.task_id:
-            app.control.revoke(task.task_id, terminate=True)
+            app.control.revoke(task.task_id, terminate=False)
         task.status = 'cancelled'
         task.current_step = task.current_step or 'Task cancelled by user'
         task.completed_at = timezone.now()
         task.save(update_fields=['status', 'current_step', 'completed_at'])
-        cancelled_count += 1
 
-    try:
-        youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
-        youtube_link.status = "cancelled" # _derive_link_status(youtube_link)
-        youtube_link.save(update_fields=['status', 'updated_at'])
-        link_status = youtube_link.status
-    except YouTubeLink.DoesNotExist:
-        link_status = None
+    link_status = None
+    link = YouTubeLink.objects.filter(id=youtube_link_id).first()
+    if link is not None:
+        link.status = _derive_link_status(link)
+        link.save(update_fields=['status', 'updated_at'])
+        link_status = link.status
 
-    logger.info(f"Cancelled {cancelled_count} tasks for link {youtube_link_id}")
-    return {'cancelled': cancelled_count, 'status': link_status}
+    logger.info('Đã huỷ %s task cho link %s', len(running), youtube_link_id)
+    return {'cancelled': len(running), 'status': link_status}
 
 
-def clear_link_data_for_refetch(youtube_link_id: str):
-    """
-    Remove all stored comments, tokens, and task progress for a link before refetching.
-
-    This is used by the "Clear and Refetch" action to give the user a clean slate.
-    """
-    try:
-        youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
-    except YouTubeLink.DoesNotExist:
-        logger.error(f"YouTubeLink {youtube_link_id} not found for clear/refetch")
+def clear_link_data_for_refetch(youtube_link_id: str) -> dict:
+    link = YouTubeLink.objects.filter(id=youtube_link_id).first()
+    if link is None:
+        logger.error('Không tìm thấy link %s để xoá dữ liệu', youtube_link_id)
         return {'status': 'error', 'message': 'YouTubeLink not found'}
 
     cancel_result = cancel_tasks_for_link_now(youtube_link_id)
 
-    deleted_comments_count = youtube_link.comments.count()
-    youtube_link.comments.all().delete()
-    TaskProgress.objects.filter(youtube_link=youtube_link).delete()
+    deleted = link.comments.count()
+    link.comments.all().delete()
+    TaskProgress.objects.filter(youtube_link=link).delete()
 
-    youtube_link.comment_count = 0
-    youtube_link.status = 'pending'
-    youtube_link.save(update_fields=['comment_count', 'status', 'updated_at'])
+    link.comment_count = 0
+    link.status = 'pending'
+    link.save(update_fields=['comment_count', 'status', 'updated_at'])
 
-    logger.info(
-        "Cleared %s comments and reset link %s for refetch",
-        deleted_comments_count,
-        youtube_link_id,
-    )
+    logger.info('Đã xoá %s bình luận và đặt lại link %s', deleted, youtube_link_id)
     return {
         'status': 'reset',
-        'deleted_comments': deleted_comments_count,
+        'deleted_comments': deleted,
         'cancelled_tasks': cancel_result.get('cancelled', 0),
     }
 
 
+# ---------------------------------------------------------------------------
+# Task: tải bình luận
+# ---------------------------------------------------------------------------
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def fetch_comments_task(self, youtube_link_id: str):
-    """
-    Task to fetch comments from a YouTube video.
-
-    Args:
-        youtube_link_id: UUID of the YouTubeLink instance
-    """
-    try:
-        youtube_link = YouTubeLink.objects.select_related('project').get(id=youtube_link_id)
-    except YouTubeLink.DoesNotExist:
-        logger.error(f"YouTubeLink {youtube_link_id} not found")
+    link = YouTubeLink.objects.select_related('project').filter(id=youtube_link_id).first()
+    if link is None:
+        logger.error('Không tìm thấy link %s', youtube_link_id)
         return {'status': 'error', 'message': 'YouTubeLink not found'}
 
-    if youtube_link.project.is_locked:
-        youtube_link.status = 'completed'
-        youtube_link.save(update_fields=['status'])
-        # Mark task as completed
-        task_progress.status = 'failed'
-        task_progress.error_message = "Project is locked"
-        task_progress.save(update_fields=['status', 'error_message'])
-        return {'status': 'error', 'message': 'Project is locked'}
-    
-    logger.info(f"Starting comment fetch for video {youtube_link.video_id}")
-    # Create task progress record
+    # Bản ghi tiến độ được tạo trước mọi nhánh return, kể cả nhánh lỗi.
     task_progress = _bootstrap_task_progress(
-        youtube_link,
-        'fetching',
-        self.request.id,
+        link, 'fetching', self.request.id or str(uuid.uuid4()),
         'Fetching comments from YouTube'
     )
 
+    if link.project.is_locked:
+        _finish_progress(task_progress, 'failed', error=msg.ERR_PROJECT_LOCKED)
+        link.status = _derive_link_status(link)
+        link.save(update_fields=['status', 'updated_at'])
+        return {'status': 'error', 'message': 'Project is locked'}
+
+    if link.kind != 'youtube':
+        _finish_progress(task_progress, 'completed',
+                         step=msg.NOT_YOUTUBE)
+        return {'status': 'skipped', 'reason': 'not a youtube source'}
+
+    logger.info('Bắt đầu tải bình luận cho video %s', link.video_id)
+
     try:
-        # Update link status
-        youtube_link.status = 'fetching'
-        youtube_link.save(update_fields=['status', 'updated_at'])
+        link.status = 'fetching'
+        link.save(update_fields=['status', 'updated_at'])
 
-        # Define progress callback
-        def on_progress(progress_percent, current_step, total, processed):
-            _update_progress(task_progress, progress_percent, current_step, total, processed)
+        def on_progress(percent, step, total, processed):
+            _update_progress(task_progress, percent, step, total, processed)
 
-        # Get owner's YouTube API key (falls back to global settings if not set)
-        owner_api_key = _get_owner_youtube_api_key(youtube_link.project)
-
-        # Fetch comments (max_results=None auto-detects total comment count)
-        comment_data_list = fetch_comments(
-            youtube_link.video_id,
-            max_results=youtube_link.comment_count or None,
+        comment_data = fetch_comments(
+            link.video_id,
+            max_results=None,
             on_progress=on_progress,
-            api_key=owner_api_key
+            api_key=get_owner_youtube_api_key(link.project),
+            should_stop=lambda: is_cancelled(youtube_link_id),
         )
 
-        # Store comments in database
-        created_count = 0
+        if is_cancelled(youtube_link_id):
+            _finish_progress(task_progress, 'cancelled', step=msg.CANCELLED)
+            return {'status': 'cancelled'}
+
+        created = 0
+        updated = 0
         with transaction.atomic():
-            for data in comment_data_list:
-                Comment.objects.update_or_create(
-                    youtube_link=youtube_link,
+            for data in comment_data:
+                text = data.get('text', '')
+                _obj, was_created = Comment.objects.update_or_create(
+                    youtube_link=link,
                     youtube_comment_id=data['youtube_comment_id'],
                     defaults={
                         'author': data.get('author', ''),
                         'author_channel_url': data.get('author_channel_url', ''),
                         'avatar_url': data.get('avatar_url', ''),
-                        'text': data.get('text', ''),
+                        'text': text,
+                        # source_text chỉ ghi khi tạo mới -> giữ bản gốc bất biến.
                         'like_count': data.get('like_count', 0),
                         'published_at': data.get('published_at'),
                         'updated_at_source': data.get('updated_at'),
                         'is_public': data.get('is_public', True),
-                    }
+                    },
                 )
-                created_count += 1
+                if was_created:
+                    created += 1
+                    # Ghi bản gốc một lần duy nhất, ngay lúc tạo.
+                    Comment.objects.filter(pk=_obj.pk).update(
+                        source_text=data.get('text_original') or text
+                    )
+                else:
+                    updated += 1
 
-        # Update youtube link
-        youtube_link.comment_count = created_count
-        youtube_link.status = 'completed'
-        youtube_link.save(update_fields=['comment_count', 'status', 'updated_at'])
+        total_stored = link.comments.count()
+        link.comment_count = total_stored
+        link.status = 'completed'
+        link.save(update_fields=['comment_count', 'status', 'updated_at'])
 
-        # Mark task as completed
-        task_progress.status = 'completed'
-        task_progress.progress_percent = 100
-        task_progress.current_step = f"Fetched {created_count} comments"
-        task_progress.total_items = created_count
-        task_progress.processed_items = created_count
-        task_progress.completed_at = timezone.now()
-        task_progress.save(update_fields=[
-            'status', 'progress_percent', 'current_step',
-            'total_items', 'processed_items', 'completed_at'
-        ])
+        fetch_summary = {'created': created, 'updated': updated}
+        _update_progress(task_progress, 100, msg.FETCH_DONE,
+                         total_stored, total_stored, params=fetch_summary)
+        _finish_progress(task_progress, 'completed',
+                         step=msg.FETCH_DONE, params=fetch_summary)
 
-        logger.info(f"Fetched {created_count} comments for video {youtube_link.video_id}")
+        logger.info('Đã lưu %s bình luận cho video %s', total_stored, link.video_id)
 
-        # Trigger annotation task automatically after fetch completes
-        _trigger_annotation(youtube_link_id)
+        link.status = 'annotating'
+        link.save(update_fields=['status', 'updated_at'])
+        enqueue_annotation_task(link, msg.QUEUED_ANNOTATION)
 
         return {
             'status': 'success',
-            'comments_fetched': created_count,
-            'youtube_link_id': youtube_link_id
+            'comments_created': created,
+            'comments_updated': updated,
+            'youtube_link_id': youtube_link_id,
         }
 
-    except Exception as e:
-        logger.error(f"Error fetching comments for {youtube_link.video_id}: {e}")
-        youtube_link.status = 'failed'
-        youtube_link.save(update_fields=['status', 'updated_at'])
+    except Exception as exc:
+        logger.error('Lỗi tải bình luận cho %s: %s', link.video_id, exc)
+        _finish_progress(task_progress, 'failed', error=str(exc))
+        link.status = 'failed'
+        link.save(update_fields=['status', 'updated_at'])
 
-        task_progress.status = 'failed'
-        task_progress.error_message = str(e)
-        task_progress.completed_at = timezone.now()
-        task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-        #chưa rety đủ và lỗi không dính tới API key
-        raise self.retry(exc=e) if self.request.retries < self.max_retries and 'API' not in str(e) else e
+        message = str(exc)
+        # Lỗi cấu hình/khoá API thì retry không giúp gì.
+        if 'API' in message or 'quota' in message.lower():
+            return {'status': 'error', 'message': message}
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=exc) from exc
+        return {'status': 'error', 'message': message}
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=120)
+# ---------------------------------------------------------------------------
+# Task: gán nhãn bằng LLM
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, max_retries=2, default_retry_delay=120)
 def annotate_comments_task(self, youtube_link_id: str):
     """
-    Task to annotate comments for toxicity using Ollama.
-    Handles language detection, translation to Vietnamese, and token-level annotation.
-
-    Args:
-        youtube_link_id: UUID of the YouTubeLink instance
+    Điều phối gán nhãn: chia comment chưa xử lý thành các batch nhỏ và giao cho
+    annotate_batch_task. Task này không tự gọi LLM nên không bao giờ chạm
+    time limit dù dữ liệu lớn cỡ nào.
     """
-    try:
-        youtube_link = YouTubeLink.objects.select_related('project').get(id=youtube_link_id)
-    except YouTubeLink.DoesNotExist:
-        logger.error(f"YouTubeLink {youtube_link_id} not found")
+    link = YouTubeLink.objects.select_related('project').filter(id=youtube_link_id).first()
+    if link is None:
         return {'status': 'error', 'message': 'YouTubeLink not found'}
 
-    if youtube_link.project.is_locked:
-        youtube_link.status = 'completed'
-        youtube_link.save(update_fields=['status'])
-        # Mark task as completed
-        task_progress.status = 'failed'
-        task_progress.error_message = "Project is locked"
-        task_progress.save(update_fields=['status', 'error_message'])
+    task_progress = _bootstrap_task_progress(
+        link, 'annotating', self.request.id or str(uuid.uuid4()),
+        msg.PREPARING
+    )
+
+    if link.project.is_locked:
+        _finish_progress(task_progress, 'failed', error=msg.ERR_PROJECT_LOCKED)
         return {'status': 'error', 'message': 'Project is locked'}
-    
-    logger.info(f"Starting annotation for video {youtube_link.video_id}")
 
-    # Get unannotated comments
-    comments = youtube_link.comments.filter(ai_label__isnull=True).exclude(is_meaningful=False)
-    total_comments = comments.count()
+    labels_info = _gather_labels_info(link)
+    if not labels_info:
+        _finish_progress(task_progress, 'failed',
+                         error=msg.ERR_NO_LABELS)
+        link.status = 'failed'
+        link.save(update_fields=['status', 'updated_at'])
+        return {'status': 'error', 'message': 'no labels configured'}
 
-    if total_comments == 0:
-        logger.info(f"No comments to annotate for video {youtube_link.video_id}")
-        TaskProgress.objects.create(
-            youtube_link=youtube_link,
-            task_type='annotating',
-            task_id=self.request.id,
-            status='completed',
-            progress_percent=100,
-            current_step='No comments to annotate',
-            total_items=0,
-            processed_items=0,
-            started_at=timezone.now(),
-            completed_at=timezone.now()
+    base_url, api_key, model = get_owner_ollama_config(link.project)
+    if not (base_url and api_key and model):
+        _finish_progress(
+            task_progress, 'failed',
+            error=msg.ERR_OLLAMA_MISSING
         )
-        youtube_link.status = 'annotated'
-        youtube_link.save(update_fields=['status', 'updated_at'])
+        link.status = 'failed'
+        link.save(update_fields=['status', 'updated_at'])
+        return {'status': 'error', 'message': 'ollama not configured'}
+
+    pending_ids = list(
+        link.comments.filter(ai_processed=False)
+        .exclude(is_meaningful=False)
+        .values_list('id', flat=True)
+    )
+    total = len(pending_ids)
+
+    if total == 0:
+        _finish_progress(task_progress, 'completed', step=msg.NO_PENDING)
+        link.status = _derive_link_status(link)
+        link.save(update_fields=['status', 'updated_at'])
         return {'status': 'success', 'annotated': 0}
 
-    task_progress = _bootstrap_task_progress(
-        youtube_link,
-        'annotating',
-        self.request.id,
-        'Annotating comments with Ollama'
-    )
-    task_progress.total_items = total_comments
+    task_progress.total_items = total
     task_progress.save(update_fields=['total_items'])
 
-    try:
-        # Update link status
-        youtube_link.status = 'annotating'
-        youtube_link.save(update_fields=['status', 'updated_at'])
+    link.status = 'annotating'
+    link.save(update_fields=['status', 'updated_at'])
 
-        # Gather labels_info from project's ProjectLabel entries
-        labels_info = _gather_labels_info(youtube_link)
-        if not labels_info:
-            task_progress.status = 'failed'
-            task_progress.error_message = "Chưa thiết lập nhãn cho dự án hiện tại."
-            task_progress.completed_at = timezone.now()
-            task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-            youtube_link.status = 'failed'
-            youtube_link.save(update_fields=['status', 'updated_at'])
-            logger.info("Chưa thiết lập nhãn cho dự án hiện tại.")
-            return {'status': 'success', 'annotated': 0}
-        # Get owner's Ollama config (falls back to global settings if not set)
-        owner_ollama_base_url, owner_ollama_api_key, owner_ollama_model = _get_owner_ollama_config(youtube_link.project)
-        if not owner_ollama_base_url or not owner_ollama_api_key or not owner_ollama_model:
-            task_progress.status = 'failed'
-            task_progress.error_message = "Chưa thiết lập API KEY, OLLAMA URL và OLLAMA MODEL."
-            task_progress.completed_at = timezone.now()
-            task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-            youtube_link.status = 'failed'
-            youtube_link.save(update_fields=['status', 'updated_at'])
-            return {'status': 'success', 'annotated': 0}
-        annotated_count = 0
-        processed_count = 0
+    batch_size = max(1, settings.ANNOTATION_BATCH_SIZE)
+    batches = [pending_ids[i:i + batch_size] for i in range(0, total, batch_size)]
 
-        for comment in comments:
-            try:
-                # Process comment with one Ollama call (pass labels_info for custom labels)
-                result = process_comment(
-                    comment.text,
-                    labels_info=labels_info,
-                    ollama_base_url=owner_ollama_base_url,
-                    ollama_api_key=owner_ollama_api_key,
-                    ollama_model=owner_ollama_model,
-                )
+    for batch in batches:
+        annotate_batch_task.apply_async((
+            youtube_link_id,
+            [str(cid) for cid in batch],
+            str(task_progress.id),
+        ))
 
-                if result and result.get('annotation'):
-                    annotation = result['annotation']
+    logger.info('Đã chia %s bình luận thành %s batch cho link %s',
+                total, len(batches), youtube_link_id)
+    _update_progress(task_progress, 0, msg.QUEUED_ANNOTATION, total, 0)
 
-                    # Save annotation metadata.
-                    comment.annotation_source = 'auto'
-                    comment.model_response = annotation
-                    comment.annotated_at = timezone.now()
-                    comment.is_meaningful = annotation.get('is_meaningful', True)
-                    source_is_vietnamese = annotation.get('source_is_vietnamese', True)
+    return {'status': 'queued', 'total': total, 'batches': len(batches)}
 
-                    # Store the Vietnamese text used for labeling and the original
-                    original_source_text = comment.text
-                    vietnamese_text = result.get('vietnamese_text', comment.text)
-                    original_text = result.get('original_text', '')
-                    comment.text = vietnamese_text
 
-                    if source_is_vietnamese is False:
-                        comment.original_text = original_text or original_source_text
-                    else:
-                        comment.original_text = ''
+@shared_task(bind=True, max_retries=2, default_retry_delay=60,
+             soft_time_limit=1800, time_limit=1900)
+def annotate_batch_task(self, youtube_link_id: str, comment_ids: list, progress_id: str):
+    """Gán nhãn một batch comment. Idempotent: bỏ qua comment đã xử lý."""
+    link = YouTubeLink.objects.select_related('project').filter(id=youtube_link_id).first()
+    if link is None:
+        return {'status': 'error', 'message': 'YouTubeLink not found'}
 
-                    if comment.is_meaningful is False:
-                        comment.manual_label = None
-                        comment.toxicity_confidence = None
-                        comment.ai_label = None
-                        Token.objects.filter(comment=comment).delete()
-                        comment.save(update_fields=[
-                            'manual_label', 'toxicity_confidence',
-                            'ai_label', 'annotation_source', 'model_response', 'annotated_at',
-                            'is_meaningful', 'text', 'original_text'
-                        ])
-                    else:
-                        # Apply labels (comment + token level) using helper
-                        # This sets comment.ai_label and creates tokens with ai_label
-                        _apply_labels_to_comment(comment, annotation, youtube_link, labels_info)
+    task_progress = TaskProgress.objects.filter(id=progress_id).first()
 
-                        # Also save legacy fields
-                        comment.toxicity_confidence = annotation.get('confidence', 0.5)
-                        comment.save(update_fields=[
-                            'toxicity_confidence',
-                            'ai_label', 'annotation_source', 'model_response', 'annotated_at',
-                            'is_meaningful', 'text', 'original_text'
-                        ])
+    if is_cancelled(youtube_link_id):
+        logger.info('Batch bị huỷ cho link %s', youtube_link_id)
+        return {'status': 'cancelled'}
 
-                        annotated_count += 1
+    project = link.project
+    labels_info = _gather_labels_info(link)
+    base_url, api_key, model = get_owner_ollama_config(project)
 
-                processed_count += 1
+    # Bảng tra nhãn dựng một lần cho cả batch, thay vì truy vấn DB cho mỗi token.
+    label_map = project_label_map(project)
 
-                # Update progress
-                progress = int((processed_count / max(total_comments, 1)) * 100)
-                _update_progress(
-                    task_progress, progress,
-                    f"Annotated {processed_count}/{total_comments} comments",
-                    total_comments, processed_count
-                )
+    comments = list(
+        Comment.objects.filter(id__in=comment_ids, ai_processed=False)
+        .exclude(is_meaningful=False)
+    )
 
-            except Exception as e:
-                logger.error(f"Error annotating comment {comment.id}: {e}")
-                processed_count += 1
-                continue
+    annotated = 0
+    failed = 0
 
-        # Mark task as completed
-        task_progress.status = 'completed'
-        task_progress.progress_percent = 100
-        task_progress.current_step = f"Annotated {annotated_count}/{total_comments} comments"
-        task_progress.processed_items = total_comments
-        task_progress.total_items = total_comments
-        task_progress.completed_at = timezone.now()
-        task_progress.save(update_fields=[
-            'status', 'progress_percent', 'current_step',
-            'processed_items', 'total_items', 'completed_at'
-        ])
+    for comment in comments:
+        if is_cancelled(youtube_link_id):
+            logger.info('Dừng batch giữa chừng theo yêu cầu huỷ.')
+            break
+        try:
+            _annotate_one(comment, project, labels_info, label_map,
+                          base_url, api_key, model)
+            annotated += 1
+        except QuotaExhaustedError as exc:
+            # Hết tiền: dừng toàn bộ, không retry, không đốt thêm.
+            logger.error('Hết quota LLM: %s', exc)
+            request_cancel(youtube_link_id)
+            _finish_progress(task_progress, 'failed', error=str(exc))
+            link.status = 'failed'
+            link.save(update_fields=['status', 'updated_at'])
+            return {'status': 'quota_exhausted'}
+        except (LLMError, Exception) as exc:
+            failed += 1
+            logger.warning('Lỗi gán nhãn comment %s: %s', comment.id, exc)
 
-        # Update youtube link status
-        youtube_link.status = 'annotated'
-        youtube_link.save(update_fields=['status', 'updated_at'])
+        # Nhịp cập nhật là từng bình luận, không phải từng batch. Batch mặc định
+        # 50 bình luận và mỗi bình luận là một lượt gọi LLM, nên báo theo batch
+        # thì thanh tiến độ đứng im hàng phút trong khi log worker chạy ầm ầm.
+        # Thêm một COUNT cho mỗi lượt gọi LLM là chi phí không đáng kể.
+        _sync_batch_progress(link, task_progress)
 
-        logger.info(
-            f"Annotated {annotated_count}/{total_comments} comments for video {youtube_link.video_id}"
+    _sync_batch_progress(link, task_progress)
+    return {'status': 'success', 'annotated': annotated, 'failed': failed}
+
+
+def _annotate_one(comment: Comment, project, labels_info, label_map,
+                  base_url, api_key, model) -> None:
+    """Gán nhãn một comment và ghi kết quả (annotation AI + token)."""
+    # Luôn gán nhãn dựa trên văn bản gốc nếu có, để kết quả tái lập được.
+    source_text = comment.source_text or comment.text
+    previous_text = comment.text or ''
+
+    result = process_comment(
+        source_text,
+        labels_info=labels_info,
+        ollama_base_url=base_url,
+        ollama_api_key=api_key,
+        ollama_model=model,
+    )
+    annotation = result['annotation']
+
+    vietnamese_text = result.get('vietnamese_text') or source_text
+    was_translated = result.get('was_translated', False)
+
+    with transaction.atomic():
+        comment_fields = ['ai_processed', 'ai_processed_at', 'model_response',
+                          'annotated_at', 'is_meaningful', 'toxicity_confidence',
+                          'annotation_source', 'ai_label']
+
+        # Không ghi đè source_text. text chỉ đổi khi thực sự là bản dịch.
+        if not comment.source_text:
+            comment.source_text = source_text
+            comment_fields.append('source_text')
+
+        if was_translated:
+            comment.text = vietnamese_text
+            comment.original_text = source_text
+            comment_fields += ['text', 'original_text']
+
+        # Chạy lại thường cho ra đúng bản dịch cũ, và khi đó token không đổi.
+        # So chính văn bản chứ không so bộ token: cùng một chuỗi thì
+        # tokenize_text() luôn cắt như nhau.
+        text_changed = (comment.text or '').strip() != previous_text.strip()
+
+        comment.model_response = annotation
+        comment.annotated_at = timezone.now()
+        comment.ai_processed = True
+        comment.ai_processed_at = timezone.now()
+        comment.is_meaningful = annotation.get('is_meaningful', True)
+        comment.toxicity_confidence = annotation.get('confidence')
+
+        if comment.is_meaningful is False:
+            comment.ai_label = None
+            comment.annotation_source = 'auto'
+            comment.save(update_fields=comment_fields)
+            # Gỡ nhãn AI khỏi token nhưng giữ token lại. AI kết luận bình luận
+            # không có nội dung không có nghĩa là công gán nhãn của người trên
+            # đó là rác.
+            comment.tokens.update(ai_label=None, toxicity_score=None)
+            _clear_ai_token_annotations(comment)
+            store_ai_comment_annotation(comment, None, confidence=None,
+                                        is_meaningful=False)
+            return
+
+        label_name = get_comment_label_name(annotation)
+        ai_project_label = label_map.get((label_name or '').lower())
+        comment.ai_label = ai_project_label
+        comment.annotation_source = 'auto'
+        comment.save(update_fields=comment_fields)
+
+        store_ai_comment_annotation(
+            comment, ai_project_label,
+            confidence=annotation.get('confidence'),
+            is_meaningful=True,
         )
 
-        return {
-            'status': 'success',
-            'annotated': annotated_count,
-            'total': total_comments
-        }
+        _apply_ai_tokens(comment, annotation, labels_info, label_map,
+                         text_changed=text_changed)
 
-    except Exception as e:
-        logger.error(f"Error annotating comments for {youtube_link.video_id}: {e}")
 
-        task_progress.status = 'failed'
-        task_progress.error_message = str(e)
-        task_progress.completed_at = timezone.now()
-        task_progress.save(update_fields=['status', 'error_message', 'completed_at'])
-        if self.request.retries >= self.max_retries:
-            youtube_link.status = 'failed'
-            youtube_link.save(update_fields=['status', 'updated_at'])
-            logger.info(f"Lỗi: {str(e)}")
-        raise self.retry(exc=e) if self.request.retries < self.max_retries else e
+def _clear_ai_token_annotations(comment: Comment) -> None:
+    """
+    Dọn annotation token của AI cho một comment.
+
+    Ràng buộc duy nhất (token, annotator, source) không chặn được trùng lặp ở
+    đây: annotator của AI là NULL, mà trong PostgreSQL hai giá trị NULL không
+    bằng nhau nên mỗi lần ghi lại đẻ thêm một dòng. Đếm IAA sẽ coi AI như
+    nhiều người khác nhau.
+    """
+    TokenAnnotation.objects.filter(token__comment=comment, source='ai').delete()
+
+
+def _apply_ai_tokens(comment: Comment, annotation, labels_info, label_map,
+                     *, text_changed: bool) -> None:
+    """
+    Ghi nhãn AI lên token của comment.
+
+    Chỉ đụng vào `ai_label` và `toxicity_score`. Nhãn thủ công, nhãn đã chốt và
+    `span_group` là của người gán, không phải chỗ của AI.
+
+    `span_group` để trống: ranh giới cụm do LLM tự cắt không đáng tin, và
+    export đã gộp token liền kề cùng nhãn khi thiếu trường này. Người kéo chọn
+    cụm thì vẫn ghi span_group của mình và được tôn trọng.
+
+    `text_changed` chỉ đúng khi bản dịch mới khác bản đang lưu. Lúc đó token cũ
+    neo vào văn bản không còn tồn tại nên phải dựng lại, và nhãn thủ công trên
+    đó cũng mất theo — không có cách nào giữ.
+    """
+    token_rows = create_token_annotations(
+        comment.text, annotation, labels_info=labels_info
+    )
+
+    if text_changed:
+        Token.objects.filter(comment=comment).delete()
+    _clear_ai_token_annotations(comment)
+
+    # Truy vấn thẳng, không qua comment.tokens: nếu chỗ gọi có prefetch_related
+    # thì related manager trả về cache đã cũ sau khi xoá ở trên.
+    existing = {t.position: t for t in Token.objects.filter(comment=comment)}
+    now = timezone.now()
+    to_create, to_update, labelled = [], [], []
+
+    for row in token_rows:
+        position = row['position']
+        label = label_map.get((row.get('assigned_label') or '').lower())
+        score = row.get('toxicity_score')
+        token = existing.get(position)
+
+        if token is None:
+            token = Token(
+                comment=comment,
+                text=row['text'][:255],
+                position=position,
+                start_offset=row['start_offset'],
+                end_offset=row['end_offset'],
+                ai_label=label,
+                toxicity_score=score,
+                annotated_at=now,
+                annotation_source='auto',
+            )
+            to_create.append(token)
+        else:
+            # annotation_source và annotated_at giữ nguyên: chúng nói ai chạm
+            # vào token này gần nhất, và AI ghi đè nhãn của mình không đổi
+            # điều đó.
+            token.ai_label = label
+            token.toxicity_score = score
+            to_update.append(token)
+
+        if label is not None:
+            labelled.append((token, label, score))
+
+    if to_create:
+        Token.objects.bulk_create(to_create)
+    if to_update:
+        Token.objects.bulk_update(to_update, ['ai_label', 'toxicity_score'])
+
+    store_ai_token_annotations(labelled)
+
+
+def _sync_batch_progress(link: YouTubeLink, task_progress) -> None:
+    """Cập nhật tiến độ tổng và chốt trạng thái link khi mọi batch đã xong."""
+    if task_progress is None:
+        return
+
+    total = task_progress.total_items or link.comments.count()
+    remaining = link.comments.filter(ai_processed=False).exclude(
+        is_meaningful=False
+    ).count()
+    processed = max(0, total - remaining)
+    percent = int((processed / total) * 100) if total else 100
+
+    _update_progress(task_progress, percent, msg.ANNOTATING, total, processed)
+
+    if remaining == 0:
+        _finish_progress(task_progress, 'completed', step=msg.ANNOTATING)
+        link.status = _derive_link_status(link)
+        link.save(update_fields=['status', 'updated_at'])
+
+
+# ---------------------------------------------------------------------------
+# Task bảo trì
+# ---------------------------------------------------------------------------
+@shared_task
+def cleanup_old_results(days: int = 30):
+    """Dọn bản ghi tiến độ và kết quả Celery cũ."""
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(days=days)
+
+    old_progress = TaskProgress.objects.filter(
+        status__in=TERMINAL_TASK_STATUSES, completed_at__lt=cutoff
+    )
+    progress_count = old_progress.count()
+    old_progress.delete()
+
+    # django_celery_results không tự dọn; không cắt bớt thì bảng phình vô hạn.
+    result_count = 0
+    try:
+        from django_celery_results.models import TaskResult
+
+        old_results = TaskResult.objects.filter(date_done__lt=cutoff)
+        result_count = old_results.count()
+        old_results.delete()
+    except Exception as exc:
+        logger.warning('Không dọn được TaskResult: %s', exc)
+
+    logger.info('Đã dọn %s TaskProgress và %s TaskResult', progress_count, result_count)
+    return {'task_progress': progress_count, 'task_results': result_count}
 
 
 @shared_task
-def cleanup_old_results(days: int = 30):
-    """Clean up old task results and progress records."""
-    from django.utils import timezone
+def reap_stale_task_progress(stale_minutes: int = 60):
+    """
+    Đánh dấu thất bại cho các task treo ở 'running' quá lâu.
+
+    Xảy ra khi worker bị giết đột ngột: bản ghi tiến độ ở lại trạng thái running
+    vĩnh viễn và UI hiển thị "đang chạy" mãi mãi.
+    """
     from datetime import timedelta
 
-    cutoff_date = timezone.now() - timedelta(days=days)
-
-    # Clean up old completed task progress records
-    old_progress = TaskProgress.objects.filter(
-        status__in=['completed', 'failed'],
-        completed_at__lt=cutoff_date
+    cutoff = timezone.now() - timedelta(minutes=stale_minutes)
+    stale = TaskProgress.objects.filter(status='running', started_at__lt=cutoff)
+    count = stale.count()
+    stale.update(
+        status='failed',
+        error_message='Task không phản hồi quá lâu, đã được đánh dấu thất bại tự động.',
+        completed_at=timezone.now(),
     )
-    count = old_progress.count()
-    old_progress.delete()
+    if count:
+        logger.warning('Đã dọn %s task treo', count)
+    return {'reaped': count}
 
-    logger.info(f"Cleaned up {count} old task progress records")
-    return {'cleaned': count}
+
+@shared_task
+def scheduled_database_backup():
+    """Sao lưu DB theo lịch của Celery beat."""
+    from django.core.management import call_command
+
+    try:
+        call_command('db_command', 'backup', '--output-dir', '/app/backups')
+        logger.info('Sao lưu DB định kỳ thành công')
+        return {'status': 'ok'}
+    except Exception as exc:
+        logger.error('Sao lưu DB định kỳ thất bại: %s', exc)
+        return {'status': 'error', 'message': str(exc)}
 
 
 @shared_task
 def cancel_tasks_for_link(youtube_link_id: str):
-    """Cancel all running tasks for a YouTube link."""
     return cancel_tasks_for_link_now(youtube_link_id)
 
 
 @shared_task
 def reannotate_all_comments(youtube_link_id: str):
-    """
-    Reset all annotations and re-run AI annotation from scratch.
-    Clears all labels and tokens, then starts fresh annotation.
-    """
-    try:
-        youtube_link = YouTubeLink.objects.get(id=youtube_link_id)
-    except YouTubeLink.DoesNotExist:
-        logger.error(f"YouTubeLink {youtube_link_id} not found")
+    """Đặt lại nhãn AI và chạy lại. không đụng tới nhãn do người gán."""
+    link = YouTubeLink.objects.filter(id=youtube_link_id).first()
+    if link is None:
         return {'status': 'error', 'message': 'YouTubeLink not found'}
 
-    # Reset all annotations
-    youtube_link.comments.update(
-        manual_label=None,
+    from .models import CommentAnnotation, TokenAnnotation
+
+    CommentAnnotation.objects.filter(comment__youtube_link=link, source='ai').delete()
+    TokenAnnotation.objects.filter(token__comment__youtube_link=link, source='ai').delete()
+    link.comments.update(
         ai_label=None,
         toxicity_confidence=None,
-        annotation_source=None,
         model_response=None,
-        annotated_at=None,
-        original_text='',
-        is_meaningful=None,
+        ai_processed=False,
+        ai_processed_at=None,
     )
-    Token.objects.filter(comment__youtube_link=youtube_link).delete()
+    Token.objects.filter(comment__youtube_link=link).update(
+        ai_label=None, toxicity_score=None
+    )
 
-    # Start annotation task
-    enqueue_annotation_task(youtube_link, 'Re-annotating all comments')
-    logger.info(f"Re-annotation started for link {youtube_link_id}")
+    enqueue_annotation_task(link, msg.QUEUED_ANNOTATION)
     return {'status': 'started', 'youtube_link_id': youtube_link_id}
+
+
+# ---------------------------------------------------------------------------
+# Xuất dữ liệu chạy nền
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, soft_time_limit=3000)
+def run_export(self, export_id: str):
+    """
+    Sinh file xuất cho một ExportRecord.
+
+    File được ghi ra đĩa ở chế độ nền rồi mới đưa link tải. Xuất thẳng trong
+    request theo kiểu streaming thì với dataset lớn, trình duyệt hoặc reverse
+    proxy ngắt kết nối giữa chừng và người dùng nhận file cụt mà không biết.
+    """
+    from .export_service import export_to_file
+
+    record = (
+        ExportRecord.objects.filter(id=export_id)
+        .select_related('project', 'youtube_link').first()
+    )
+    if record is None:
+        return {'status': 'error', 'message': 'ExportRecord not found'}
+
+    record.status = 'running'
+    record.current_step = str(_('Đang bắt đầu'))
+    record.save(update_fields=['status', 'current_step'])
+
+    try:
+        export_dir = Path(settings.EXPORT_ROOT)
+        export_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = ''.join(
+            ch if ch.isalnum() or ch in '-_' else '-' for ch in record.project.name
+        )[:60]
+        # Gắn thêm phần đầu của id: hai lần xuất cùng dự án, cùng định dạng
+        # trong cùng một giây sẽ ghi đè file của nhau nếu chỉ dựa vào thời gian.
+        target = export_dir / (
+            f'{safe_name}_{record.export_format}_'
+            f'{record.generated_at:%Y%m%d-%H%M%S}_{str(record.id)[:8]}'
+        )
+
+        stats = export_to_file(
+            record.project, record.youtube_link, record.export_format,
+            record.filter_toxicity or 'all', target,
+            review_filter=record.review_filter or 'all',
+            progress=_progress_reporter(record),
+        )
+
+        path = Path(stats['path'])
+        record.file_path = str(path)
+        record.file_bytes = path.stat().st_size
+        record.file_size = filesizeformat(record.file_bytes)
+        record.comment_count = stats['comment_count']
+        record.token_count = stats['token_count']
+        record.status = 'ready'
+        record.progress_percent = 100
+        record.current_step = str(_('Sẵn sàng tải về'))
+        record.completed_at = timezone.now()
+        record.save()
+
+        logger.info('Đã xuất %s cho dự án %s (%s bình luận)',
+                    record.export_format, record.project.name, stats['comment_count'])
+        return {'status': 'ok', 'export_id': str(record.id)}
+
+    except Exception as exc:
+        logger.error('Xuất dữ liệu thất bại: %s', exc)
+        record.status = 'failed'
+        record.error_message = str(exc)[:2000]
+        record.current_step = str(_('Thất bại'))
+        record.completed_at = timezone.now()
+        record.save(update_fields=[
+            'status', 'error_message', 'current_step', 'completed_at'
+        ])
+        return {'status': 'error', 'message': str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Nhập CSV chạy nền
+# ---------------------------------------------------------------------------
+CSV_BATCH = 1000
+
+
+@shared_task(bind=True, soft_time_limit=3000)
+def run_csv_import(self, link_id: str, source_path: str):
+    """
+    Đọc file CSV đã tải lên và tạo bình luận cho `link`.
+
+    File nằm trên volume dùng chung giữa web và worker (xem docker-compose),
+    nên worker đọc được đúng file mà web vừa nhận.
+    """
+    import csv as csv_module
+
+    link = YouTubeLink.objects.filter(id=link_id).select_related('project').first()
+    if link is None:
+        return {'status': 'error', 'message': 'YouTubeLink not found'}
+
+    progress = TaskProgress.objects.create(
+        youtube_link=link, task_type='importing', status='running',
+        task_id=self.request.id or '', started_at=timezone.now(),
+        current_step=str(_('Đang đọc file')),
+    )
+    path = Path(source_path)
+
+    try:
+        # Đếm trước số dòng để thanh tiến độ có mẫu số thật. File CSV đọc hai
+        # lượt vẫn rẻ hơn nhiều so với việc ghi CSDL.
+        with open(path, encoding='utf-8-sig', newline='') as handle:
+            total = max(1, sum(1 for _line in handle) - 1)
+        progress.total_items = total
+        progress.save(update_fields=['total_items'])
+
+        created = 0
+        rows = []
+        with open(path, encoding='utf-8-sig', newline='') as handle:
+            reader = csv_module.DictReader(handle)
+            for index, row in enumerate(reader):
+                normalized = {
+                    (k or '').strip().lower(): (v or '') for k, v in row.items()
+                }
+                text = normalized.get('text', '').strip()
+                if not text:
+                    continue
+                rows.append(Comment(
+                    youtube_link=link,
+                    youtube_comment_id=normalized.get('id') or f'row-{index}',
+                    author=normalized.get('author', '')[:255],
+                    text=text,
+                    source_text=text,
+                ))
+                if len(rows) >= CSV_BATCH:
+                    Comment.objects.bulk_create(rows, ignore_conflicts=True)
+                    created += len(rows)
+                    rows = []
+                    _report_import(progress, created, total)
+            if rows:
+                Comment.objects.bulk_create(rows, ignore_conflicts=True)
+                created += len(rows)
+
+        stored = link.comments.count()
+        link.comment_count = stored
+        link.status = 'completed'
+        link.save(update_fields=['comment_count', 'status', 'updated_at'])
+
+        # Lưu trước khi gọi _finish_progress: hàm đó chỉ ghi các trường trạng
+        # thái, không ghi processed_items.
+        progress.processed_items = stored
+        progress.progress_percent = 100
+        progress.save(update_fields=['processed_items', 'progress_percent'])
+        _finish_progress(progress, 'completed', step=msg.IMPORT_DONE,
+                         params={'rows': stored})
+        logger.info('Đã nhập %s dòng CSV vào %s', stored, link.title)
+        return {'status': 'ok', 'created': stored, 'link_id': str(link.id)}
+
+    except Exception as exc:
+        logger.error('Nhập CSV thất bại: %s', exc)
+        link.status = 'failed'
+        link.save(update_fields=['status', 'updated_at'])
+        _finish_progress(progress, 'failed', step=msg.FAILED, error=str(exc))
+        return {'status': 'error', 'message': str(exc)}
+
+    finally:
+        # File tải lên chỉ là dữ liệu trung gian; giữ lại thì volume phình dần.
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            logger.warning('Không xoá được file tạm %s: %s', path, exc)
+
+
+def _report_import(progress, done, total):
+    percent = min(99, int(done / total * 100))
+    if percent == progress.progress_percent:
+        return
+    progress.progress_percent = percent
+    progress.processed_items = done
+    progress.current_step = str(_('Đã nhập %(done)s/%(total)s dòng') % {
+        'done': done, 'total': total,
+    })
+    progress.save(update_fields=[
+        'progress_percent', 'processed_items', 'current_step'
+    ])
+
+
+# ---------------------------------------------------------------------------
+# Phiên bản dataset (Giai đoạn 4)
+# ---------------------------------------------------------------------------
+def _progress_reporter(record, *, ceiling=100, field='progress_percent',
+                       step_field='current_step'):
+    """
+    Trả về hàm `report(percent, step)` ghi tiến độ vào một bản ghi.
+
+    Chỉ ghi CSDL khi phần trăm thực sự đổi: một lần xuất có thể gọi hàm này
+    hàng chục nghìn lần, ghi mỗi lần sẽ biến thanh tiến độ thành nút thắt cổ
+    chai nặng hơn cả việc xuất dữ liệu.
+    """
+    state = {'percent': -1}
+
+    def report(percent, step=''):
+        scaled = int(percent * ceiling / 100)
+        if scaled == state['percent']:
+            return
+        state['percent'] = scaled
+        setattr(record, field, scaled)
+        if step:
+            setattr(record, step_field, str(step)[:500])
+        record.save(update_fields=[field, step_field])
+
+    return report
+
+
+def build_version(record: DatasetVersion, review_filter: str = 'gold') -> dict:
+    """
+    Sinh file cho một DatasetVersion: bản xuất + ảnh chụp + checksum.
+
+    Tách khỏi task Celery để chỗ khác gọi đồng bộ được: cụ thể là khi chốt
+    phiên bản dự phòng ngay trước lúc phục hồi, nơi không được phép chạy nền
+    (chạy nền sẽ chụp nhầm trạng thái SAU khi đã phục hồi).
+    """
+    from .export_service import export_to_file
+    from .services.agreement import project_agreement_report
+    from .services.versioning import snapshot_path_for, write_snapshot
+
+    try:
+        export_dir = Path(settings.EXPORT_ROOT)
+        export_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = ''.join(
+            ch if ch.isalnum() or ch in '-_' else '-' for ch in record.project.name
+        )[:60]
+        target = export_dir / f'{safe_name}_{record.version}_{record.export_format}'
+
+        report = _progress_reporter(record, ceiling=80)
+
+        # Mặc định chỉ lấy nhãn đã chốt: phiên bản dataset là bản công bố,
+        # không nên chứa bình luận chưa ai gán nhãn.
+        stats = export_to_file(
+            record.project, None, record.export_format, 'all', target,
+            review_filter=review_filter, progress=report,
+        )
+
+        # Ảnh chụp luôn lấy toàn bộ bình luận, không theo review_filter: nó
+        # phục vụ việc phục hồi, không phải công bố.
+        report(85, str(_('Đang ghi ảnh chụp để phục hồi')))
+        write_snapshot(record.project, snapshot_path_for(target))
+        report(92, str(_('Đang tính checksum và độ đồng thuận')))
+
+        digest = hashlib.sha256()
+        with open(stats['path'], 'rb') as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+                digest.update(chunk)
+
+        agreement = project_agreement_report(record.project)
+
+        record.file_path = str(stats['path'])
+        record.snapshot_path = str(snapshot_path_for(target))
+        record.checksum_sha256 = digest.hexdigest()
+        record.comment_count = stats['comment_count']
+        record.token_count = stats['token_count']
+        record.annotator_count = agreement.get('annotator_count', 0)
+        record.agreement_score = agreement.get('krippendorff_alpha')
+        record.status = 'ready'
+        record.progress_percent = 100
+        record.current_step = str(_('Hoàn tất'))
+        record.save()
+
+        logger.info('Đã tạo phiên bản dataset %s cho dự án %s',
+                    record.version, record.project.name)
+        return {'status': 'ok', 'version': record.version}
+
+    except Exception as exc:
+        logger.error('Tạo phiên bản dataset thất bại: %s', exc)
+        record.status = 'failed'
+        record.current_step = str(exc)[:500]
+        record.notes = f'{record.notes}\n[LỖI] {exc}'.strip()
+        record.save(update_fields=['status', 'notes', 'current_step'])
+        return {'status': 'error', 'message': str(exc)}
+
+
+@shared_task(bind=True, soft_time_limit=3000)
+def build_dataset_version(self, version_id: str, review_filter: str = 'gold'):
+    """
+    Tạo snapshot dataset ở chế độ nền.
+
+    Chạy nền vì với dataset lớn việc sinh file có thể mất vài phút.
+    """
+    record = DatasetVersion.objects.filter(id=version_id).select_related('project').first()
+    if record is None:
+        return {'status': 'error', 'message': 'DatasetVersion not found'}
+    return build_version(record, review_filter=review_filter)
